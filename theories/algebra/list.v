@@ -5,10 +5,10 @@ From iris.algebra Require Import updates local_updates.
 Set Default Proof Using "Type".
 
 Section cofe.
-Context {A : ofeT}.
+Context {SI} {A : ofeT SI}.
 Implicit Types l : list A.
 
-Instance list_dist : Dist (list A) := λ n, Forall2 (dist n).
+Instance list_dist : Dist SI (list A) := λ n, Forall2 (dist n).
 
 Lemma list_dist_lookup n l1 l2 : l1 ≡{n}≡ l2 ↔ ∀ i, l1 !! i ≡{n}≡ l2 !! i.
 Proof. setoid_rewrite dist_option_Forall2. apply Forall2_lookup. Qed.
@@ -53,13 +53,13 @@ Lemma list_dist_cons_inv_r n l k y :
   l ≡{n}≡ y :: k → ∃ x l', x ≡{n}≡ y ∧ l' ≡{n}≡ k ∧ l = x :: l'.
 Proof. apply Forall2_cons_inv_r. Qed.
 
-Definition list_ofe_mixin : OfeMixin (list A).
+Definition list_ofe_mixin : OfeMixin SI (list A).
 Proof.
   split.
   - intros l k. rewrite equiv_Forall2 -Forall2_forall.
-    split; induction 1; constructor; intros; try apply equiv_dist; auto.
+    split; induction 1; try constructor; intros; try apply equiv_dist; auto.
   - apply _.
-  - rewrite /dist /list_dist. eauto using Forall2_impl, dist_S.
+  - rewrite /dist /list_dist. eauto using Forall2_impl, dist_le.
 Qed.
 Canonical Structure listO := OfeT (list A) list_ofe_mixin.
 
@@ -75,18 +75,47 @@ Fixpoint list_compl_go `{!Cofe A} (c0 : list A) (c : chain listO) : listO :=
   | x :: c0 => compl (chain_map (default x ∘ head) c) :: list_compl_go c0 (chain_map tail c)
   end.
 
+Fixpoint list_bcompl_go `{!Cofe A} (c0 : list A) {α} Hα (c : bchain listO α) : listO :=
+  match c0 with
+  | [] => []
+  | x :: c0 => bcompl Hα (bchain_map (default x ∘ head) c) :: list_bcompl_go c0 Hα (bchain_map tail c)
+  end.
+
 Global Program Instance list_cofe `{!Cofe A} : Cofe listO :=
-  {| compl c := list_compl_go (c 0) c |}.
+  {|
+    compl c := list_compl_go (c zero) c;
+    bcompl α Hα c := list_bcompl_go (c zero Hα) Hα c
+  |}.
 Next Obligation.
-  intros ? n c; rewrite /compl.
-  assert (c 0 ≡{0}≡ c n) as Hc0 by (symmetry; apply chain_cauchy; lia).
-  revert Hc0. generalize (c 0)=> c0. revert c.
+  intros ? α c; simpl.
+  assert (c zero ≡{zero}≡ c α) as Hc0 by (symmetry; apply chain_cauchy, index_zero_minimum).
+  revert Hc0. generalize (c zero)=> c0. revert c.
   induction c0 as [|x c0 IH]=> c Hc0 /=.
   { by inversion Hc0. }
   apply list_dist_cons_inv_l in Hc0 as (x' & xs' & Hx & Hc0 & Hcn).
   rewrite Hcn. f_equiv.
-  - by rewrite conv_compl /= Hcn /=.
-  - rewrite IH /= ?Hcn //.
+  - rewrite conv_compl.
+    by rewrite /chain_map //= Hcn.
+  - rewrite IH. all: rewrite /chain_map /= ?Hcn //.
+Qed.
+Next Obligation.
+  intros ? α Hα c β Hβ; simpl. 
+  assert (c zero Hα ≡{zero}≡ c β Hβ) as Hc0 by (symmetry; apply bchain_cauchy, index_zero_minimum).
+  revert Hc0. generalize (c zero Hα)=> c0. revert c.
+  induction c0 as [|x c0 IH]=> c Hc0 /=.
+  { by inversion Hc0. }
+  apply list_dist_cons_inv_l in Hc0 as (x' & xs' & Hx & Hc0 & Hcn).
+  rewrite Hcn. f_equiv.
+  - rewrite (conv_bcompl _ _ _ β Hβ). by rewrite /bchain_map //= Hcn.
+  - rewrite IH. all: rewrite /bchain_map /= ?Hcn //.
+Qed.
+Next Obligation.
+  intros ? α Hα c d β Hne; simpl. specialize (Hne zero Hα) as H'.
+  remember (c zero Hα) as c0. remember (d zero Hα) as d0. clear Heqc0 Heqd0.
+  induction H' in c, d, Hne |-*; simpl; eauto.
+  constructor.
+  - apply: bcompl_ne=> γ Hγ. by rewrite /bchain_map //= Hne H.
+  - apply: IHH'=> γ Hγ. rewrite /bchain_map. cbn; by rewrite Hne.
 Qed.
 
 Global Instance list_ofe_discrete : OfeDiscrete A → OfeDiscrete listO.
@@ -98,45 +127,45 @@ Global Instance cons_discrete x l : Discrete x → Discrete l → Discrete (x ::
 Proof. intros ??; inversion_clear 1; constructor; by apply discrete. Qed.
 End cofe.
 
-Arguments listO : clear implicits.
+Arguments listO {_} _.
 
 (** Functor *)
-Lemma list_fmap_ext_ne {A} {B : ofeT} (f g : A → B) (l : list A) n :
+Lemma list_fmap_ext_ne {SI} {A} {B : ofeT SI} (f g : A → B) (l : list A) n :
   (∀ x, f x ≡{n}≡ g x) → f <$> l ≡{n}≡ g <$> l.
 Proof. intros Hf. by apply Forall2_fmap, Forall_Forall2, Forall_true. Qed.
-Instance list_fmap_ne {A B : ofeT} (f : A → B) n:
+Instance list_fmap_ne {SI} {A B : ofeT SI} (f : A → B) n:
   Proper (dist n ==> dist n) f → Proper (dist n ==> dist n) (fmap (M:=list) f).
 Proof. intros Hf l k ?; by eapply Forall2_fmap, Forall2_impl; eauto. Qed.
-Definition listO_map {A B} (f : A -n> B) : listO A -n> listO B :=
+Definition listO_map {SI} {A B: ofeT SI} (f : A -n> B) : listO A -n> listO B :=
   OfeMor (fmap f : listO A → listO B).
-Instance listO_map_ne A B : NonExpansive (@listO_map A B).
+Instance listO_map_ne SI A B : NonExpansive (@listO_map SI A B).
 Proof. intros n f g ? l. by apply list_fmap_ext_ne. Qed.
 
-Program Definition listOF (F : oFunctor) : oFunctor := {|
-  oFunctor_car A _ B _ := listO (oFunctor_car F A B);
-  oFunctor_map A1 _ A2 _ B1 _ B2 _ fg := listO_map (oFunctor_map F fg)
+Program Definition listOF {SI} (F : oFunctor SI) : oFunctor SI := {|
+  oFunctor_car A B := listO (oFunctor_car F A B);
+  oFunctor_map A1 A2 B1 B2 fg := listO_map (oFunctor_map F fg)
 |}.
 Next Obligation.
-  by intros F A1 ? A2 ? B1 ? B2 ? n f g Hfg; apply listO_map_ne, oFunctor_ne.
+  by intros ? F A1 A2 B1 B2 n f g Hfg; apply listO_map_ne, oFunctor_ne.
 Qed.
 Next Obligation.
-  intros F A ? B ? x. rewrite /= -{2}(list_fmap_id x).
+  intros ? F A B x. rewrite /= -{2}(list_fmap_id x).
   apply list_fmap_equiv_ext=>y. apply oFunctor_id.
 Qed.
 Next Obligation.
-  intros F A1 ? A2 ? A3 ? B1 ? B2 ? B3 ? f g f' g' x. rewrite /= -list_fmap_compose.
+  intros ? F A1 A2 A3 B1 B2 B3 f g f' g' x. rewrite /= -list_fmap_compose.
   apply list_fmap_equiv_ext=>y; apply oFunctor_compose.
 Qed.
 
-Instance listOF_contractive F :
+Instance listOF_contractive {SI} (F: oFunctor SI) :
   oFunctorContractive F → oFunctorContractive (listOF F).
 Proof.
-  by intros ? A1 ? A2 ? B1 ? B2 ? n f g Hfg; apply listO_map_ne, oFunctor_contractive.
+  by intros ? A1 A2 B1 B2 n f g Hfg; apply listO_map_ne, oFunctor_contractive.
 Qed.
 
 (* CMRA *)
 Section cmra.
-  Context {A : ucmraT}.
+  Context {SI} {A : ucmraT SI}.
   Implicit Types l : list A.
   Local Arguments op _ _ !_ !_ / : simpl nomatch.
 
@@ -150,7 +179,7 @@ Section cmra.
   Instance list_pcore : PCore (list A) := λ l, Some (core <$> l).
 
   Instance list_valid : Valid (list A) := Forall (λ x, ✓ x).
-  Instance list_validN : ValidN (list A) := λ n, Forall (λ x, ✓{n} x).
+  Instance list_validN : ValidN SI (list A) := λ n, Forall (λ x, ✓{n} x).
 
   Lemma cons_valid l x : ✓ (x :: l) ↔ ✓ x ∧ ✓ l.
   Proof. apply Forall_cons. Qed.
@@ -198,7 +227,7 @@ Section cmra.
       + exists (core x :: l3); constructor; by rewrite ?cmra_core_r.
   Qed.
 
-  Definition list_cmra_mixin : CmraMixin (list A).
+  Definition list_cmra_mixin : CmraMixin SI (list A).
   Proof.
     apply cmra_total_mixin.
     - eauto.
@@ -209,7 +238,7 @@ Section cmra.
       by rewrite -Hl.
     - intros l. rewrite list_lookup_valid. setoid_rewrite list_lookup_validN.
       setoid_rewrite cmra_valid_validN. naive_solver.
-    - intros n x. rewrite !list_lookup_validN. auto using cmra_validN_S.
+    - intros n m x. rewrite !list_lookup_validN. eauto using cmra_validN_le.
     - intros l1 l2 l3; rewrite list_equiv_lookup=> i.
       by rewrite !list_lookup_op assoc.
     - intros l1 l2; rewrite list_equiv_lookup=> i.
@@ -233,17 +262,17 @@ Section cmra.
           [by inversion_clear Heq; inversion_clear Hl..|].
         exists (y1' :: l1'), (y2' :: l2'); repeat constructor; auto.
   Qed.
-  Canonical Structure listR := CmraT (list A) list_cmra_mixin.
+  Canonical Structure listR := CmraT SI (list A) list_cmra_mixin.
 
   Global Instance list_unit : Unit (list A) := [].
-  Definition list_ucmra_mixin : UcmraMixin (list A).
+  Definition list_ucmra_mixin : UcmraMixin SI (list A).
   Proof.
     split.
     - constructor.
     - by intros l.
     - by constructor.
   Qed.
-  Canonical Structure listUR := UcmraT (list A) list_ucmra_mixin.
+  Canonical Structure listUR := UcmraT SI (list A) list_ucmra_mixin.
 
   Global Instance list_cmra_discrete : CmraDiscrete A → CmraDiscrete listR.
   Proof.
@@ -264,21 +293,21 @@ Section cmra.
   Proof. uPred.unseal; constructor=> n x ?. apply list_lookup_validN. Qed.
 End cmra.
 
-Arguments listR : clear implicits.
-Arguments listUR : clear implicits.
+Arguments listR {_} _.
+Arguments listUR {_} _.
 
-Instance list_singletonM {A : ucmraT} : SingletonM nat A (list A) := λ n x,
+Instance list_singletonM {SI} {A : ucmraT SI} : SingletonM nat A (list A) := λ n x,
   replicate n ε ++ [x].
 
 Section properties.
-  Context {A : ucmraT}.
+  Context {SI} {A : ucmraT SI}.
   Implicit Types l : list A.
   Implicit Types x y z : A.
   Local Arguments op _ _ !_ !_ / : simpl nomatch.
   Local Arguments cmra_op _ !_ !_ / : simpl nomatch.
   Local Arguments ucmra_op _ !_ !_ / : simpl nomatch.
 
-  Lemma list_lookup_opM l mk i : (l ⋅? mk) !! i = l !! i ⋅ (mk ≫= (!! i)).
+  Lemma list_lookup_opM l mk i : (l ⋅? mk) !! i = l !! i ⋅ (mk ≫= (lookup i)).
   Proof. destruct mk; by rewrite /= ?list_lookup_op ?right_id_L. Qed.
 
   Global Instance list_op_nil_l : LeftId (=) (@nil A) op.
@@ -307,7 +336,7 @@ Section properties.
   Lemma replicate_valid n (x : A) : ✓ x → ✓ replicate n x.
   Proof. apply Forall_replicate. Qed.
   Global Instance list_singletonM_ne i :
-    NonExpansive (@list_singletonM A i).
+    NonExpansive (@list_singletonM SI A i).
   Proof. intros n l1 l2 ?. apply Forall2_app; by repeat constructor. Qed.
   Global Instance list_singletonM_proper i :
     Proper ((≡) ==> (≡)) (list_singletonM i) := ne_proper _.
@@ -449,7 +478,7 @@ Section properties.
 End properties.
 
 (** Functor *)
-Instance list_fmap_cmra_morphism {A B : ucmraT} (f : A → B)
+Instance list_fmap_cmra_morphism {SI} {A B : ucmraT SI} (f : A → B)
   `{!CmraMorphism f} : CmraMorphism (fmap f : list A → list B).
 Proof.
   split; try apply _.
@@ -461,24 +490,24 @@ Proof.
     by rewrite list_lookup_op !list_lookup_fmap list_lookup_op cmra_morphism_op.
 Qed.
 
-Program Definition listURF (F : urFunctor) : urFunctor := {|
-  urFunctor_car A _ B _ := listUR (urFunctor_car F A B);
-  urFunctor_map A1 _ A2 _ B1 _ B2 _ fg := listO_map (urFunctor_map F fg)
+Program Definition listURF {SI} (F : urFunctor SI) : urFunctor SI := {|
+  urFunctor_car A B := listUR (urFunctor_car F A B);
+  urFunctor_map A1 A2 B1 B2 fg := listO_map (urFunctor_map F fg)
 |}.
 Next Obligation.
-  by intros F A1 ? A2 ? B1 ? B2 ? n f g Hfg; apply listO_map_ne, urFunctor_ne.
+  by intros ? F A1 A2 B1 B2 n f g Hfg; apply listO_map_ne, urFunctor_ne.
 Qed.
 Next Obligation.
-  intros F A ? B ? x. rewrite /= -{2}(list_fmap_id x).
+  intros ? F A B x. rewrite /= -{2}(list_fmap_id x).
   apply list_fmap_equiv_ext=>y. apply urFunctor_id.
 Qed.
 Next Obligation.
-  intros F A1 ? A2 ? A3 ? B1 ? B2 ? B3 ? f g f' g' x. rewrite /= -list_fmap_compose.
+  intros ? F A1 A2 A3 B1 B2 B3 f g f' g' x. rewrite /= -list_fmap_compose.
   apply list_fmap_equiv_ext=>y; apply urFunctor_compose.
 Qed.
 
-Instance listURF_contractive F :
+Instance listURF_contractive {SI} (F: urFunctor SI) :
   urFunctorContractive F → urFunctorContractive (listURF F).
 Proof.
-  by intros ? A1 ? A2 ? B1 ? B2 ? n f g Hfg; apply listO_map_ne, urFunctor_contractive.
+  by intros ? A1 A2 B1 B2 n f g Hfg; apply listO_map_ne, urFunctor_contractive.
 Qed.

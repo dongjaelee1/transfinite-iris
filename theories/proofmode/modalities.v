@@ -49,21 +49,21 @@ it is implemented as an endomapping. On the other hand, the embedding modality
 ⎡-⎤ is a mapping between propositions of different BI-algebras.
 *)
 
-Inductive modality_action (PROP1 : bi) : bi → Type :=
-  | MIEnvIsEmpty {PROP2 : bi} : modality_action PROP1 PROP2
+Inductive modality_action {SI: indexT} (PROP1 : bi SI) : bi SI → Type :=
+  | MIEnvIsEmpty {PROP2 : bi SI} : modality_action PROP1 PROP2
   | MIEnvForall (C : PROP1 → Prop) : modality_action PROP1 PROP1
-  | MIEnvTransform {PROP2 : bi} (C : PROP2 → PROP1 → Prop) : modality_action PROP1 PROP2
+  | MIEnvTransform {PROP2 : bi SI} (C : PROP2 → PROP1 → Prop) : modality_action PROP1 PROP2
   | MIEnvClear {PROP2} : modality_action PROP1 PROP2
   | MIEnvId : modality_action PROP1 PROP1.
-Arguments MIEnvIsEmpty {_ _}.
-Arguments MIEnvForall {_} _.
-Arguments MIEnvTransform {_ _} _.
-Arguments MIEnvClear {_ _}.
-Arguments MIEnvId {_}.
+Arguments MIEnvIsEmpty {_ _ _}.
+Arguments MIEnvForall {_ _} _.
+Arguments MIEnvTransform {_ _ _} _.
+Arguments MIEnvClear {_ _ _}.
+Arguments MIEnvId {_ _}.
 
 Notation MIEnvFilter C := (MIEnvTransform (TCDiag C)).
 
-Definition modality_intuitionistic_action_spec {PROP1 PROP2}
+Definition modality_intuitionistic_action_spec {SI: indexT} {PROP1 PROP2: bi SI}
     (s : modality_action PROP1 PROP2) : (PROP1 → PROP2) → Prop :=
   match s with
   | MIEnvIsEmpty => λ M, True
@@ -77,7 +77,7 @@ Definition modality_intuitionistic_action_spec {PROP1 PROP2}
   | MIEnvId => λ M, ∀ P, □ P ⊢ M (□ P)
   end.
 
-Definition modality_spatial_action_spec {PROP1 PROP2}
+Definition modality_spatial_action_spec {SI} {PROP1 PROP2: bi SI}
     (s : modality_action PROP1 PROP2) : (PROP1 → PROP2) → Prop :=
   match s with
   | MIEnvIsEmpty => λ M, True
@@ -89,7 +89,7 @@ Definition modality_spatial_action_spec {PROP1 PROP2}
 
 (* A modality is then a record packing together the modality with the laws it
 should satisfy to justify the given actions for both contexts: *)
-Record modality_mixin {PROP1 PROP2 : bi} (M : PROP1 → PROP2)
+Record modality_mixin {SI} {PROP1 PROP2 : bi SI} (M : PROP1 → PROP2)
     (iaction saction : modality_action PROP1 PROP2) := {
   modality_mixin_intuitionistic : modality_intuitionistic_action_spec iaction M;
   modality_mixin_spatial : modality_spatial_action_spec saction M;
@@ -98,19 +98,19 @@ Record modality_mixin {PROP1 PROP2 : bi} (M : PROP1 → PROP2)
   modality_mixin_sep P Q : M P ∗ M Q ⊢ M (P ∗ Q)
 }.
 
-Record modality (PROP1 PROP2 : bi) := Modality {
+Record modality {SI} (PROP1 PROP2 : bi SI) := Modality {
   modality_car :> PROP1 → PROP2;
   modality_intuitionistic_action : modality_action PROP1 PROP2;
   modality_spatial_action : modality_action PROP1 PROP2;
   modality_mixin_of :
     modality_mixin modality_car modality_intuitionistic_action modality_spatial_action
 }.
-Arguments Modality {_ _} _ {_ _} _.
-Arguments modality_intuitionistic_action {_ _} _.
-Arguments modality_spatial_action {_ _} _.
+Arguments Modality {_ _ _} _ {_ _} _.
+Arguments modality_intuitionistic_action {_ _ _} _.
+Arguments modality_spatial_action {_ _ _} _.
 
 Section modality.
-  Context {PROP1 PROP2} (M : modality PROP1 PROP2).
+  Context {SI: indexT} {PROP1 PROP2: bi SI} (M : modality PROP1 PROP2).
 
   Lemma modality_intuitionistic_transform C P Q :
     modality_intuitionistic_action M = MIEnvTransform C → C P Q → □ P ⊢ M (□ Q).
@@ -140,7 +140,7 @@ Section modality.
 End modality.
 
 Section modality1.
-  Context {PROP} (M : modality PROP PROP).
+  Context {SI: indexT} {PROP: bi SI} (M : modality PROP PROP).
 
   Lemma modality_intuitionistic_forall C P :
     modality_intuitionistic_action M = MIEnvForall C → C P → □ P ⊢ M (□ P).
@@ -183,6 +183,6 @@ End modality1.
 which will instruct [iModIntro] to introduce the modality without modifying the
 proof mode context. Examples of such modalities are [bupd], [fupd], [except_0],
 [monPred_subjectively] and [bi_absorbingly]. *)
-Lemma modality_id_mixin {PROP : bi} : modality_mixin (@id PROP) MIEnvId MIEnvId.
+Lemma modality_id_mixin `{PROP : bi SI} : modality_mixin (@id PROP) MIEnvId MIEnvId.
 Proof. split; simpl; eauto. Qed.
-Definition modality_id {PROP : bi} := Modality (@id PROP) modality_id_mixin.
+Definition modality_id `{PROP : bi SI} := Modality (@id PROP) modality_id_mixin.

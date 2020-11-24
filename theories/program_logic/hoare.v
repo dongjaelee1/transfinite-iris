@@ -3,10 +3,10 @@ From iris.base_logic.lib Require Export viewshifts.
 From iris.proofmode Require Import tactics.
 Set Default Proof Using "Type".
 
-Definition ht `{!irisG Λ Σ} (s : stuckness) (E : coPset) (P : iProp Σ)
+Definition ht {SI} `{!@irisG Λ SI Σ} (s : stuckness) (E : coPset) (P : iProp Σ)
     (e : expr Λ) (Φ : val Λ → iProp Σ) : iProp Σ :=
   (□ (P -∗ WP e @ s; E {{ Φ }}))%I.
-Instance: Params (@ht) 5 := {}.
+Instance: Params (@ht) 6 := {}.
 
 Notation "{{ P } } e @ s ; E {{ Φ } }" := (ht s E P%I e%E Φ%I)
   (at level 20, P, e, Φ at level 200,
@@ -41,7 +41,7 @@ Notation "{{ P } } e ? {{ v , Q } }" := (ht MaybeStuck ⊤ P%I e%E (λ v, Q)%I)
    format "{{  P  } }  e  ? {{  v ,  Q  } }") : stdpp_scope.
 
 Section hoare.
-Context `{!irisG Λ Σ}.
+Context {SI} `{!@irisG Λ SI Σ}.
 Implicit Types s : stuckness.
 Implicit Types P Q : iProp Σ.
 Implicit Types Φ Ψ : val Λ → iProp Σ.
@@ -79,11 +79,11 @@ Proof.
   iIntros (v) "Hv". by iApply "HΦ".
 Qed.
 
-Lemma ht_atomic s E1 E2 P P' Φ Φ' e `{!Atomic (stuckness_to_atomicity s) e} :
+Lemma ht_atomic s E1 E2 P P' Φ Φ' e `{!Atomic StronglyAtomic e} :
   (P ={E1,E2}=> P') ∧ {{ P' }} e @ s; E2 {{ Φ' }} ∧ (∀ v, Φ' v ={E2,E1}=> Φ v)
   ⊢ {{ P }} e @ s; E1 {{ Φ }}.
 Proof.
-  iIntros "(#Hvs & #Hwp & #HΦ) !# HP". iApply (wp_atomic _ _ E2); auto.
+  iIntros "(#Hvs & #Hwp & #HΦ) !# HP". iApply (wp_atomic  _ E2); auto.
   iMod ("Hvs" with "HP") as "HP". iModIntro.
   iApply (wp_wand with "(Hwp HP)").
   iIntros (v) "Hv". by iApply "HΦ".

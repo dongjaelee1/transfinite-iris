@@ -51,17 +51,17 @@ Qed.
 
 Section agree.
 Local Set Default Proof Using "Type".
-Context {A : ofeT}.
+Context {SI} {A : ofeT SI}.
 Implicit Types a b : A.
 Implicit Types x y : agree A.
 
 (* OFE *)
-Instance agree_dist : Dist (agree A) := λ n x y,
+Instance agree_dist : Dist SI (agree A) := λ n x y,
   (∀ a, a ∈ agree_car x → ∃ b, b ∈ agree_car y ∧ a ≡{n}≡ b) ∧
   (∀ b, b ∈ agree_car y → ∃ a, a ∈ agree_car x ∧ a ≡{n}≡ b).
 Instance agree_equiv : Equiv (agree A) := λ x y, ∀ n, x ≡{n}≡ y.
 
-Definition agree_ofe_mixin : OfeMixin (agree A).
+Definition agree_ofe_mixin : OfeMixin SI (agree A).
 Proof.
   split.
   - done.
@@ -73,14 +73,14 @@ Proof.
         destruct (H2 b) as (c&?&?); eauto. by exists c; split; last etrans.
       * intros a ?. destruct (H2' a) as (b&?&?); auto.
         destruct (H1' b) as (c&?&?); eauto. by exists c; split; last etrans.
-  - intros n x y [??]; split; naive_solver eauto using dist_S.
+  - intros α β x y [??]; split; naive_solver eauto using dist_le.
 Qed.
 Canonical Structure agreeO := OfeT (agree A) agree_ofe_mixin.
 
 (* CMRA *)
 (* agree_validN is carefully written such that, when applied to a singleton, it
 is convertible to True. This makes working with agreement much more pleasant. *)
-Instance agree_validN : ValidN (agree A) := λ n x,
+Instance agree_validN : ValidN SI (agree A) := λ n x,
   match agree_car x with
   | [a] => True
   | _ => ∀ a b, a ∈ agree_car x → b ∈ agree_car x → a ≡{n}≡ b
@@ -108,12 +108,12 @@ Qed.
 Lemma agree_idemp (x : agree A) : x ⋅ x ≡ x.
 Proof. intros n; split=> a /=; setoid_rewrite elem_of_app; naive_solver. Qed.
 
-Instance agree_validN_ne n : Proper (dist n ==> impl) (@validN (agree A) _ n).
+Instance agree_validN_ne n : Proper (dist n ==> impl) (@validN SI (agree A) _ n).
 Proof.
   intros x y [H H']; rewrite /impl !agree_validN_def; intros Hv a b Ha Hb.
   destruct (H' a) as (a'&?&<-); auto. destruct (H' b) as (b'&?&<-); auto.
 Qed.
-Instance agree_validN_proper n : Proper (equiv ==> iff) (@validN (agree A) _ n).
+Instance agree_validN_proper n : Proper (equiv ==> iff) (@validN SI (agree A) _ n).
 Proof. move=> x y /equiv_dist H. by split; rewrite (H n). Qed.
 
 Instance agree_op_ne' x : NonExpansive (op x).
@@ -137,10 +137,10 @@ Proof.
   - destruct (elem_of_agree x1); naive_solver.
 Qed.
 
-Definition agree_cmra_mixin : CmraMixin (agree A).
+Definition agree_cmra_mixin : CmraMixin SI (agree A).
 Proof.
   apply cmra_total_mixin; try apply _ || by eauto.
-  - intros n x; rewrite !agree_validN_def; eauto using dist_S.
+  - intros α β x; rewrite !agree_validN_def; eauto using dist_le.
   - intros x. apply agree_idemp.
   - intros n x y; rewrite !agree_validN_def /=.
     setoid_rewrite elem_of_app; naive_solver.
@@ -148,7 +148,7 @@ Proof.
     + by rewrite agree_idemp.
     + by move: Hval; rewrite Hx; move=> /agree_op_invN->; rewrite agree_idemp.
 Qed.
-Canonical Structure agreeR : cmraT := CmraT (agree A) agree_cmra_mixin.
+Canonical Structure agreeR : cmraT SI := CmraT SI (agree A) agree_cmra_mixin.
 
 Global Instance agree_cmra_total : CmraTotal agreeR.
 Proof. rewrite /CmraTotal; eauto. Qed.
@@ -251,8 +251,8 @@ Proof. uPred.unseal. split=> n y _. exact: to_agree_uninjN. Qed.
 End agree.
 
 Instance: Params (@to_agree) 1 := {}.
-Arguments agreeO : clear implicits.
-Arguments agreeR : clear implicits.
+Arguments agreeO {_} _.
+Arguments agreeR {_} _. 
 
 Program Definition agree_map {A B} (f : A → B) (x : agree A) : agree B :=
   {| agree_car := f <$> agree_car x |}.
@@ -267,7 +267,7 @@ Lemma agree_map_to_agree {A B} (f : A → B) (x : A) :
 Proof. by apply agree_eq. Qed.
 
 Section agree_map.
-  Context {A B : ofeT} (f : A → B) {Hf: NonExpansive f}.
+  Context {SI} {A B : ofeT SI} (f : A → B) {Hf: NonExpansive f}.
 
   Instance agree_map_ne : NonExpansive (agree_map f).
   Proof.
@@ -297,33 +297,33 @@ Section agree_map.
   Qed.
 End agree_map.
 
-Definition agreeO_map {A B} (f : A -n> B) : agreeO A -n> agreeO B :=
+Definition agreeO_map {SI} {A B: ofeT SI} (f : A -n> B) : agreeO A -n> agreeO B :=
   OfeMor (agree_map f : agreeO A → agreeO B).
-Instance agreeO_map_ne A B : NonExpansive (@agreeO_map A B).
+Instance agreeO_map_ne {SI} A B : NonExpansive (@agreeO_map SI A B).
 Proof.
   intros n f g Hfg x; split=> b /=;
     setoid_rewrite elem_of_list_fmap; naive_solver.
 Qed.
 
-Program Definition agreeRF (F : oFunctor) : rFunctor := {|
-  rFunctor_car A _ B _ := agreeR (oFunctor_car F A B);
-  rFunctor_map A1 _ A2 _ B1 _ B2 _ fg := agreeO_map (oFunctor_map F fg)
+Program Definition agreeRF {SI} (F : oFunctor SI) : rFunctor SI := {|
+  rFunctor_car A B := agreeR (oFunctor_car F A B);
+  rFunctor_map A1 A2 B1 B2 fg := agreeO_map (oFunctor_map F fg)
 |}.
 Next Obligation.
-  intros ? A1 ? A2 ? B1 ? B2 ? n ???; simpl. by apply agreeO_map_ne, oFunctor_ne.
+  intros ?? A1 A2 B1 B2 n ???; simpl. by apply agreeO_map_ne, oFunctor_ne.
 Qed.
 Next Obligation.
-  intros F A ? B ? x; simpl. rewrite -{2}(agree_map_id x).
+  intros ? F A B x; simpl. rewrite -{2}(agree_map_id x).
   apply (agree_map_ext _)=>y. by rewrite oFunctor_id.
 Qed.
 Next Obligation.
-  intros F A1 ? A2 ? A3 ? B1 ? B2 ? B3 ? f g f' g' x; simpl. rewrite -agree_map_compose.
+  intros ? F A1 A2 A3 B1 B2 B3 f g f' g' x; simpl. rewrite -agree_map_compose.
   apply (agree_map_ext _)=>y; apply oFunctor_compose.
 Qed.
 
-Instance agreeRF_contractive F :
+Instance agreeRF_contractive {SI} (F : oFunctor SI):
   oFunctorContractive F → rFunctorContractive (agreeRF F).
 Proof.
-  intros ? A1 ? A2 ? B1 ? B2 ? n ???; simpl.
+  intros ? A1 A2 B1 B2 n ???; simpl.
   by apply agreeO_map_ne, oFunctor_contractive.
 Qed.

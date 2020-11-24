@@ -8,7 +8,7 @@ Instance: Params (@plainly) 2 := {}.
 Notation "■ P" := (plainly P) : bi_scope.
 
 (* Mixins allow us to create instances easily without having to use Program *)
-Record BiPlainlyMixin (PROP : sbi) `(Plainly PROP) := {
+Record BiPlainlyMixin {SI: indexT} (PROP : sbi SI) `(Plainly PROP) := {
   bi_plainly_mixin_plainly_ne : NonExpansive (plainly (A:=PROP));
 
   bi_plainly_mixin_plainly_mono (P Q : PROP) : (P ⊢ Q) → ■ P ⊢ ■ Q;
@@ -35,23 +35,23 @@ Record BiPlainlyMixin (PROP : sbi) `(Plainly PROP) := {
   bi_plainly_mixin_later_plainly_2 (P : PROP) : ■ ▷ P ⊢ ▷ ■ P;
 }.
 
-Class BiPlainly (PROP : sbi) := {
+Class BiPlainly {SI: indexT} (PROP : sbi SI) := {
   bi_plainly_plainly :> Plainly PROP;
   bi_plainly_mixin : BiPlainlyMixin PROP bi_plainly_plainly;
 }.
-Hint Mode BiPlainly ! : typeclass_instances.
-Arguments bi_plainly_plainly : simpl never.
+Hint Mode BiPlainly - ! : typeclass_instances.
+Arguments bi_plainly_plainly {_} _ : simpl never.
 
-Class BiPlainlyExist `{!BiPlainly PROP} :=
+Class BiPlainlyExist `{BiPlainly SI PROP} :=
   plainly_exist_1 A (Ψ : A → PROP) :
     ■ (∃ a, Ψ a) ⊢ ∃ a, ■ (Ψ a).
 Arguments BiPlainlyExist : clear implicits.
-Arguments BiPlainlyExist _ {_}.
-Arguments plainly_exist_1 _ {_ _} _.
-Hint Mode BiPlainlyExist ! - : typeclass_instances.
+Arguments BiPlainlyExist {_} _ {_}.
+Arguments plainly_exist_1 {_} _ {_ _} _.
+Hint Mode BiPlainlyExist - ! - : typeclass_instances.
 
 Section plainly_laws.
-  Context `{BiPlainly PROP}.
+  Context `{BiPlainly SI PROP}.
   Implicit Types P Q : PROP.
 
   Global Instance plainly_ne : NonExpansive (@plainly PROP _).
@@ -84,23 +84,23 @@ Section plainly_laws.
 End plainly_laws.
 
 (* Derived properties and connectives *)
-Class Plain `{BiPlainly PROP} (P : PROP) := plain : P ⊢ ■ P.
-Arguments Plain {_ _} _%I : simpl never.
-Arguments plain {_ _} _%I {_}.
-Hint Mode Plain + - ! : typeclass_instances.
-Instance: Params (@Plain) 1 := {}.
+Class Plain `{BiPlainly SI PROP} (P : PROP) := plain : P ⊢ ■ P.
+Arguments Plain {_ _ _} _%I : simpl never.
+Arguments plain {_ _ _} _%I {_}.
+Hint Mode Plain - + - ! : typeclass_instances.
+Instance: Params (@Plain) 2 := {}.
 
-Definition plainly_if `{!BiPlainly PROP} (p : bool) (P : PROP) : PROP :=
+Definition plainly_if `{BiPlainly SI PROP} (p : bool) (P : PROP) : PROP :=
   (if p then ■ P else P)%I.
-Arguments plainly_if {_ _} !_ _%I /.
-Instance: Params (@plainly_if) 2 := {}.
+Arguments plainly_if {_ _ _} !_ _%I /.
+Instance: Params (@plainly_if) 3 := {}.
 Typeclasses Opaque plainly_if.
 
 Notation "■? p P" := (plainly_if p P) : bi_scope.
 
 (* Derived laws *)
 Section plainly_derived.
-Context `{BiPlainly PROP}.
+Context `{BiPlainly SI PROP}.
 Implicit Types P : PROP.
 
 Hint Resolve pure_intro forall_intro : core.
@@ -234,7 +234,7 @@ Proof.
 Qed.
 Lemma plainly_sep_2 P Q : ■ P ∗ ■ Q ⊢ ■ (P ∗ Q).
 Proof. by rewrite -plainly_and_sep plainly_and -and_sep_plainly. Qed.
-Lemma plainly_sep `{BiPositive PROP} P Q : ■ (P ∗ Q) ⊣⊢ ■ P ∗ ■ Q.
+Lemma plainly_sep `{BiPositive SI PROP} P Q : ■ (P ∗ Q) ⊣⊢ ■ P ∗ ■ Q.
 Proof.
   apply (anti_symm _); auto using plainly_sep_2.
   rewrite -(plainly_affinely_elim (_ ∗ _)%I) affinely_sep -and_sep_plainly. apply and_intro.
@@ -272,7 +272,7 @@ Lemma plainly_wand_affinely_plainly P Q :
 Proof. rewrite -!impl_wand_affinely_plainly. apply plainly_impl_plainly. Qed.
 
 Section plainly_affine_bi.
-  Context `{BiAffine PROP}.
+  Context `{BiAffine SI PROP}.
 
   Lemma plainly_emp : ■ emp ⊣⊢@{PROP} emp.
   Proof. by rewrite -!True_emp plainly_pure. Qed.
@@ -295,18 +295,18 @@ Section plainly_affine_bi.
   Lemma impl_wand_plainly P Q : (■ P → Q) ⊣⊢ (■ P -∗ Q).
   Proof.
     apply (anti_symm (⊢)). by rewrite -impl_wand_1. by rewrite impl_wand_plainly_2.
-  Qed. 
+  Qed.
 End plainly_affine_bi.
 
 (* Conditional plainly *)
-Global Instance plainly_if_ne p : NonExpansive (@plainly_if PROP _ p).
+Global Instance plainly_if_ne p : NonExpansive (@plainly_if SI PROP _ p).
 Proof. solve_proper. Qed.
-Global Instance plainly_if_proper p : Proper ((⊣⊢) ==> (⊣⊢)) (@plainly_if PROP _ p).
+Global Instance plainly_if_proper p : Proper ((⊣⊢) ==> (⊣⊢)) (@plainly_if SI PROP _ p).
 Proof. solve_proper. Qed.
-Global Instance plainly_if_mono' p : Proper ((⊢) ==> (⊢)) (@plainly_if PROP _ p).
+Global Instance plainly_if_mono' p : Proper ((⊢) ==> (⊢)) (@plainly_if SI PROP _ p).
 Proof. solve_proper. Qed.
 Global Instance plainly_if_flip_mono' p :
-  Proper (flip (⊢) ==> flip (⊢)) (@plainly_if PROP _ p).
+  Proper (flip (⊢) ==> flip (⊢)) (@plainly_if SI PROP _ p).
 Proof. solve_proper. Qed.
 
 Lemma plainly_if_mono p P Q : (P ⊢ Q) → ■?p P ⊢ ■?p Q.
@@ -332,7 +332,7 @@ Lemma plainly_if_idemp p P : ■?p ■?p P ⊣⊢ ■?p P.
 Proof. destruct p; simpl; auto using plainly_idemp. Qed.
 
 (* Properties of plain propositions *)
-Global Instance Plain_proper : Proper ((≡) ==> iff) (@Plain PROP _).
+Global Instance Plain_proper : Proper ((≡) ==> iff) (@Plain SI PROP _).
 Proof. solve_proper. Qed.
 
 Lemma plain_plainly_2 P `{!Plain P} : P ⊢ ■ P.
@@ -390,7 +390,7 @@ Global Instance plainly_sep_weak_homomorphism `{!BiPositive PROP, !BiAffine PROP
   WeakMonoidHomomorphism bi_sep bi_sep (≡) (@plainly PROP _).
 Proof. split; try apply _. apply plainly_sep. Qed.
 
-Global Instance plainly_sep_homomorphism `{BiAffine PROP} :
+Global Instance plainly_sep_homomorphism `{BiAffine SI PROP} :
   MonoidHomomorphism bi_sep bi_sep (≡) (@plainly PROP _).
 Proof. split. apply _. apply plainly_emp. Qed.
 
@@ -402,7 +402,7 @@ Global Instance plainly_sep_entails_homomorphism `{!BiAffine PROP} :
   MonoidHomomorphism bi_sep bi_sep (flip (⊢)) (@plainly PROP _).
 Proof. split. apply _. simpl. rewrite plainly_emp. done. Qed.
 
-Global Instance limit_preserving_Plain {A:ofeT} `{Cofe A} (Φ : A → PROP) :
+Global Instance limit_preserving_Plain {A: ofeT SI} `{Cofe SI A} (Φ : A → PROP) :
   NonExpansive Φ → LimitPreserving (λ x, Plain (Φ x)).
 Proof. intros. apply limit_preserving_entails; solve_proper. Qed.
 
@@ -459,7 +459,7 @@ Global Instance from_option_plain {A} P (Ψ : A → PROP) (mx : option A) :
 Proof. destruct mx; apply _. Qed.
 
 (* Interaction with equality *)
-Lemma plainly_internal_eq {A:ofeT} (a b : A) : ■ (a ≡ b) ⊣⊢@{PROP} a ≡ b.
+Lemma plainly_internal_eq {A:ofeT SI} (a b : A) : ■ (a ≡ b) ⊣⊢@{PROP} a ≡ b.
 Proof.
   apply (anti_symm (⊢)).
   { by rewrite plainly_elim. }
@@ -511,7 +511,7 @@ Proof. by rewrite /sbi_except_0 -plainly_or_2 -later_plainly plainly_pure. Qed.
 Lemma except_0_plainly `{!BiPlainlyExist PROP} P : ◇ ■ P ⊣⊢ ■ ◇ P.
 Proof. by rewrite /sbi_except_0 plainly_or -later_plainly plainly_pure. Qed.
 
-Global Instance internal_eq_plain {A : ofeT} (a b : A) :
+Global Instance internal_eq_plain {A : ofeT SI} (a b : A) :
   Plain (PROP:=PROP) (a ≡ b).
 Proof. by intros; rewrite /Plain plainly_internal_eq. Qed.
 
@@ -522,7 +522,8 @@ Proof. induction n; apply _. Qed.
 Global Instance except_0_plain P : Plain P → Plain (◇ P).
 Proof. rewrite /sbi_except_0; apply _. Qed.
 
-Global Instance plainly_timeless P  `{!BiPlainlyExist PROP} :
+(* TODO: depends on some stuff in derived_laws_sbi, therefore affine *)
+Global Instance plainly_timeless P `{BiAffine SI PROP} `{!BiPlainlyExist PROP} :
   Timeless P → Timeless (■ P).
 Proof.
   intros. rewrite /Timeless /sbi_except_0 later_plainly_1.

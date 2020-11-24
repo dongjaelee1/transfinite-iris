@@ -29,21 +29,21 @@ Instance: Params (@namespace_map_data_proj) 1 := {}.
 Instance: Params (@namespace_map_token_proj) 1 := {}.
 
 (** TODO: [positives_flatten] violates the namespace abstraction. *)
-Definition namespace_map_data {A : cmraT} (N : namespace) (a : A) : namespace_map A :=
-  NamespaceMap {[ positives_flatten N := a ]} ε.
-Definition namespace_map_token {A : cmraT} (E : coPset) : namespace_map A :=
+Definition namespace_map_data {SI} {A : cmraT SI} (N : namespace) (a : A) : namespace_map A :=
+  NamespaceMap {[ positives_flatten N := a ]} (ε : coPset_disjUR SI).
+Definition namespace_map_token {SI} {A : cmraT SI} (E : coPset) : namespace_map A :=
   NamespaceMap ∅ (CoPset E).
 Instance: Params (@namespace_map_data) 2 := {}.
 
 (* Ofe *)
 Section ofe.
-Context {A : ofeT}.
+Context {SI} {A : ofeT SI}.
 Implicit Types x y : namespace_map A.
 
 Instance namespace_map_equiv : Equiv (namespace_map A) := λ x y,
   namespace_map_data_proj x ≡ namespace_map_data_proj y ∧
   namespace_map_token_proj x = namespace_map_token_proj y.
-Instance namespace_map_dist : Dist (namespace_map A) := λ n x y,
+Instance namespace_map_dist : Dist SI (namespace_map A) := λ n x y,
   namespace_map_data_proj x ≡{n}≡ namespace_map_data_proj y ∧
   namespace_map_token_proj x = namespace_map_token_proj y.
 
@@ -57,7 +57,7 @@ Global Instance namespace_map_data_proj_proper :
   Proper ((≡) ==> (≡)) (@namespace_map_data_proj A).
 Proof. by destruct 1. Qed.
 
-Definition namespace_map_ofe_mixin : OfeMixin (namespace_map A).
+Definition namespace_map_ofe_mixin : OfeMixin SI (namespace_map A).
 Proof.
   by apply (iso_ofe_mixin
     (λ x, (namespace_map_data_proj x, namespace_map_token_proj x))).
@@ -66,30 +66,30 @@ Canonical Structure namespace_mapO :=
   OfeT (namespace_map A) namespace_map_ofe_mixin.
 
 Global Instance NamespaceMap_discrete a b :
-  Discrete a → Discrete b → Discrete (NamespaceMap a b).
-Proof. intros ?? [??] [??]; split; unfold_leibniz; by eapply discrete. Qed.
+  @Discrete SI _ a  → @Discrete SI _ b → Discrete (NamespaceMap a b).
+Proof. intros ?? [??] [??]; split; simpl in *; eauto. Qed.
 Global Instance namespace_map_ofe_discrete :
   OfeDiscrete A → OfeDiscrete namespace_mapO.
 Proof. intros ? [??]; apply _. Qed.
 End ofe.
 
-Arguments namespace_mapO : clear implicits.
+Arguments namespace_mapO {_} _.
 
 (* Camera *)
 Section cmra.
-Context {A : cmraT}.
+Context {SI} {A : cmraT SI}.
 Implicit Types a b : A.
 Implicit Types x y : namespace_map A.
 
-Global Instance namespace_map_data_ne i : NonExpansive (@namespace_map_data A i).
+Global Instance namespace_map_data_ne i : NonExpansive (@namespace_map_data SI A i).
 Proof. solve_proper. Qed.
 Global Instance namespace_map_data_proper N :
-  Proper ((≡) ==> (≡)) (@namespace_map_data A N).
-Proof. solve_proper. Qed.
+  Proper ((≡) ==> (≡)) (@namespace_map_data SI A N).
+Proof. intros ?? H; split; simpl; by rewrite ?H. Qed.
 Global Instance namespace_map_data_discrete N a :
   Discrete a → Discrete (namespace_map_data N a).
 Proof. intros. apply NamespaceMap_discrete; apply _. Qed.
-Global Instance namespace_map_token_discrete E : Discrete (@namespace_map_token A E).
+Global Instance namespace_map_token_discrete E : Discrete (@namespace_map_token SI A E).
 Proof. intros. apply NamespaceMap_discrete; apply _. Qed.
 
 Instance namespace_map_valid : Valid (namespace_map A) := λ x,
@@ -101,7 +101,7 @@ Instance namespace_map_valid : Valid (namespace_map A) := λ x,
   | CoPsetBot => False
   end.
 Global Arguments namespace_map_valid !_ /.
-Instance namespace_map_validN : ValidN (namespace_map A) := λ n x,
+Instance namespace_map_validN : ValidN SI (namespace_map A) := λ n x,
   match namespace_map_token_proj x with
   | CoPset E =>
      ✓{n} (namespace_map_data_proj x) ∧
@@ -111,10 +111,11 @@ Instance namespace_map_validN : ValidN (namespace_map A) := λ n x,
   end.
 Global Arguments namespace_map_validN !_ /.
 Instance namespace_map_pcore : PCore (namespace_map A) := λ x,
-  Some (NamespaceMap (core (namespace_map_data_proj x)) ε).
-Instance namespace_map_op : Op (namespace_map A) := λ x y,
+  Some (NamespaceMap (core (namespace_map_data_proj x)) (ε: coPset_disjUR SI)).
+
+Instance namespace_map_op : Op (namespace_map A) := λ (x y: namespace_mapO A),
   NamespaceMap (namespace_map_data_proj x ⋅ namespace_map_data_proj y)
-               (namespace_map_token_proj x ⋅ namespace_map_token_proj y).
+               ((namespace_map_token_proj x: coPset_disjR SI) ⋅ (namespace_map_token_proj y)).
 
 Definition namespace_map_valid_eq :
   valid = λ x, match namespace_map_token_proj x with
@@ -133,10 +134,10 @@ Definition namespace_map_validN_eq :
                   | CoPsetBot => False
                   end := eq_refl _.
 
-Lemma namespace_map_included x y :
+Lemma namespace_map_included x y:
   x ≼ y ↔
     namespace_map_data_proj x ≼ namespace_map_data_proj y ∧
-    namespace_map_token_proj x ≼ namespace_map_token_proj y.
+   (namespace_map_token_proj x: coPset_disjR SI) ≼ (namespace_map_token_proj y).
 Proof.
   split; [intros [[z1 z2] Hz]; split; [exists z1|exists z2]; apply Hz|].
   intros [[z1 Hz1] [z2 Hz2]]; exists (NamespaceMap z1 z2); split; auto.
@@ -147,7 +148,7 @@ Proof. by destruct x as [? [?|]]=> // -[??]. Qed.
 Lemma namespace_map_token_proj_validN n x : ✓{n} x → ✓{n} namespace_map_token_proj x.
 Proof. by destruct x as [? [?|]]=> // -[??]. Qed.
 
-Lemma namespace_map_cmra_mixin : CmraMixin (namespace_map A).
+Lemma namespace_map_cmra_mixin : CmraMixin SI (namespace_map A).
 Proof.
   apply cmra_total_mixin.
   - eauto.
@@ -157,12 +158,12 @@ Proof.
     + by rewrite -Hm.
     + intros i. by rewrite -(dist_None n) -Hm dist_None.
   - intros [m [E|]]; rewrite namespace_map_valid_eq namespace_map_validN_eq /=
-      ?cmra_valid_validN; naive_solver eauto using 0.
-  - intros n [m [E|]]; rewrite namespace_map_validN_eq /=;
-      naive_solver eauto using cmra_validN_S.
+      ?cmra_valid_validN; naive_solver eauto using zero.
+  - intros α β [m [E|]]; rewrite namespace_map_validN_eq /=;
+      naive_solver eauto using cmra_validN_le.
   - split; simpl; [by rewrite assoc|by rewrite assoc_L].
   - split; simpl; [by rewrite comm|by rewrite comm_L].
-  - split; simpl; [by rewrite cmra_core_l|by rewrite left_id_L].
+  - intros; split; simpl; [by rewrite cmra_core_l|by rewrite left_id_L].
   - split; simpl; [by rewrite cmra_core_idemp|done].
   - intros ??; rewrite! namespace_map_included; intros [??].
     by split; simpl; apply: cmra_core_mono. (* FIXME: FIXME(Coq #6294): needs new unification *)
@@ -182,7 +183,7 @@ Proof.
     by exists (NamespaceMap m1 E1), (NamespaceMap m2 E2).
 Qed.
 Canonical Structure namespace_mapR :=
-  CmraT (namespace_map A) namespace_map_cmra_mixin.
+  CmraT SI (namespace_map A) namespace_map_cmra_mixin.
 
 Global Instance namespace_map_cmra_discrete :
   CmraDiscrete A → CmraDiscrete namespace_mapR.
@@ -192,8 +193,8 @@ Proof.
   naive_solver eauto using (cmra_discrete_valid m).
 Qed.
 
-Instance namespace_map_empty : Unit (namespace_map A) := NamespaceMap ε ε.
-Lemma namespace_map_ucmra_mixin : UcmraMixin (namespace_map A).
+Instance namespace_map_empty : Unit (namespace_map A) := NamespaceMap ε (ε: coPset_disjUR SI).
+Lemma namespace_map_ucmra_mixin : UcmraMixin SI (namespace_map A).
 Proof.
   split; simpl.
   - rewrite namespace_map_valid_eq /=. split. apply ucmra_unit_valid. set_solver.
@@ -201,7 +202,7 @@ Proof.
   - do 2 constructor; [apply (core_id_core _)|done].
 Qed.
 Canonical Structure namespace_mapUR :=
-  UcmraT (namespace_map A) namespace_map_ucmra_mixin.
+  UcmraT SI (namespace_map A) namespace_map_ucmra_mixin.
 
 Global Instance namespace_map_data_core_id N a :
   CoreId a → CoreId (namespace_map_data N a).
@@ -260,7 +261,6 @@ Proof.
   rewrite namespace_map_validN_eq /= {1}/op /cmra_op /=. case_decide; last done.
   rewrite left_id_L {1}left_id. intros [Hmf Hdisj]; split.
   - destruct (Hdisj (positives_flatten N)) as [Hmfi|]; last set_solver.
-    move: Hmfi. rewrite lookup_op lookup_empty left_id_L=> Hmfi.
     intros j. rewrite lookup_op.
     destruct (decide (positives_flatten N = j)) as [<-|].
     + rewrite Hmfi lookup_singleton right_id_L. by apply cmra_valid_validN.
@@ -268,7 +268,7 @@ Proof.
   - intros j. destruct (decide (positives_flatten N = j)); first set_solver.
     rewrite lookup_op lookup_singleton_ne //.
     destruct (Hdisj j) as [Hmfi|?]; last set_solver.
-    move: Hmfi. rewrite lookup_op lookup_empty; auto.
+    rewrite Hmfi; auto.
 Qed.
 Lemma namespace_map_updateP P (Q : namespace_map A → Prop) N a :
   a ~~>: P →
@@ -295,5 +295,5 @@ Proof.
 Qed.
 End cmra.
 
-Arguments namespace_mapR : clear implicits.
-Arguments namespace_mapUR : clear implicits.
+Arguments namespace_mapR {_} _.
+Arguments namespace_mapUR {_} _.

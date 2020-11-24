@@ -2,25 +2,25 @@ From iris.bi Require Export bi.
 From iris.proofmode Require Import classes class_instances_bi.
 Set Default Proof Using "Type".
 
-Class Fractional {PROP : bi} (Φ : Qp → PROP) :=
+Class Fractional {SI} {PROP : bi SI} (Φ : Qp → PROP) :=
   fractional p q : Φ (p + q)%Qp ⊣⊢ Φ p ∗ Φ q.
-Arguments Fractional {_} _%I : simpl never.
+Arguments Fractional {_ _} _%I : simpl never.
 
-Class AsFractional {PROP : bi} (P : PROP) (Φ : Qp → PROP) (q : Qp) := {
+Class AsFractional {SI} {PROP : bi SI} (P : PROP) (Φ : Qp → PROP) (q : Qp) := {
   as_fractional : P ⊣⊢ Φ q;
   as_fractional_fractional :> Fractional Φ
 }.
-Arguments AsFractional {_} _%I _%I _%Qp.
+Arguments AsFractional {_ _} _%I _%I _%Qp.
 
-Arguments fractional {_ _ _} _ _.
+Arguments fractional {_ _ _ _} _ _.
 
-Hint Mode AsFractional - + - - : typeclass_instances.
+Hint Mode AsFractional - - + - - : typeclass_instances.
 (* To make [as_fractional_fractional] a useful instance, we have to
 allow [q] to be an evar. *)
-Hint Mode AsFractional - - + - : typeclass_instances.
+Hint Mode AsFractional - - - + - : typeclass_instances.
 
 Section fractional.
-  Context {PROP : bi}.
+  Context {SI} {PROP : bi SI}.
   Implicit Types P Q : PROP.
   Implicit Types Φ : Qp → PROP.
   Implicit Types q : Qp.

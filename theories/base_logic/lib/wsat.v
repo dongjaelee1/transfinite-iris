@@ -1,5 +1,5 @@
 From iris.base_logic.lib Require Export own.
-From stdpp Require Export coPset.
+From stdpp Require Export coPset namespaces.
 From iris.algebra Require Import gmap auth agree gset coPset.
 From iris.proofmode Require Import tactics.
 Set Default Proof Using "Type".
@@ -8,63 +8,66 @@ Set Default Proof Using "Type".
 exception of what's in the [invG] module. The module [invG] is thus exported in
 [fancy_updates], which [wsat] is only imported. *)
 Module invG.
-  Class invG (Σ : gFunctors) : Set := WsatG {
+  Class invG {SI} (Σ : gFunctors SI) : Set := WsatG {
     inv_inG :> inG Σ (authR (gmapUR positive (agreeR (laterO (iPreProp Σ)))));
-    enabled_inG :> inG Σ coPset_disjR;
+    enabled_inG :> inG Σ (coPset_disjR SI);
     disabled_inG :> inG Σ (gset_disjR positive);
     invariant_name : gname;
     enabled_name : gname;
     disabled_name : gname;
   }.
 
-  Definition invΣ : gFunctors :=
-    #[GFunctor (authRF (gmapURF positive (agreeRF (laterOF idOF))));
-      GFunctor coPset_disjUR;
+  Definition invΣ (SI: indexT) : gFunctors SI :=
+    #[GFunctor (authRF (gmapURF positive (agreeRF (laterOF (idOF SI)))));
+      GFunctor (coPset_disjUR SI);
       GFunctor (gset_disjUR positive)].
 
-  Class invPreG (Σ : gFunctors) : Set := WsatPreG {
+  Class invPreG {SI} (Σ : gFunctors SI) : Set := WsatPreG {
     inv_inPreG :> inG Σ (authR (gmapUR positive (agreeR (laterO (iPreProp Σ)))));
-    enabled_inPreG :> inG Σ coPset_disjR;
+    enabled_inPreG :> inG Σ (coPset_disjR SI);
     disabled_inPreG :> inG Σ (gset_disjR positive);
   }.
 
-  Instance subG_invΣ {Σ} : subG invΣ Σ → invPreG Σ.
+  Instance subG_invΣ {SI} {Σ: gFunctors SI} : subG (invΣ SI) Σ → invPreG Σ.
   Proof. solve_inG. Qed.
 End invG.
 Import invG.
 
-Definition invariant_unfold {Σ} (P : iProp Σ) : agree (later (iPreProp Σ)) :=
+Definition invariant_unfold {SI} {Σ: gFunctors SI} (P : iProp Σ) : agree (later (iPreProp Σ)) :=
   to_agree (Next (iProp_unfold P)).
-Definition ownI `{!invG Σ} (i : positive) (P : iProp Σ) : iProp Σ :=
+Definition ownI {SI} {Σ: gFunctors SI} `{!invG Σ} (i : positive) (P : iProp Σ) : iProp Σ :=
   own invariant_name (◯ {[ i := invariant_unfold P ]}).
-Arguments ownI {_ _} _ _%I.
+Arguments ownI {_ _ _} _ _%I.
 Typeclasses Opaque ownI.
-Instance: Params (@invariant_unfold) 1 := {}.
-Instance: Params (@ownI) 3 := {}.
+Instance: Params (@invariant_unfold) 2 := {}.
+Instance: Params (@ownI) 4 := {}.
 
-Definition ownE `{!invG Σ} (E : coPset) : iProp Σ :=
+Definition ownE {SI} {Σ: gFunctors SI} `{!invG Σ} (E : coPset) : iProp Σ :=
   own enabled_name (CoPset E).
 Typeclasses Opaque ownE.
-Instance: Params (@ownE) 3 := {}.
+Instance: Params (@ownE) 4 := {}.
 
-Definition ownD `{!invG Σ} (E : gset positive) : iProp Σ :=
+Definition ownD {SI} {Σ: gFunctors SI} `{!invG Σ} (E : gset positive) : iProp Σ :=
   own disabled_name (GSet E).
 Typeclasses Opaque ownD.
-Instance: Params (@ownD) 3 := {}.
+Instance: Params (@ownD) 4 := {}.
 
-Definition wsat `{!invG Σ} : iProp Σ :=
+Definition wsat {SI} {Σ: gFunctors SI} `{!invG Σ} : iProp Σ :=
   locked (∃ I : gmap positive (iProp Σ),
     own invariant_name (● (invariant_unfold <$> I : gmap _ _)) ∗
     [∗ map] i ↦ Q ∈ I, ▷ Q ∗ ownD {[i]} ∨ ownE {[i]})%I.
 
 Section wsat.
-Context `{!invG Σ}.
+Context {SI} {Σ: gFunctors SI} `{!invG Σ}.
 Implicit Types P : iProp Σ.
 
 (* Invariants *)
-Instance invariant_unfold_contractive : Contractive (@invariant_unfold Σ).
-Proof. solve_contractive. Qed.
-Global Instance ownI_contractive i : Contractive (@ownI Σ _ i).
+Instance invariant_unfold_contractive : Contractive (@invariant_unfold SI Σ).
+Proof. intros α P Q H. unfold invariant_unfold.
+       f_equiv. eapply Next_contractive. intros β Hβ.
+         by rewrite (H β Hβ).
+Qed.
+Global Instance ownI_contractive i : Contractive (@ownI SI Σ _ i).
 Proof. solve_contractive. Qed.
 Global Instance ownI_persistent i P : Persistent (ownI i P).
 Proof. rewrite /ownI. apply _. Qed.
@@ -72,7 +75,7 @@ Proof. rewrite /ownI. apply _. Qed.
 Lemma ownE_empty : (|==> ownE ∅)%I.
 Proof.
   rewrite /uPred_valid /bi_emp_valid.
-  by rewrite (own_unit (coPset_disjUR) enabled_name).
+  by rewrite (own_unit (coPset_disjUR SI) enabled_name).
 Qed.
 Lemma ownE_op E1 E2 : E1 ## E2 → ownE (E1 ∪ E2) ⊣⊢ ownE E1 ∗ ownE E2.
 Proof. intros. by rewrite /ownE -own_op coPset_disj_union. Qed.
@@ -193,15 +196,59 @@ Proof.
 Qed.
 End wsat.
 
-(* Allocation of an initial world *)
-Lemma wsat_alloc `{!invPreG Σ} : (|==> ∃ _ : invG Σ, wsat ∗ ownE ⊤)%I.
+(* Allocation of an initial wolibrld *)
+Lemma wsat_alloc_strong {SI: indexT} {Σ: gFunctors SI} `{!invPreG Σ} :
+  bi_emp_valid (|==> ∃ γI γE γD : gname, let H := WsatG _ _ _ _ _ γI γE γD in wsat ∗ ownE ⊤)%I.
 Proof.
   iIntros.
-  iMod (own_alloc (● (∅ : gmap positive _))) as (γI) "HI";
-    first by rewrite auth_auth_valid.
+  iMod (own_alloc (● (∅ : gmap positive _))) as (γI) "HI"; first by rewrite auth_auth_valid.
   iMod (own_alloc (CoPset ⊤)) as (γE) "HE"; first done.
   iMod (own_alloc (GSet ∅)) as (γD) "HD"; first done.
-  iModIntro; iExists (WsatG _ _ _ _ γI γE γD).
+  iModIntro; iExists γI, γE, γD.
   rewrite /wsat /ownE -lock; iFrame.
   iExists ∅. rewrite fmap_empty big_opM_empty. by iFrame.
 Qed.
+
+
+Lemma wsat_alloc {SI: indexT} {Σ: gFunctors SI} `{!invPreG Σ} :
+  bi_emp_valid (|==> ∃ _ : invG Σ, wsat ∗ ownE ⊤)%I.
+Proof.
+  iIntros. iMod wsat_alloc_strong as (γI γE γD) "H". iModIntro.
+  by iExists _.
+Qed.
+
+
+(* Global Invariants Instance *)
+Definition γ_inv: gname := encode ("invariants.inv").
+Definition γ_enabled: gname := encode ("invariants.enabled").
+Definition γ_disabled: gname := encode ("invariants.disabled").
+Definition inv_gnames : coPset := {[ γ_inv; γ_enabled; γ_disabled ]}.
+
+Class invS {SI} (Σ : gFunctors SI) : Set := InvS {
+  invS_inv_inG :> inG Σ (authR (gmapUR positive (agreeR (laterO (iPreProp Σ)))));
+  invS_enabled_inG :> inG Σ (coPset_disjR SI);
+  invS_disabled_inG :> inG Σ (gset_disjR positive);
+}.
+
+Instance invS_invG {SI} {Σ : gFunctors SI} (IS: invS Σ) : invG Σ :=
+  WsatG _ _ _ _ _ γ_inv γ_enabled γ_disabled.
+
+
+Lemma initial_wsat {SI} {Σ : gFunctors SI} `{invS SI Σ}:
+  initial inv_gnames (wsat ∗ ownE ⊤)%I.
+Proof.
+  feed pose proof (initial_alloc γ_inv (● (∅ : gmap positive _))) as HI;
+    first by rewrite auth_auth_valid.
+  feed pose proof (initial_alloc γ_enabled (CoPset ⊤)) as HE;
+    first done.
+  feed pose proof (initial_alloc γ_disabled (GSet ∅)) as HD;
+    first done.
+  feed pose proof (initial_combine _ _ _ _ HI HE) as H1;
+    first set_solver.
+  feed pose proof (initial_combine _ _ _ _ H1 HD) as H2;
+    first set_solver.
+  eapply initial_mono; last eauto.
+  rewrite /wsat /ownE -lock. iIntros "[[HI $] HD]".
+  iExists ∅. rewrite fmap_empty big_opM_empty. by iFrame.
+Qed.
+

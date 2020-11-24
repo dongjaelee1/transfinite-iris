@@ -5,10 +5,10 @@ Set Default Proof Using "Type".
 
 (* The union CMRA *)
 Section gset.
-  Context `{Countable K}.
+  Context {SI: indexT} `{Countable K}.
   Implicit Types X Y : gset K.
 
-  Canonical Structure gsetO := discreteO (gset K).
+  Canonical Structure gsetO := discreteO SI (gset K).
 
   Instance gset_valid : Valid (gset K) := λ _, True.
   Instance gset_unit : Unit (gset K) := (∅ : gset K).
@@ -36,14 +36,14 @@ Section gset.
     - intros X1 X2. by rewrite !gset_op_union comm_L.
     - intros X. by rewrite gset_core_self idemp_L.
   Qed.
-  Canonical Structure gsetR := discreteR (gset K) gset_ra_mixin.
+  Canonical Structure gsetR := discreteR SI (gset K) gset_ra_mixin.
 
   Global Instance gset_cmra_discrete : CmraDiscrete gsetR.
   Proof. apply discrete_cmra_discrete. Qed.
 
-  Lemma gset_ucmra_mixin : UcmraMixin (gset K).
+  Lemma gset_ucmra_mixin : UcmraMixin SI (gset K).
   Proof. split. done. intros X. by rewrite gset_op_union left_id_L. done. Qed.
-  Canonical Structure gsetUR := UcmraT (gset K) gset_ucmra_mixin.
+  Canonical Structure gsetUR := UcmraT SI (gset K) gset_ucmra_mixin.
 
   Lemma gset_opM X mY : X ⋅? mY = X ∪ default ∅ mY.
   Proof. destruct mY; by rewrite /= ?right_id_L. Qed.
@@ -62,9 +62,9 @@ Section gset.
   Proof. by apply core_id_total; rewrite gset_core_self. Qed.
 End gset.
 
-Arguments gsetO _ {_ _}.
-Arguments gsetR _ {_ _}.
-Arguments gsetUR _ {_ _}.
+Arguments gsetO {_} _ {_ _}.
+Arguments gsetR {_} _ {_ _}.
+Arguments gsetUR {_} _ {_ _}.
 
 (* The disjoint union CMRA *)
 Inductive gset_disj K `{Countable K} :=
@@ -73,13 +73,16 @@ Inductive gset_disj K `{Countable K} :=
 Arguments GSet {_ _ _} _.
 Arguments GSetBot {_ _ _}.
 
+Global Instance gset_disj_inhab K `{Countable K}: Inhabited (gset_disj K).
+Proof. constructor. exact GSetBot. Qed.
+
 Section gset_disj.
-  Context `{Countable K}.
+  Context {SI: indexT} `{Countable K}.
   Arguments op _ _ !_ !_ /.
   Arguments cmra_op _ !_ !_ /.
   Arguments ucmra_op _ !_ !_ /.
 
-  Canonical Structure gset_disjO := leibnizO (gset_disj K).
+  Canonical Structure gset_disjO := leibnizO SI (gset_disj K).
 
   Instance gset_disj_valid : Valid (gset_disj K) := λ X,
     match X with GSet _ => True | GSetBot => False end.
@@ -121,14 +124,14 @@ Section gset_disj.
     - exists (GSet ∅); gset_disj_solve.
     - intros [X1|] [X2|]; gset_disj_solve.
   Qed.
-  Canonical Structure gset_disjR := discreteR (gset_disj K) gset_disj_ra_mixin.
+  Canonical Structure gset_disjR := discreteR SI (gset_disj K) gset_disj_ra_mixin.
 
   Global Instance gset_disj_cmra_discrete : CmraDiscrete gset_disjR.
   Proof. apply discrete_cmra_discrete. Qed.
 
-  Lemma gset_disj_ucmra_mixin : UcmraMixin (gset_disj K).
+  Lemma gset_disj_ucmra_mixin : UcmraMixin SI (gset_disj K).
   Proof. split; try apply _ || done. intros [X|]; gset_disj_solve. Qed.
-  Canonical Structure gset_disjUR := UcmraT (gset_disj K) gset_disj_ucmra_mixin.
+  Canonical Structure gset_disjUR := UcmraT SI (gset_disj K) gset_disj_ucmra_mixin.
 
   Arguments op _ _ _ _ : simpl never.
 
@@ -227,6 +230,6 @@ Section gset_disj.
   Qed.
 End gset_disj.
 
-Arguments gset_disjO _ {_ _}.
-Arguments gset_disjR _ {_ _}.
-Arguments gset_disjUR _ {_ _}.
+Arguments gset_disjO {_} _ {_ _}.
+Arguments gset_disjR {_} _ {_ _}.
+Arguments gset_disjUR {_} _ {_ _}.

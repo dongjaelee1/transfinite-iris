@@ -1,5 +1,5 @@
 From stdpp Require Import coPset.
-From iris.bi Require Import interface derived_laws_sbi big_op plainly.
+From iris.bi Require Import interface derived_laws_bi derived_laws_sbi plainly big_op.
 Import interface.bi derived_laws_bi.bi derived_laws_sbi.bi.
 
 (* We first define operational type classes for the notations, and then later
@@ -38,7 +38,7 @@ Notation "P ={ E1 , E2 }▷=∗^ n Q" := (P -∗ |={E1,E2}▷=>^n Q)%I : bi_scop
 
 (** Bundled versions  *)
 (* Mixins allow us to create instances easily without having to use Program *)
-Record BiBUpdMixin (PROP : bi) `(BUpd PROP) := {
+Record BiBUpdMixin {SI: indexT} (PROP : bi SI) `(BUpd PROP) := {
   bi_bupd_mixin_bupd_ne : NonExpansive (bupd (PROP:=PROP));
   bi_bupd_mixin_bupd_intro (P : PROP) : P ==∗ P;
   bi_bupd_mixin_bupd_mono (P Q : PROP) : (P ⊢ Q) → (|==> P) ==∗ Q;
@@ -46,7 +46,7 @@ Record BiBUpdMixin (PROP : bi) `(BUpd PROP) := {
   bi_bupd_mixin_bupd_frame_r (P R : PROP) : (|==> P) ∗ R ==∗ P ∗ R;
 }.
 
-Record BiFUpdMixin (PROP : sbi) `(FUpd PROP) := {
+Record BiFUpdMixin {SI: indexT} (PROP : sbi SI) `(FUpd PROP) := {
   bi_fupd_mixin_fupd_ne E1 E2 : NonExpansive (fupd (PROP:=PROP) E1 E2);
   bi_fupd_mixin_fupd_intro_mask E1 E2 (P : PROP) : E2 ⊆ E1 → P ⊢ |={E1,E2}=> |={E2,E1}=> P;
   bi_fupd_mixin_except_0_fupd E1 E2 (P : PROP) : ◇ (|={E1,E2}=> P) ={E1,E2}=∗ P;
@@ -57,33 +57,33 @@ Record BiFUpdMixin (PROP : sbi) `(FUpd PROP) := {
   bi_fupd_mixin_fupd_frame_r E1 E2 (P R : PROP) : (|={E1,E2}=> P) ∗ R ={E1,E2}=∗ P ∗ R;
 }.
 
-Class BiBUpd (PROP : bi) := {
+Class BiBUpd {SI: indexT} (PROP : bi SI) := {
   bi_bupd_bupd :> BUpd PROP;
   bi_bupd_mixin : BiBUpdMixin PROP bi_bupd_bupd;
 }.
-Hint Mode BiBUpd ! : typeclass_instances.
-Arguments bi_bupd_bupd : simpl never.
+Hint Mode BiBUpd - ! : typeclass_instances.
+Arguments bi_bupd_bupd {_} : simpl never.
 
-Class BiFUpd (PROP : sbi) := {
+Class BiFUpd {SI: indexT} (PROP : sbi SI) := {
   bi_fupd_fupd :> FUpd PROP;
   bi_fupd_mixin : BiFUpdMixin PROP bi_fupd_fupd;
 }.
-Hint Mode BiFUpd ! : typeclass_instances.
+Hint Mode BiFUpd - ! : typeclass_instances.
 Arguments bi_fupd_fupd : simpl never.
 
-Class BiBUpdFUpd (PROP : sbi) `{BiBUpd PROP, BiFUpd PROP} :=
+Class BiBUpdFUpd {SI: indexT} (PROP : sbi SI) `{BiBUpd SI PROP, BiFUpd SI PROP} :=
   bupd_fupd E (P : PROP) : (|==> P) ={E}=∗ P.
-Hint Mode BiBUpdFUpd ! - - : typeclass_instances.
+Hint Mode BiBUpdFUpd - ! - - : typeclass_instances.
 
-Class BiBUpdPlainly (PROP : sbi) `{!BiBUpd PROP, !BiPlainly PROP} :=
+Class BiBUpdPlainly {SI: indexT} (PROP : sbi SI) `{!BiBUpd PROP, !BiPlainly PROP} :=
   bupd_plainly (P : PROP) : (|==> ■ P) -∗ P.
-Hint Mode BiBUpdPlainly ! - - : typeclass_instances.
+Hint Mode BiBUpdPlainly - ! - - : typeclass_instances.
 
 (** These rules for the interaction between the [■] and [|={E1,E2=>] modalities
 only make sense for affine logics. From the axioms below, one could derive
 [■ P ={E}=∗ P] (see the lemma [fupd_plainly_elim]), which in turn gives
 [True ={E}=∗ emp]. *)
-Class BiFUpdPlainly (PROP : sbi) `{!BiFUpd PROP, !BiPlainly PROP} := {
+Class BiFUpdPlainly {SI: indexT} (PROP : sbi SI) `{!BiFUpd PROP, !BiPlainly PROP} := {
   (** When proving a fancy update of a plain proposition, you can also prove it
   while being allowed to open all invariants. *)
   fupd_plainly_mask_empty E (P : PROP) :
@@ -102,10 +102,10 @@ Class BiFUpdPlainly (PROP : sbi) `{!BiFUpd PROP, !BiPlainly PROP} := {
   fupd_plainly_forall_2 E {A} (Φ : A → PROP) :
     (∀ x, |={E}=> ■ Φ x) ⊢ |={E}=> ∀ x, Φ x
 }.
-Hint Mode BiBUpdFUpd ! - - : typeclass_instances.
+Hint Mode BiBUpdFUpd - ! - - : typeclass_instances.
 
 Section bupd_laws.
-  Context `{BiBUpd PROP}.
+  Context `{BiBUpd SI PROP}.
   Implicit Types P : PROP.
 
   Global Instance bupd_ne : NonExpansive (@bupd PROP _).
@@ -121,7 +121,7 @@ Section bupd_laws.
 End bupd_laws.
 
 Section fupd_laws.
-  Context `{BiFUpd PROP}.
+  Context `{BiFUpd SI PROP}.
   Implicit Types P : PROP.
 
   Global Instance fupd_ne E1 E2 : NonExpansive (@fupd PROP _ E1 E2).
@@ -142,7 +142,7 @@ Section fupd_laws.
 End fupd_laws.
 
 Section bupd_derived.
-  Context `{BiBUpd PROP}.
+  Context `{BiBUpd SI PROP}.
   Implicit Types P Q R : PROP.
 
   (* FIXME: Removing the `PROP:=` diverges. *)
@@ -166,7 +166,7 @@ Section bupd_derived.
 End bupd_derived.
 
 Section bupd_derived_sbi.
-  Context {PROP : sbi} `{BiBUpd PROP}.
+  Context `{PROP : sbi SI} `{BiBUpd SI PROP}.
   Implicit Types P Q R : PROP.
 
   Lemma except_0_bupd P : ◇ (|==> P) ⊢ (|==> ◇ P).
@@ -176,7 +176,7 @@ Section bupd_derived_sbi.
   Qed.
 
   Section bupd_plainly.
-    Context `{BiBUpdPlainly PROP}.
+    Context `{BiBUpdPlainly SI PROP}.
 
     Lemma bupd_plain P `{!Plain P} : (|==> P) ⊢ P.
     Proof. by rewrite {1}(plain P) bupd_plainly. Qed.
@@ -193,7 +193,7 @@ Section bupd_derived_sbi.
 End bupd_derived_sbi.
 
 Section fupd_derived.
-  Context `{BiFUpd PROP}.
+  Context `{BiFUpd SI PROP}.
   Implicit Types P Q R : PROP.
 
   Global Instance fupd_proper E1 E2 :
@@ -208,7 +208,7 @@ Section fupd_derived.
 
   Lemma fupd_intro E P : P ={E}=∗ P.
   Proof. by rewrite {1}(fupd_intro_mask E E P) // fupd_trans. Qed.
-  Lemma fupd_intro_mask' E1 E2 : E2 ⊆ E1 → (|={E1,E2}=> |={E2,E1}=> bi_emp (PROP:=PROP))%I.
+  Lemma fupd_intro_mask' E1 E2 : E2 ⊆ E1 → bi_emp_valid (|={E1,E2}=> |={E2,E1}=> bi_emp (PROP:=PROP))%I.
   Proof. exact: fupd_intro_mask. Qed.
   Lemma fupd_except_0 E1 E2 P : (|={E1,E2}=> ◇ P) ={E1,E2}=∗ P.
   Proof. by rewrite {1}(fupd_intro E2 P) except_0_fupd fupd_trans. Qed.
@@ -291,6 +291,7 @@ Section fupd_derived.
 
   Lemma fupd_sep E P Q : (|={E}=> P) ∗ (|={E}=> Q) ={E}=∗ P ∗ Q.
   Proof. by rewrite fupd_frame_r fupd_frame_l fupd_trans. Qed.
+
   Lemma fupd_big_sepL {A} E (Φ : nat → A → PROP) (l : list A) :
     ([∗ list] k↦x ∈ l, |={E}=> Φ k x) ={E}=∗ [∗ list] k↦x ∈ l, Φ k x.
   Proof.
@@ -308,13 +309,13 @@ Section fupd_derived.
   Proof.
     apply (big_opS_forall (λ P Q, P ={E}=∗ Q)); auto using fupd_intro.
     intros P1 P2 HP Q1 Q2 HQ. by rewrite HP HQ -fupd_sep.
-  Qed.
+  Qed. 
 
   (** Fancy updates that take a step derived rules. *)
   Lemma step_fupd_wand E1 E2 E3 P Q : (|={E1,E2,E3}▷=> P) -∗ (P -∗ Q) -∗ |={E1,E2,E3}▷=> Q.
   Proof.
     apply wand_intro_l.
-    by rewrite (later_intro (P -∗ Q)%I) fupd_frame_l -later_sep fupd_frame_l
+    by rewrite (later_intro (P -∗ Q)%I) fupd_frame_l later_sep_2 fupd_frame_l
                wand_elim_l.
   Qed.
 
@@ -333,7 +334,7 @@ Section fupd_derived.
     rewrite fupd_frame_l -(fupd_trans E1 F2 F1). f_equiv.
     rewrite (fupd_intro_mask F2 F1 (|={_,_}=> emp)%I) //.
     rewrite fupd_frame_r. f_equiv.
-    rewrite [X in (X ∗ _)%I]later_intro -later_sep. f_equiv.
+    rewrite [X in (X ∗ _)%I]later_intro later_sep_2. f_equiv.
     rewrite fupd_frame_r -(fupd_trans F1 F2 E2). f_equiv.
     rewrite fupd_frame_l -(fupd_trans F2 E1 E2). f_equiv.
     by rewrite fupd_frame_r left_id.
@@ -347,7 +348,7 @@ Section fupd_derived.
   Proof.
     rewrite fupd_frame_l.
     apply fupd_mono.
-    rewrite [P in P ∗ _ ⊢ _](later_intro R) -later_sep fupd_frame_l.
+    rewrite [P in P ∗ _ ⊢ _](later_intro R) later_sep_2 fupd_frame_l.
     by apply later_mono, fupd_mono.
   Qed.
 
@@ -364,13 +365,13 @@ Section fupd_derived.
     intros HPQ. induction n as [|n IH]=> //=. rewrite IH //.
   Qed.
 
-  Lemma step_fupdN_wand E1 E2 n P Q :
+  Lemma step_fupdN_wand  E1 E2 n P Q :
     (|={E1,E2}▷=>^n P) -∗ (P -∗ Q) -∗ (|={E1,E2}▷=>^n Q).
   Proof.
     apply wand_intro_l. induction n as [|n IH]=> /=.
-    { by rewrite wand_elim_l. }
-    rewrite -IH -fupd_frame_l later_sep -fupd_frame_l.
-    by apply sep_mono; first apply later_intro.
+    { by rewrite wand_elim_l. } etransitivity.
+    rewrite (later_intro (P -∗ Q)%I). eapply fupd_frame_l.
+    by rewrite later_sep_2 fupd_frame_l IH. 
   Qed.
 
   Lemma step_fupdN_S_fupd n E P:
@@ -387,8 +388,27 @@ Section fupd_derived.
     rewrite step_fupd_frame_l IH //=.
   Qed.
 
+  Global Instance step_fupdN_ne k E1 E2: NonExpansive (λ P: PROP, |={E1, E2}▷=>^k P)%I.
+  Proof.
+    induction k; simpl; solve_proper.
+  Qed.
+
+  Lemma step_fupdN_steps_mono n m E1 E2 (P: PROP):
+    n ≤ m → E2 ⊆ E1 → (|={E1,E2}▷=>^n P)%I ⊢ |={E1, E2}▷=>^m P.
+  Proof.
+    intros H0 H'. induction H0 as [| ? ? IH]; eauto.
+    rewrite IH; simpl. rewrite -step_fupd_intro; eauto using later_intro. 
+  Qed.
+
+  Lemma step_fupdN_intro n E1 E2 (P: PROP):
+    E2 ⊆ E1 → ▷^n P ⊢ |={E1, E2}▷=>^n P.
+  Proof.
+    intros H'. induction n as [|n IH]; eauto.
+    simpl. by rewrite IH -step_fupd_intro.
+  Qed.
+
   Section fupd_plainly_derived.
-    Context `{BiPlainly PROP, !BiFUpdPlainly PROP}.
+    Context `{BiPlainly SI PROP, !BiFUpdPlainly PROP}.
 
     Lemma fupd_plainly_mask E E' P : (|={E,E'}=> ■ P) ⊢ |={E}=> P.
     Proof.
@@ -476,3 +496,4 @@ Section fupd_derived.
     Qed.
   End fupd_plainly_derived.
 End fupd_derived.
+

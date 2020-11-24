@@ -22,9 +22,9 @@ From iris.algebra Require Export updates local_updates.
 From iris.algebra Require Import proofmode_classes.
 From Coq Require Import QArith Qcanon.
 
-Definition ufrac_authR (A : cmraT) : cmraT :=
+Definition ufrac_authR {SI : indexT} (A : cmraT SI) : cmraT SI :=
   authR (optionUR (prodR ufracR A)).
-Definition ufrac_authUR (A : cmraT) : ucmraT :=
+Definition ufrac_authUR {SI : indexT} (A : cmraT SI) : ucmraT SI :=
   authUR (optionUR (prodR ufracR A)).
 
 (** Note in the signature of [ufrac_auth_auth] and [ufrac_auth_frag] we use
@@ -34,30 +34,30 @@ instances with carrier [Qp], namely [fracR] and [ufracR]. When writing things
 like [ufrac_auth_auth q a ∧ ✓{q}] we want Coq to infer the type of [q] as [Qp]
 such that the [✓] of the default [fracR] camera is used, and not the [✓] of
 the [ufracR] camera. *)
-Definition ufrac_auth_auth {A : cmraT} (q : Qp) (x : A) : ufrac_authR A :=
+Definition ufrac_auth_auth {SI : indexT} {A : cmraT SI} (q : Qp) (x : A) : ufrac_authR A :=
   ● (Some (q : ufracR,x)).
-Definition ufrac_auth_frag {A : cmraT} (q : Qp) (x : A) : ufrac_authR A :=
+Definition ufrac_auth_frag {SI : indexT} {A : cmraT SI} (q : Qp) (x : A) : ufrac_authR A :=
   ◯ (Some (q : ufracR,x)).
 
 Typeclasses Opaque ufrac_auth_auth ufrac_auth_frag.
 
-Instance: Params (@ufrac_auth_auth) 2 := {}.
-Instance: Params (@ufrac_auth_frag) 2 := {}.
+Instance: Params (@ufrac_auth_auth) 3 := {}.
+Instance: Params (@ufrac_auth_frag) 3 := {}.
 
 Notation "●U{ q } a" := (ufrac_auth_auth q a) (at level 10, format "●U{ q }  a").
 Notation "◯U{ q } a" := (ufrac_auth_frag q a) (at level 10, format "◯U{ q }  a").
 
 Section ufrac_auth.
-  Context {A : cmraT}.
+  Context {SI : indexT} {A : cmraT SI}.
   Implicit Types a b : A.
 
-  Global Instance ufrac_auth_auth_ne q : NonExpansive (@ufrac_auth_auth A q).
+  Global Instance ufrac_auth_auth_ne q : NonExpansive (@ufrac_auth_auth _ A q).
   Proof. solve_proper. Qed.
-  Global Instance ufrac_auth_auth_proper q : Proper ((≡) ==> (≡)) (@ufrac_auth_auth A q).
+  Global Instance ufrac_auth_auth_proper q : Proper ((≡) ==> (≡)) (@ufrac_auth_auth _ A q).
   Proof. solve_proper. Qed.
-  Global Instance ufrac_auth_frag_ne q : NonExpansive (@ufrac_auth_frag A q).
+  Global Instance ufrac_auth_frag_ne q : NonExpansive (@ufrac_auth_frag _ A q).
   Proof. solve_proper. Qed.
-  Global Instance ufrac_auth_frag_proper q : Proper ((≡) ==> (≡)) (@ufrac_auth_frag A q).
+  Global Instance ufrac_auth_frag_proper q : Proper ((≡) ==> (≡)) (@ufrac_auth_frag _ A q).
   Proof. solve_proper. Qed.
 
   Global Instance ufrac_auth_auth_discrete q a : Discrete a → Discrete (●U{q} a).
@@ -74,7 +74,7 @@ Section ufrac_auth.
   Proof.
     rewrite auth_both_validN=> -[Hincl Hvalid].
     move: Hincl=> /Some_includedN=> -[[_ ? //]|[[[p' ?] ?] [/=]]].
-    rewrite -discrete_iff leibniz_equiv_iff. rewrite ufrac_op'=> [/Qp_eq/=].
+    rewrite -discrete_iff leibniz_equiv_iff. rewrite /op ufrac_op'=> [/Qp_eq/=].
     rewrite -{1}(Qcplus_0_r p)=> /(inj (Qcplus p))=> ?; by subst.
   Qed.
   Lemma ufrac_auth_agree p a b : ✓ (●U{p} a ⋅ ◯U{p} b) → a ≡ b.
@@ -86,13 +86,13 @@ Section ufrac_auth.
 
   Lemma ufrac_auth_includedN n p q a b : ✓{n} (●U{p} a ⋅ ◯U{q} b) → Some b ≼{n} Some a.
   Proof. by rewrite auth_both_validN=> -[/Some_pair_includedN [_ ?] _]. Qed.
-  Lemma ufrac_auth_included `{CmraDiscrete A} q p a b :
+  Lemma ufrac_auth_included `{CmraDiscrete SI A} q p a b :
     ✓ (●U{p} a ⋅ ◯U{q} b) → Some b ≼ Some a.
   Proof. rewrite auth_both_valid=> -[/Some_pair_included [_ ?] _] //. Qed.
-  Lemma ufrac_auth_includedN_total `{CmraTotal A} n q p a b :
+  Lemma ufrac_auth_includedN_total `{CmraTotal SI A} n q p a b :
     ✓{n} (●U{p} a ⋅ ◯U{q} b) → b ≼{n} a.
   Proof. intros. by eapply Some_includedN_total, ufrac_auth_includedN. Qed.
-  Lemma ufrac_auth_included_total `{CmraDiscrete A, CmraTotal A} q p a b :
+  Lemma ufrac_auth_included_total `{CmraDiscrete SI A, CmraTotal SI A} q p a b :
     ✓ (●U{p} a ⋅ ◯U{q} b) → b ≼ a.
   Proof. intros. by eapply Some_included_total, ufrac_auth_included. Qed.
 
@@ -113,11 +113,11 @@ Section ufrac_auth.
   Proof. done. Qed.
 
   Global Instance is_op_ufrac_auth q q1 q2 a a1 a2 :
-    IsOp q q1 q2 → IsOp a a1 a2 → IsOp' (◯U{q} a) (◯U{q1} a1) (◯U{q2} a2).
+    IsOp (SI := SI)q q1 q2 → IsOp a a1 a2 → IsOp' (SI := SI) (◯U{q} a) (◯U{q1} a1) (◯U{q2} a2).
   Proof. by rewrite /IsOp' /IsOp=> /leibniz_equiv_iff -> ->. Qed.
 
   Global Instance is_op_ufrac_auth_core_id q q1 q2 a :
-    CoreId a → IsOp q q1 q2 → IsOp' (◯U{q} a) (◯U{q1} a) (◯U{q2} a).
+    CoreId a → IsOp (SI := SI) q q1 q2 → IsOp' (◯U{q} a) (◯U{q1} a) (◯U{q2} a).
   Proof.
     rewrite /IsOp' /IsOp=> ? /leibniz_equiv_iff ->.
     by rewrite -ufrac_auth_frag_op -core_id_dup.

@@ -7,7 +7,7 @@ Import bi.
 (** This file defines the instances that make up the framing machinery. *)
 
 Section bi.
-Context {PROP : bi}.
+Context {SI} {PROP : bi SI}.
 Implicit Types P Q R : PROP.
 (* Frame *)
 Global Instance frame_here_absorbing p R : Absorbing R → Frame p R R True | 0.
@@ -42,30 +42,30 @@ Proof.
   - by rewrite right_id -affinely_affinely_if affine_affinely.
 Qed.
 
-Global Instance make_embed_pure `{BiEmbed PROP PROP'} φ :
+Global Instance make_embed_pure `{BiEmbed SI PROP PROP'} φ :
   KnownMakeEmbed (PROP:=PROP) ⌜φ⌝ ⌜φ⌝.
 Proof. apply embed_pure. Qed.
-Global Instance make_embed_emp `{BiEmbedEmp PROP PROP'} :
+Global Instance make_embed_emp `{BiEmbedEmp SI PROP PROP'} :
   KnownMakeEmbed (PROP:=PROP) emp emp.
 Proof. apply embed_emp. Qed.
-Global Instance make_embed_default `{BiEmbed PROP PROP'} P :
-  MakeEmbed P ⎡P⎤ | 100.
+Global Instance make_embed_default `{BiEmbed SI PROP PROP'} P :
+  MakeEmbed P (⎡P⎤)%I | 100.
 Proof. by rewrite /MakeEmbed. Qed.
 
-Global Instance frame_embed `{BiEmbed PROP PROP'} p P Q (Q' : PROP') R :
+Global Instance frame_embed `{BiEmbed SI PROP PROP'} p P Q (Q' : PROP') R :
   Frame p R P Q → MakeEmbed Q Q' → Frame p ⎡R⎤ ⎡P⎤ Q'.
 Proof.
   rewrite /Frame /MakeEmbed => <- <-.
   rewrite embed_sep embed_intuitionistically_if_2 => //.
 Qed.
-Global Instance frame_pure_embed `{BiEmbed PROP PROP'} p P Q (Q' : PROP') φ :
+Global Instance frame_pure_embed `{BiEmbed SI PROP PROP'} p P Q (Q' : PROP') φ :
   Frame p ⌜φ⌝ P Q → MakeEmbed Q Q' → Frame p ⌜φ⌝ ⎡P⎤ Q'.
 Proof. rewrite /Frame /MakeEmbed -embed_pure. apply (frame_embed p P Q). Qed.
 
 Global Instance make_sep_emp_l P : KnownLMakeSep emp P P.
 Proof. apply left_id, _. Qed.
 Global Instance make_sep_emp_r P : KnownRMakeSep P emp P.
-Proof. apply right_id, _. Qed.
+Proof. unfold KnownRMakeSep, MakeSep. eapply right_id, _. Qed.
 Global Instance make_sep_true_l P : Absorbing P → KnownLMakeSep True P P.
 Proof. intros. apply True_sep, _. Qed.
 Global Instance make_sep_true_r P : Absorbing P → KnownRMakeSep P True P.
@@ -188,7 +188,7 @@ Proof.
   by rewrite assoc (comm _ P1) -assoc wand_elim_r.
 Qed.
 
-Global Instance make_affinely_True : @KnownMakeAffinely PROP True emp | 0.
+Global Instance make_affinely_True : @KnownMakeAffinely SI PROP True emp | 0.
 Proof. by rewrite /KnownMakeAffinely /MakeAffinely affinely_True_emp affinely_emp. Qed.
 Global Instance make_affinely_affine P : Affine P → KnownMakeAffinely P P | 1.
 Proof. intros. by rewrite /KnownMakeAffinely /MakeAffinely affine_affinely. Qed.
@@ -203,7 +203,7 @@ Proof.
 Qed.
 
 Global Instance make_intuitionistically_True :
-  @KnownMakeIntuitionistically PROP True emp | 0.
+  @KnownMakeIntuitionistically SI PROP True emp | 0.
 Proof.
   by rewrite /KnownMakeIntuitionistically /MakeIntuitionistically
              intuitionistically_True_emp.
@@ -225,7 +225,7 @@ Proof.
   rewrite -intuitionistically_sep_2 intuitionistically_idemp //.
 Qed.
 
-Global Instance make_absorbingly_emp : @KnownMakeAbsorbingly PROP emp True | 0.
+Global Instance make_absorbingly_emp : @KnownMakeAbsorbingly SI PROP emp True | 0.
 Proof.
   by rewrite /KnownMakeAbsorbingly /MakeAbsorbingly
      -absorbingly_True_emp absorbingly_pure.
@@ -242,9 +242,9 @@ Proof.
   rewrite /Frame /MakeAbsorbingly=> <- <- /=. by rewrite absorbingly_sep_r.
 Qed.
 
-Global Instance make_persistently_true : @KnownMakePersistently PROP True True.
+Global Instance make_persistently_true : @KnownMakePersistently SI PROP True True.
 Proof. by rewrite /KnownMakePersistently /MakePersistently persistently_pure. Qed.
-Global Instance make_persistently_emp : @KnownMakePersistently PROP emp True.
+Global Instance make_persistently_emp : @KnownMakePersistently SI PROP emp True.
 Proof.
   by rewrite /KnownMakePersistently /MakePersistently
      -persistently_True_emp persistently_pure.
@@ -289,18 +289,18 @@ End bi.
 
 (** SBI Framing *)
 Section sbi.
-Context {PROP : sbi}.
+Context {SI} {PROP : sbi SI}.
 Implicit Types P Q R : PROP.
 
-Global Instance frame_eq_embed `{SbiEmbed PROP PROP'} p P Q (Q' : PROP')
-       {A : ofeT} (a b : A) :
+Global Instance frame_eq_embed `{SbiEmbed SI PROP PROP'} p P Q (Q' : PROP')
+       {A : ofeT SI} (a b : A) :
   Frame p (a ≡ b) P Q → MakeEmbed Q Q' → Frame p (a ≡ b) ⎡P⎤ Q'.
 Proof. rewrite /Frame /MakeEmbed -embed_internal_eq. apply (frame_embed p P Q). Qed.
 
-Global Instance make_laterN_true n : @KnownMakeLaterN PROP n True True | 0.
+Global Instance make_laterN_true n : @KnownMakeLaterN SI PROP n True True | 0.
 Proof. by rewrite /KnownMakeLaterN /MakeLaterN laterN_True. Qed.
 Global Instance make_laterN_emp `{!BiAffine PROP} n :
-  @KnownMakeLaterN PROP n emp emp | 0.
+  @KnownMakeLaterN SI PROP n emp emp | 0.
 Proof. by rewrite /KnownMakeLaterN /MakeLaterN laterN_emp. Qed.
 Global Instance make_laterN_default P : MakeLaterN n P (▷^n P) | 100.
 Proof. by rewrite /MakeLaterN. Qed.
@@ -310,24 +310,24 @@ Global Instance frame_later p R R' P Q Q' :
   Frame p R P Q → MakeLaterN 1 Q Q' → Frame p R' (▷ P) Q'.
 Proof.
   rewrite /Frame /MakeLaterN /MaybeIntoLaterN=>-[->] <- <-.
-  by rewrite later_intuitionistically_if_2 later_sep.
+  by rewrite later_intuitionistically_if_2 later_sep_2.
 Qed.
 Global Instance frame_laterN p n R R' P Q Q' :
   TCNoBackTrack (MaybeIntoLaterN true n R' R) →
   Frame p R P Q → MakeLaterN n Q Q' → Frame p R' (▷^n P) Q'.
 Proof.
   rewrite /Frame /MakeLaterN /MaybeIntoLaterN=>-[->] <- <-.
-  by rewrite laterN_intuitionistically_if_2 laterN_sep.
+  by rewrite laterN_intuitionistically_if_2 laterN_sep_2.
 Qed.
 
-Global Instance frame_bupd `{BiBUpd PROP} p R P Q :
+Global Instance frame_bupd `{BiBUpd SI PROP} p R P Q :
   Frame p R P Q → Frame p R (|==> P) (|==> Q).
 Proof. rewrite /Frame=><-. by rewrite bupd_frame_l. Qed.
-Global Instance frame_fupd `{BiFUpd PROP} p E1 E2 R P Q :
+Global Instance frame_fupd `{BiFUpd SI PROP} p E1 E2 R P Q :
   Frame p R P Q → Frame p R (|={E1,E2}=> P) (|={E1,E2}=> Q).
 Proof. rewrite /Frame=><-. by rewrite fupd_frame_l. Qed.
 
-Global Instance make_except_0_True : @KnownMakeExcept0 PROP True True.
+Global Instance make_except_0_True : @KnownMakeExcept0 SI PROP True True.
 Proof. by rewrite /KnownMakeExcept0 /MakeExcept0 except_0_True. Qed.
 Global Instance make_except_0_default P : MakeExcept0 P (◇ P) | 100.
 Proof. by rewrite /MakeExcept0. Qed.

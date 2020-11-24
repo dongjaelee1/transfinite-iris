@@ -5,16 +5,20 @@ Set Default Proof Using "Type".
 
 (* The multiset union CMRA *)
 Section gmultiset.
-  Context `{Countable K}.
+  Context `{SI : indexT} `{Countable K}.
   Implicit Types X Y : gmultiset K.
 
-  Canonical Structure gmultisetO := discreteO (gmultiset K).
+  Canonical Structure gmultisetO := discreteO SI (gmultiset K).
 
   Instance gmultiset_valid : Valid (gmultiset K) := λ _, True.
-  Instance gmultiset_validN : ValidN (gmultiset K) := λ _ _, True.
+  Instance gmultiset_validN : ValidN SI (gmultiset K) := λ _ _, True.
   Instance gmultiset_unit : Unit (gmultiset K) := (∅ : gmultiset K).
   Instance gmultiset_op : Op (gmultiset K) := disj_union.
   Instance gmultiset_pcore : PCore (gmultiset K) := λ X, Some ∅.
+
+  (* TODO: seems like these were in stdpp at some point, but they are not anymore *)
+  Notation "⊎ Y" := (λ x, disj_union x Y) (at level 50).
+  Notation "X ⊎" := (disj_union X) (at level 50).
 
   Lemma gmultiset_op_disj_union X Y : X ⋅ Y = X ⊎ Y.
   Proof. done. Qed.
@@ -41,14 +45,14 @@ Section gmultiset.
       by rewrite left_id.
   Qed.
 
-  Canonical Structure gmultisetR := discreteR (gmultiset K) gmultiset_ra_mixin.
+  Canonical Structure gmultisetR := discreteR SI (gmultiset K) gmultiset_ra_mixin.
 
   Global Instance gmultiset_cmra_discrete : CmraDiscrete gmultisetR.
   Proof. apply discrete_cmra_discrete. Qed.
 
-  Lemma gmultiset_ucmra_mixin : UcmraMixin (gmultiset K).
+  Lemma gmultiset_ucmra_mixin : UcmraMixin SI (gmultiset K).
   Proof. split. done. intros X. by rewrite gmultiset_op_disj_union left_id_L. done. Qed.
-  Canonical Structure gmultisetUR := UcmraT (gmultiset K) gmultiset_ucmra_mixin.
+  Canonical Structure gmultisetUR := UcmraT SI (gmultiset K) gmultiset_ucmra_mixin.
 
   Global Instance gmultiset_cancelable X : Cancelable X.
   Proof.

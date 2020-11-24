@@ -8,6 +8,10 @@ Reserved Notation "P ⊣⊢ Q" (at level 95, no associativity).
 Reserved Notation "P '⊣⊢@{' PROP } Q" (at level 95, no associativity).
 Reserved Notation "('⊣⊢@{' PROP } )" (at level 95).
 
+(*NOTE: backported from current iris *)
+Reserved Notation "⊢ Q" (at level 20, Q at level 200).
+Reserved Notation "'⊢@{' PROP } Q" (at level 20, Q at level 200).
+
 (** BI connectives *)
 Reserved Notation "'emp'".
 Reserved Notation "'⌜' φ '⌝'" (at level 1, φ at level 200, format "⌜ φ ⌝").
@@ -28,6 +32,10 @@ Reserved Notation "▷? p P" (at level 20, p at level 9, P at level 20,
    format "▷? p  P").
 Reserved Notation "▷^ n P" (at level 20, n at level 9, P at level 20,
    format "▷^ n  P").
+Reserved Notation "⧍ P" (at level 20, right associativity).
+Reserved Notation "⧍^ n P" (at level 20, n at level 9, P at level 20,
+   format "⧍^ n  P").
+
 
 Reserved Infix "∗-∗" (at level 95, no associativity).
 

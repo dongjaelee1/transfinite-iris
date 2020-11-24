@@ -4,7 +4,7 @@ From iris.proofmode Require Import tactics.
 Set Default Proof Using "Type".
 
 Section wp.
-Context {Λ : ectxLanguage} `{!irisG Λ Σ} {Hinh : Inhabited (state Λ)}.
+Context {SI} {Σ: gFunctors SI} {Λ : ectxLanguage} `{!irisG Λ Σ} {Hinh : Inhabited (state Λ)}.
 Implicit Types s : stuckness.
 Implicit Types P : iProp Σ.
 Implicit Types Φ : val Λ → iProp Σ.
@@ -59,7 +59,7 @@ Lemma wp_lift_pure_head_stuck E Φ e :
   sub_redexes_are_values e →
   (∀ σ, head_stuck e σ) →
   WP e @ E ?{{ Φ }}%I.
-Proof using Hinh.
+Proof.
   iIntros (?? Hstuck). iApply wp_lift_head_stuck; [done|done|].
   iIntros (σ κs n) "_". iMod (fupd_intro_mask' E ∅) as "_"; first set_solver.
   by auto.
@@ -97,6 +97,21 @@ Proof.
   iApply "H"; eauto.
 Qed.
 
+Lemma swp_lift_atomic_head_step {k s E Φ} e1 :
+  (∀ σ1 κ κs n, state_interp σ1 (κ ++ κs) n ={E}=∗
+    ⌜head_reducible e1 σ1⌝ ∗
+    ▷ ∀ e2 σ2 efs, ⌜head_step e1 σ1 κ e2 σ2 efs⌝ ={E}=∗
+      state_interp σ2 κs (length efs + n) ∗
+      from_option Φ False (to_val e2) ∗
+      [∗ list] ef ∈ efs, WP ef @ s; ⊤ {{ fork_post }})
+  ⊢ SWP e1 at k @ s; E {{ Φ }}.
+Proof.
+  iIntros "H". iApply swp_lift_atomic_step; eauto.
+  iIntros (σ1 κ κs Qs) "Hσ1". iMod ("H" with "Hσ1") as "[% H]"; iModIntro.
+  iSplit; first by destruct s; auto. iNext. iIntros (e2 σ2 efs Hstep).
+  iApply "H"; eauto.
+Qed.
+
 Lemma wp_lift_atomic_head_step_no_fork_fupd {s E1 E2 Φ} e1 :
   to_val e1 = None →
   (∀ σ1 κ κs n, state_interp σ1 (κ ++ κs) n ={E1}=∗
@@ -121,6 +136,19 @@ Lemma wp_lift_atomic_head_step_no_fork {s E Φ} e1 :
   ⊢ WP e1 @ s; E {{ Φ }}.
 Proof.
   iIntros (?) "H". iApply wp_lift_atomic_head_step; eauto.
+  iIntros (σ1 κ κs Qs) "Hσ1". iMod ("H" $! σ1 with "Hσ1") as "[$ H]"; iModIntro.
+  iNext; iIntros (v2 σ2 efs Hstep).
+  iMod ("H" $! v2 σ2 efs with "[//]") as "(-> & ? & ?) /=". by iFrame.
+Qed.
+
+Lemma swp_lift_atomic_head_step_no_fork {k s E Φ} e1 :
+  (∀ σ1 κ κs n, state_interp σ1 (κ ++ κs) n ={E}=∗
+    ⌜head_reducible e1 σ1⌝ ∗
+    ▷ ∀ e2 σ2 efs, ⌜head_step e1 σ1 κ e2 σ2 efs⌝ ={E}=∗
+      ⌜efs = []⌝ ∗ state_interp σ2 κs n ∗ from_option Φ False (to_val e2))
+  ⊢ SWP e1 at k @ s; E {{ Φ }}.
+Proof.
+  iIntros "H". iApply swp_lift_atomic_head_step; eauto.
   iIntros (σ1 κ κs Qs) "Hσ1". iMod ("H" $! σ1 with "Hσ1") as "[$ H]"; iModIntro.
   iNext; iIntros (v2 σ2 efs Hstep).
   iMod ("H" $! v2 σ2 efs with "[//]") as "(-> & ? & ?) /=". by iFrame.

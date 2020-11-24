@@ -9,14 +9,14 @@ From iris.algebra Require Import proofmode_classes.
   split the authoritative part into fractions.
 *)
 
-Definition frac_authR (A : cmraT) : cmraT :=
-  authR (optionUR (prodR fracR A)).
-Definition frac_authUR (A : cmraT) : ucmraT :=
-  authUR (optionUR (prodR fracR A)).
+Definition frac_authR {SI} (A : cmraT SI) : cmraT SI :=
+  authR (optionUR (prodR (fracR SI) A)).
+Definition frac_authUR {SI} (A : cmraT SI) : ucmraT SI :=
+  authUR (optionUR (prodR (fracR SI) A)).
 
-Definition frac_auth_auth {A : cmraT} (x : A) : frac_authR A :=
+Definition frac_auth_auth {SI} {A : cmraT SI} (x : A) : frac_authR A :=
   ● (Some (1%Qp,x)).
-Definition frac_auth_frag {A : cmraT} (q : frac) (x : A) : frac_authR A :=
+Definition frac_auth_frag {SI} {A : cmraT SI} (q : frac) (x : A) : frac_authR A :=
   ◯ (Some (q,x)).
 
 Typeclasses Opaque frac_auth_auth frac_auth_frag.
@@ -29,16 +29,16 @@ Notation "◯F{ q } a" := (frac_auth_frag q a) (at level 10, format "◯F{ q }  
 Notation "◯F a" := (frac_auth_frag 1 a) (at level 10).
 
 Section frac_auth.
-  Context {A : cmraT}.
+  Context {SI} {A : cmraT SI}.
   Implicit Types a b : A.
 
-  Global Instance frac_auth_auth_ne : NonExpansive (@frac_auth_auth A).
+  Global Instance frac_auth_auth_ne : NonExpansive (@frac_auth_auth SI A).
   Proof. solve_proper. Qed.
-  Global Instance frac_auth_auth_proper : Proper ((≡) ==> (≡)) (@frac_auth_auth A).
+  Global Instance frac_auth_auth_proper : Proper ((≡) ==> (≡)) (@frac_auth_auth SI A).
+  Proof. intros ?? H. split; simpl; by rewrite ?H.  Qed.
+  Global Instance frac_auth_frag_ne q : NonExpansive (@frac_auth_frag SI A q).
   Proof. solve_proper. Qed.
-  Global Instance frac_auth_frag_ne q : NonExpansive (@frac_auth_frag A q).
-  Proof. solve_proper. Qed.
-  Global Instance frac_auth_frag_proper q : Proper ((≡) ==> (≡)) (@frac_auth_frag A q).
+  Global Instance frac_auth_frag_proper q : Proper ((≡) ==> (≡)) (@frac_auth_frag SI A q).
   Proof. solve_proper. Qed.
 
   Global Instance frac_auth_auth_discrete a : Discrete a → Discrete (●F a).
@@ -65,13 +65,13 @@ Section frac_auth.
 
   Lemma frac_auth_includedN n q a b : ✓{n} (●F a ⋅ ◯F{q} b) → Some b ≼{n} Some a.
   Proof. by rewrite auth_both_validN /= => -[/Some_pair_includedN [_ ?] _]. Qed.
-  Lemma frac_auth_included `{CmraDiscrete A} q a b :
+  Lemma frac_auth_included `{CmraDiscrete SI A} q a b :
     ✓ (●F a ⋅ ◯F{q} b) → Some b ≼ Some a.
   Proof. by rewrite auth_both_valid /= => -[/Some_pair_included [_ ?] _]. Qed.
-  Lemma frac_auth_includedN_total `{CmraTotal A} n q a b :
+  Lemma frac_auth_includedN_total `{CmraTotal SI A} n q a b :
     ✓{n} (●F a ⋅ ◯F{q} b) → b ≼{n} a.
   Proof. intros. by eapply Some_includedN_total, frac_auth_includedN. Qed.
-  Lemma frac_auth_included_total `{CmraDiscrete A, CmraTotal A} q a b :
+  Lemma frac_auth_included_total `{CmraDiscrete SI A, CmraTotal SI A} q a b :
     ✓ (●F a ⋅ ◯F{q} b) → b ≼ a.
   Proof. intros. by eapply Some_included_total, frac_auth_included. Qed.
 
@@ -85,7 +85,7 @@ Section frac_auth.
 
   Lemma frac_auth_frag_validN n q a : ✓{n} (◯F{q} a) ↔ ✓{n} q ∧ ✓{n} a.
   Proof. done. Qed.
-  Lemma frac_auth_frag_valid q a : ✓ (◯F{q} a) ↔ ✓ q ∧ ✓ a.
+  Lemma frac_auth_frag_valid q (a: A) (n: SI) : ✓ (◯F{q} a) ↔ ✓ (q: fracR SI) ∧ ✓ a.
   Proof. done. Qed.
 
   Lemma frac_auth_frag_op q1 q2 a1 a2 : ◯F{q1+q2} (a1 ⋅ a2) ≡ ◯F{q1} a1 ⋅ ◯F{q2} a2.
@@ -94,14 +94,14 @@ Section frac_auth.
   Lemma frac_auth_frag_validN_op_1_l n q a b : ✓{n} (◯F{1} a ⋅ ◯F{q} b) → False.
   Proof. rewrite -frac_auth_frag_op frac_auth_frag_validN=> -[/exclusiveN_l []]. Qed.
   Lemma frac_auth_frag_valid_op_1_l q a b : ✓ (◯F{1} a ⋅ ◯F{q} b) → False.
-  Proof. rewrite -frac_auth_frag_op frac_auth_frag_valid=> -[/exclusive_l []]. Qed.
+  Proof. rewrite -frac_auth_frag_op frac_auth_frag_valid; eauto using zero=> -[/exclusive_l []]. Qed.
 
   Global Instance is_op_frac_auth (q q1 q2 : frac) (a a1 a2 : A) :
-    IsOp q q1 q2 → IsOp a a1 a2 → IsOp' (◯F{q} a) (◯F{q1} a1) (◯F{q2} a2).
+    IsOp (q: fracR SI) q1 q2 → IsOp a a1 a2 → IsOp' (◯F{q} a) (◯F{q1} a1) (◯F{q2} a2).
   Proof. by rewrite /IsOp' /IsOp=> /leibniz_equiv_iff -> ->. Qed.
 
   Global Instance is_op_frac_auth_core_id (q q1 q2 : frac) (a  : A) :
-    CoreId a → IsOp q q1 q2 → IsOp' (◯F{q} a) (◯F{q1} a) (◯F{q2} a).
+    CoreId a → IsOp (q: fracR SI) q1 q2 → IsOp' (◯F{q} a) (◯F{q1} a) (◯F{q2} a).
   Proof.
     rewrite /IsOp' /IsOp=> ? /leibniz_equiv_iff ->.
     by rewrite -frac_auth_frag_op -core_id_dup.

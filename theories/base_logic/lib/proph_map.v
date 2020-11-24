@@ -7,31 +7,31 @@ Import uPred.
 Local Notation proph_map P V := (gmap P (list V)).
 Definition proph_val_list (P V : Type) := list (P * V).
 
-Definition proph_mapUR (P V : Type) `{Countable P} : ucmraT :=
-  gmapUR P $ exclR $ listO $ leibnizO V.
+Definition proph_mapUR (SI: indexT) (P V : Type) `{Countable P} : ucmraT SI :=
+  gmapUR P $ exclR $ listO $ leibnizO SI V.
 
-Definition to_proph_map {P V} `{Countable P} (pvs : proph_map P V) : proph_mapUR P V :=
-  fmap (λ vs, Excl (vs : list (leibnizO V))) pvs.
+Definition to_proph_map SI {P V} `{Countable P} (pvs : proph_map P V) : proph_mapUR SI P V :=
+  fmap (λ vs, Excl (vs : list (leibnizO SI V))) pvs.
 
 (** The CMRA we need. *)
-Class proph_mapG (P V : Type) (Σ : gFunctors) `{Countable P} := ProphMapG {
-  proph_map_inG :> inG Σ (authR (proph_mapUR P V));
+Class proph_mapG {SI} (P V : Type) (Σ : gFunctors SI) `{Countable P} := ProphMapG {
+  proph_map_inG :> inG Σ (authR (proph_mapUR SI P V));
   proph_map_name : gname
 }.
-Arguments proph_map_name {_ _ _ _ _} _ : assert.
+Arguments proph_map_name {_ _ _ _ _ _} _ : assert.
 
-Class proph_mapPreG (P V : Type) (Σ : gFunctors) `{Countable P} :=
-  { proph_map_preG_inG :> inG Σ (authR (proph_mapUR P V)) }.
+Class proph_mapPreG {SI} (P V : Type) (Σ : gFunctors SI) `{Countable P} :=
+  { proph_map_preG_inG :> inG Σ (authR (proph_mapUR SI P V)) }.
 
-Definition proph_mapΣ (P V : Type) `{Countable P} : gFunctors :=
-  #[GFunctor (authR (proph_mapUR P V))].
+Definition proph_mapΣ {SI} (P V : Type) `{Countable P} : gFunctors SI :=
+  #[GFunctor (authR (proph_mapUR SI P V))].
 
-Instance subG_proph_mapPreG {Σ P V} `{Countable P} :
+Instance subG_proph_mapPreG {SI} {Σ: gFunctors SI} {P V} `{Countable P} :
   subG (proph_mapΣ P V) Σ → proph_mapPreG P V Σ.
 Proof. solve_inG. Qed.
 
 Section definitions.
-  Context `{pG : proph_mapG P V Σ}.
+  Context {SI} {Σ: gFunctors SI} `{pG : proph_mapG SI P V Σ}.
   Implicit Types pvs : proph_val_list P V.
   Implicit Types R : proph_map P V.
   Implicit Types p : P.
@@ -50,7 +50,7 @@ Section definitions.
   Definition proph_map_ctx pvs (ps : gset P) : iProp Σ :=
     (∃ R, ⌜proph_resolves_in_list R pvs ∧
           dom (gset _) R ⊆ ps⌝ ∗
-          own (proph_map_name pG) (● (to_proph_map R)))%I.
+          own (proph_map_name pG) (● (to_proph_map SI R)))%I.
 
   Definition proph_def (p : P) (vs : list V) : iProp Σ :=
     own (proph_map_name pG) (◯ {[p := Excl vs]}).
@@ -79,45 +79,52 @@ Section list_resolves.
 End list_resolves.
 
 Section to_proph_map.
-  Context (P V : Type) `{Countable P}.
+  Context (SI: indexT) (P V : Type) `{Countable P}.
   Implicit Types p : P.
   Implicit Types vs : list V.
   Implicit Types R : proph_map P V.
 
-  Lemma to_proph_map_valid R : ✓ to_proph_map R.
+  Lemma to_proph_map_valid R : ✓ to_proph_map SI R.
   Proof. intros l. rewrite lookup_fmap. by case (R !! l). Qed.
 
   Lemma to_proph_map_insert p vs R :
-    to_proph_map (<[p := vs]> R) = <[p := Excl (vs: list (leibnizO V))]> (to_proph_map R).
+    to_proph_map SI (<[p := vs]> R) = <[p := Excl (vs: list (leibnizO SI V))]> (to_proph_map SI R).
   Proof. by rewrite /to_proph_map fmap_insert. Qed.
 
   Lemma to_proph_map_delete p R :
-    to_proph_map (delete p R) = delete p (to_proph_map R).
+    to_proph_map SI (delete p R) = delete p (to_proph_map SI R).
   Proof. by rewrite /to_proph_map fmap_delete. Qed.
 
   Lemma lookup_to_proph_map_None R p :
-    R !! p = None → to_proph_map R !! p = None.
+    R !! p = None → to_proph_map SI R !! p = None.
   Proof. by rewrite /to_proph_map lookup_fmap=> ->. Qed.
 
   Lemma proph_map_singleton_included R p vs :
-    {[p := Excl vs]} ≼ to_proph_map R → R !! p = Some vs.
+    {[p := Excl vs]} ≼ to_proph_map SI R → R !! p = Some vs.
   Proof.
     rewrite singleton_included_exclusive; last by apply to_proph_map_valid.
     by rewrite leibniz_equiv_iff /to_proph_map lookup_fmap fmap_Some=> -[v' [-> [->]]].
   Qed.
 End to_proph_map.
 
-Lemma proph_map_init `{Countable P, !proph_mapPreG P V PVS} pvs ps :
-  (|==> ∃ _ : proph_mapG P V PVS, proph_map_ctx pvs ps)%I.
+Lemma proph_map_init' {SI: indexT} {Σ: gFunctors SI} `{Countable P, !proph_mapPreG P V Σ} pvs ps :
+  sbi_emp_valid (|==> ∃ γ, let H := ProphMapG SI P V Σ _ _ _ γ in proph_map_ctx pvs ps)%I.
 Proof.
-  iMod (own_alloc (● to_proph_map ∅)) as (γ) "Hh".
+  iMod (own_alloc (● to_proph_map SI ∅)) as (γ) "Hh".
   { rewrite auth_auth_valid. exact: to_proph_map_valid. }
-  iModIntro. iExists (ProphMapG P V PVS _ _ _ γ), ∅. iSplit; last by iFrame.
+  iModIntro. iExists γ, ∅. iSplit; last by iFrame.
   iPureIntro. split =>//.
 Qed.
 
+Lemma proph_map_init {SI: indexT} {PVS: gFunctors SI} `{Countable P, !proph_mapPreG P V PVS} pvs ps :
+  sbi_emp_valid (|==> ∃ _ : proph_mapG P V PVS, proph_map_ctx pvs ps)%I.
+Proof.
+  iMod (proph_map_init' pvs ps) as (γ) "H". iModIntro.
+  by iExists (ProphMapG SI P V PVS _ _ _ γ).
+Qed.
+
 Section proph_map.
-  Context `{proph_mapG P V Σ}.
+  Context {SI} {Σ: gFunctors SI} `{proph_mapG SI P V Σ}.
   Implicit Types p : P.
   Implicit Types v : V.
   Implicit Types vs : list V.
@@ -170,7 +177,7 @@ Section proph_map.
     { (* FIXME: FIXME(Coq #6294): needs new unification *)
       eapply auth_update. apply: singleton_local_update.
       - by rewrite /to_proph_map lookup_fmap HR.
-      - by apply (exclusive_local_update _ (Excl (proph_list_resolves pvs p : list (leibnizO V)))). }
+      - by apply (exclusive_local_update _ (Excl (proph_list_resolves pvs p : list (leibnizO SI V)))). }
     rewrite /to_proph_map -fmap_insert.
     iModIntro. iExists (proph_list_resolves pvs p). iFrame. iSplitR.
     - iPureIntro. done.

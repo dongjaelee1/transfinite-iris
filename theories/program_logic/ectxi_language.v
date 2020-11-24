@@ -94,6 +94,9 @@ Section ectxi_language.
   Lemma fill_app (K1 K2 : ectx) e : fill (K1 ++ K2) e = fill K2 (fill K1 e).
   Proof. apply foldl_app. Qed.
 
+  Lemma fill_cons Ki (K2 : ectx) e : fill (Ki :: K2) e = fill K2 (fill_item Ki e).
+  Proof. replace (Ki :: K2) with ([Ki] ++ K2) by auto. rewrite fill_app //. Qed.
+
   Definition ectxi_lang_ectx_mixin :
     EctxLanguageMixin of_val to_val [] (flip (++)) fill head_step.
   Proof.

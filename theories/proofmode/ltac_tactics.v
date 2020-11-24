@@ -58,7 +58,7 @@ Ltac iTypeOf H :=
   pm_eval (envs_lookup H Δ).
 
 Ltac iBiOfGoal :=
-  match goal with |- @envs_entails ?PROP _ _ => PROP end.
+  match goal with |- @envs_entails _ ?PROP _ _ => PROP end.
 
 Tactic Notation "iMatchHyp" tactic1(tac) :=
   match goal with
@@ -80,7 +80,7 @@ Tactic Notation "iStartProof" :=
      introduced. *)
 Tactic Notation "iStartProof" uconstr(PROP) :=
   lazymatch goal with
-  | |- @envs_entails ?PROP' _ _ =>
+  | |- @envs_entails ?SI ?PROP' _ _ =>
     (* This cannot be shared with the other [iStartProof], because
     type_term has a non-negligeable performance impact. *)
     let x := type_term (eq_refl : @eq Type PROP PROP') in idtac
@@ -90,7 +90,7 @@ Tactic Notation "iStartProof" uconstr(PROP) :=
      this case, typing this expression will end up unifying PROP with
      [bi_car _], and hence trigger the canonical structures mechanism
      to find the corresponding bi. *)
-  | |- ?φ => notypeclasses refine ((λ P : PROP, @as_emp_valid_2 φ _ P) _ _ _);
+  | |- ?φ => notypeclasses refine ((λ P : PROP, @as_emp_valid_2 φ _ _ P) _ _ _);
                [iSolveTC || fail "iStartProof: not a BI assertion"
                |apply tac_adequate]
   end.
@@ -1870,18 +1870,18 @@ Tactic Notation "iRevertIntros" "(" ident(x1) ident(x2) ident(x3) ident(x4)
   iRevertIntros (x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15) "" with tac.
 
 (** * Destruct tactic *)
-Class CopyDestruct {PROP : bi} (P : PROP).
-Arguments CopyDestruct {_} _%I.
-Hint Mode CopyDestruct + ! : typeclass_instances.
+Class CopyDestruct {SI} {PROP : bi SI} (P : PROP).
+Arguments CopyDestruct {_ _} _%I.
+Hint Mode CopyDestruct - + ! : typeclass_instances.
 
-Instance copy_destruct_forall {PROP : bi} {A} (Φ : A → PROP) : CopyDestruct (∀ x, Φ x) := {}.
-Instance copy_destruct_impl {PROP : bi} (P Q : PROP) :
+Instance copy_destruct_forall {SI} {PROP : bi SI} {A} (Φ : A → PROP) : CopyDestruct (∀ x, Φ x) := {}.
+Instance copy_destruct_impl {SI} {PROP : bi SI} (P Q : PROP) :
   CopyDestruct Q → CopyDestruct (P → Q) := {}.
-Instance copy_destruct_wand {PROP : bi} (P Q : PROP) :
+Instance copy_destruct_wand {SI} {PROP : bi SI} (P Q : PROP) :
   CopyDestruct Q → CopyDestruct (P -∗ Q) := {}.
-Instance copy_destruct_affinely {PROP : bi} (P : PROP) :
+Instance copy_destruct_affinely {SI} {PROP : bi SI} (P : PROP) :
   CopyDestruct P → CopyDestruct (<affine> P) := {}.
-Instance copy_destruct_persistently {PROP : bi} (P : PROP) :
+Instance copy_destruct_persistently {SI} {PROP : bi SI} (P : PROP) :
   CopyDestruct P → CopyDestruct (<pers> P) := {}.
 
 Tactic Notation "iDestructCore" open_constr(lem) "as" constr(p) tactic3(tac) :=

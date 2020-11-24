@@ -7,9 +7,10 @@ generalize the construction without breaking canonical structures. *)
 
 (* The union CMRA *)
 Section coPset.
+  Context {SI: indexT}.
   Implicit Types X Y : coPset.
 
-  Canonical Structure coPsetO := discreteO coPset.
+  Canonical Structure coPsetO := discreteO SI coPset.
 
   Instance coPset_valid : Valid coPset := λ _, True.
   Instance coPset_unit : Unit coPset := (∅ : coPset).
@@ -37,14 +38,14 @@ Section coPset.
     - intros X1 X2. by rewrite !coPset_op_union comm_L.
     - intros X. by rewrite coPset_core_self idemp_L.
   Qed.
-  Canonical Structure coPsetR := discreteR coPset coPset_ra_mixin.
+  Canonical Structure coPsetR := discreteR SI coPset coPset_ra_mixin.
 
   Global Instance coPset_cmra_discrete : CmraDiscrete coPsetR.
   Proof. apply discrete_cmra_discrete. Qed.
 
-  Lemma coPset_ucmra_mixin : UcmraMixin coPset.
+  Lemma coPset_ucmra_mixin : UcmraMixin SI coPset.
   Proof. split. done. intros X. by rewrite coPset_op_union left_id_L. done. Qed.
-  Canonical Structure coPsetUR := UcmraT coPset coPset_ucmra_mixin.
+  Canonical Structure coPsetUR := UcmraT SI coPset coPset_ucmra_mixin.
 
   Lemma coPset_opM X mY : X ⋅? mY = X ∪ default ∅ mY.
   Proof. destruct mY; by rewrite /= ?right_id_L. Qed.
@@ -60,14 +61,23 @@ Section coPset.
   Qed.
 End coPset.
 
+Arguments coPsetO : clear implicits.
+Arguments coPsetR : clear implicits.
+Arguments coPsetUR : clear implicits.
+
+
 (* The disjoiny union CMRA *)
 Inductive coPset_disj :=
   | CoPset : coPset → coPset_disj
   | CoPsetBot : coPset_disj.
+Global Instance inhabited_coPset_disj: Inhabited (coPset_disj).
+Proof. split; by constructor 2. Qed.
 
 Section coPset_disj.
   Arguments op _ _ !_ !_ /.
-  Canonical Structure coPset_disjO := leibnizO coPset_disj.
+  Context {SI: indexT}.
+
+  Canonical Structure coPset_disjO := leibnizO SI coPset_disj.
 
   Instance coPset_disj_valid : Valid coPset_disj := λ X,
     match X with CoPset _ => True | CoPsetBot => False end.
@@ -110,12 +120,16 @@ Section coPset_disj.
     - exists (CoPset ∅); coPset_disj_solve.
     - intros [X1|] [X2|]; coPset_disj_solve.
   Qed.
-  Canonical Structure coPset_disjR := discreteR coPset_disj coPset_disj_ra_mixin.
+  Canonical Structure coPset_disjR := discreteR SI coPset_disj coPset_disj_ra_mixin.
 
   Global Instance coPset_disj_cmra_discrete : CmraDiscrete coPset_disjR.
   Proof. apply discrete_cmra_discrete. Qed.
 
-  Lemma coPset_disj_ucmra_mixin : UcmraMixin coPset_disj.
+  Lemma coPset_disj_ucmra_mixin : UcmraMixin SI coPset_disj.
   Proof. split; try apply _ || done. intros [X|]; coPset_disj_solve. Qed.
-  Canonical Structure coPset_disjUR := UcmraT coPset_disj coPset_disj_ucmra_mixin.
+  Canonical Structure coPset_disjUR := UcmraT SI coPset_disj coPset_disj_ucmra_mixin.
 End coPset_disj.
+
+Arguments coPset_disjO : clear implicits.
+Arguments coPset_disjR : clear implicits.
+Arguments coPset_disjUR : clear implicits.

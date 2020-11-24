@@ -254,6 +254,8 @@ Proof.
 Defined.
 Instance val_eq_dec : EqDecision val.
 Proof. solve_decision. Defined.
+Instance state_eq_dec : EqDecision state.
+Proof. solve_decision. Defined.
 
 Instance base_lit_countable : Countable base_lit.
 Proof.
@@ -377,10 +379,10 @@ Instance state_inhabited : Inhabited state :=
 Instance val_inhabited : Inhabited val := populate (LitV LitUnit).
 Instance expr_inhabited : Inhabited expr := populate (Val inhabitant).
 
-Canonical Structure stateO := leibnizO state.
-Canonical Structure locO := leibnizO loc.
-Canonical Structure valO := leibnizO val.
-Canonical Structure exprO := leibnizO expr.
+Canonical Structure stateO SI := leibnizO SI state.
+Canonical Structure locO SI := leibnizO SI loc.
+Canonical Structure valO SI := leibnizO SI val.
+Canonical Structure exprO SI := leibnizO SI expr.
 
 (** Evaluation contexts *)
 Inductive ectx_item :=
@@ -657,7 +659,7 @@ Inductive head_step : expr → state → list observation → expr → state →
      p ∉ σ.(used_proph_id) →
      head_step NewProph σ
                []
-               (Val $ LitV $ LitProphecy p) (state_upd_used_proph_id ({[ p ]} ∪) σ)
+               (Val $ LitV $ LitProphecy p) (state_upd_used_proph_id (union {[ p ]}) σ)
                []
   | ResolveS p v e σ w σ' κs ts :
      head_step e σ κs (Val v) σ' ts →
@@ -698,7 +700,7 @@ Qed.
 
 Lemma new_proph_id_fresh σ :
   let p := fresh σ.(used_proph_id) in
-  head_step NewProph σ [] (Val $ LitV $ LitProphecy p) (state_upd_used_proph_id ({[ p ]} ∪) σ) [].
+  head_step NewProph σ [] (Val $ LitV $ LitProphecy p) (state_upd_used_proph_id (union {[ p ]}) σ) [].
 Proof. constructor. apply is_fresh. Qed.
 
 Lemma heap_lang_mixin : EctxiLanguageMixin of_val to_val fill_item head_step.
@@ -712,6 +714,9 @@ End heap_lang.
 Canonical Structure heap_ectxi_lang := EctxiLanguage heap_lang.heap_lang_mixin.
 Canonical Structure heap_ectx_lang := EctxLanguageOfEctxi heap_ectxi_lang.
 Canonical Structure heap_lang := LanguageOfEctx heap_ectx_lang.
+
+Global Instance cfg_eq_dec : EqDecision (cfg heap_lang).
+Proof. solve_decision. Defined.
 
 (* Prefer heap_lang names over ectx_language names. *)
 Export heap_lang.
@@ -731,6 +736,12 @@ Proof.
   assert (to_val (fill (Ki :: K) (Val w)) = None).
   { destruct Ki; simpl; apply fill_not_val; done. }
   by simplify_eq.
+Qed.
+
+Lemma to_val_fill_none e K: to_val e = None → to_val (fill K e) = None.
+Proof.
+  intros H; destruct (to_val (fill K e)) eqn: Hval; auto.
+  apply to_val_fill_some in Hval as [_ ->]. discriminate.
 Qed.
 
 Lemma prim_step_to_val_is_head_step e σ1 κs w σ2 efs :

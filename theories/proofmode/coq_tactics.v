@@ -7,13 +7,13 @@ Import env_notations.
 
 (* Coq versions of the tactics *)
 Section bi_tactics.
-Context {PROP : bi}.
+Context {SI} {PROP : bi SI}.
 Implicit Types Γ : env PROP.
 Implicit Types Δ : envs PROP.
 Implicit Types P Q : PROP.
 
 (** * Adequacy *)
-Lemma tac_adequate P : envs_entails (Envs Enil Enil 1) P → P.
+Lemma tac_adequate P : envs_entails (Envs Enil Enil 1) P → emp ⊢ P.
 Proof.
   rewrite envs_entails_eq !of_envs_eq /=.
   rewrite intuitionistically_True_emp left_id=><-.
@@ -51,7 +51,7 @@ Global Instance affine_env_snoc Γ i P :
 Proof. by constructor. Qed.
 
 (* If the BI is affine, no need to walk on the whole environment. *)
-Global Instance affine_env_bi `(BiAffine PROP) Γ : AffineEnv Γ | 0.
+Global Instance affine_env_bi `(BiAffine SI PROP) Γ : AffineEnv Γ | 0.
 Proof. induction Γ; apply _. Qed.
 
 Instance affine_env_spatial Δ :
@@ -439,7 +439,7 @@ Proof.
 Qed.
 
 Lemma tac_pose_proof Δ j P Q :
-  P →
+  (emp ⊢ P) →
   match envs_app true (Esnoc Enil j P) Δ with
   | None => False
   | Some Δ' => envs_entails Δ' Q
@@ -498,12 +498,12 @@ Proof.
 Qed.
 
 (** * Combining *)
-Class FromSeps {PROP : bi} (P : PROP) (Qs : list PROP) :=
+Class FromSeps {SI} {PROP : bi SI} (P : PROP) (Qs : list PROP) :=
   from_seps : [∗] Qs ⊢ P.
-Arguments FromSeps {_} _%I _%I.
-Arguments from_seps {_} _%I _%I {_}.
+Arguments FromSeps {_ _} _%I _%I.
+Arguments from_seps {_ _} _%I _%I {_}.
 
-Global Instance from_seps_nil : @FromSeps PROP emp [].
+Global Instance from_seps_nil : @FromSeps SI PROP emp [].
 Proof. by rewrite /FromSeps. Qed.
 Global Instance from_seps_singleton P : FromSeps P [P] | 1.
 Proof. by rewrite /FromSeps /= right_id. Qed.
@@ -732,7 +732,7 @@ Inputs:
 
 Outputs:
 - [Γout] : the resulting environment. *)
-Class TransformIntuitionisticEnv {PROP1 PROP2} (M : modality PROP1 PROP2)
+Class TransformIntuitionisticEnv {SI} {PROP1 PROP2: bi SI} (M : modality PROP1 PROP2)
     (C : PROP2 → PROP1 → Prop) (Γin : env PROP2) (Γout : env PROP1) := {
   transform_intuitionistic_env :
     (∀ P Q, C P Q → □ P ⊢ M (□ Q)) →
@@ -755,7 +755,7 @@ Inputs:
 Outputs:
 - [Γout] : the resulting environment.
 - [filtered] : a Boolean indicating if non-affine hypotheses have been cleared. *)
-Class TransformSpatialEnv {PROP1 PROP2} (M : modality PROP1 PROP2)
+Class TransformSpatialEnv {SI} {PROP1 PROP2: bi SI} (M : modality PROP1 PROP2)
     (C : PROP2 → PROP1 → Prop) (Γin : env PROP2) (Γout : env PROP1)
     (filtered : bool) := {
   transform_spatial_env :
@@ -777,7 +777,7 @@ Inputs:
 
 Outputs:
 - [Γout] : the resulting environment. *)
-Inductive IntoModalIntuitionisticEnv {PROP2} : ∀ {PROP1} (M : modality PROP1 PROP2)
+Inductive IntoModalIntuitionisticEnv {SI} {PROP2: bi SI} : ∀ {PROP1} (M : modality PROP1 PROP2)
     (Γin : env PROP2) (Γout : env PROP1), modality_action PROP1 PROP2 → Prop :=
   | MIEnvIsEmpty_intuitionistic {PROP1} (M : modality PROP1 PROP2) :
      IntoModalIntuitionisticEnv M Enil Enil MIEnvIsEmpty
@@ -788,7 +788,7 @@ Inductive IntoModalIntuitionisticEnv {PROP2} : ∀ {PROP1} (M : modality PROP1 P
        (M : modality PROP1 PROP2) (C : PROP2 → PROP1 → Prop) Γin Γout :
      TransformIntuitionisticEnv M C Γin Γout →
      IntoModalIntuitionisticEnv M Γin Γout (MIEnvTransform C)
-  | MIEnvClear_intuitionistic {PROP1 : bi} (M : modality PROP1 PROP2) Γ :
+  | MIEnvClear_intuitionistic {PROP1: bi SI} (M : modality PROP1 PROP2) Γ :
      IntoModalIntuitionisticEnv M Γ Enil MIEnvClear
   | MIEnvId_intuitionistic (M : modality PROP2 PROP2) Γ :
      IntoModalIntuitionisticEnv M Γ Γ MIEnvId.
@@ -809,7 +809,7 @@ Inputs:
 Outputs:
 - [Γout] : the resulting environment.
 - [filtered] : a Boolean indicating if non-affine hypotheses have been cleared. *)
-Inductive IntoModalSpatialEnv {PROP2} : ∀ {PROP1} (M : modality PROP1 PROP2)
+Inductive IntoModalSpatialEnv {SI} {PROP2: bi SI} : ∀ {PROP1} (M : modality PROP1 PROP2)
     (Γin : env PROP2) (Γout : env PROP1), modality_action PROP1 PROP2 → bool → Prop :=
   | MIEnvIsEmpty_spatial {PROP1} (M : modality PROP1 PROP2) :
      IntoModalSpatialEnv M Enil Enil MIEnvIsEmpty false
@@ -820,7 +820,7 @@ Inductive IntoModalSpatialEnv {PROP2} : ∀ {PROP1} (M : modality PROP1 PROP2)
        (M : modality PROP1 PROP2) (C : PROP2 → PROP1 → Prop) Γin Γout fi :
      TransformSpatialEnv M C Γin Γout fi →
      IntoModalSpatialEnv M Γin Γout (MIEnvTransform C) fi
-  | MIEnvClear_spatial {PROP1 : bi} (M : modality PROP1 PROP2) Γ :
+  | MIEnvClear_spatial {PROP1 : bi SI} (M : modality PROP1 PROP2) Γ :
      IntoModalSpatialEnv M Γ Enil MIEnvClear false
   | MIEnvId_spatial (M : modality PROP2 PROP2) Γ :
      IntoModalSpatialEnv M Γ Γ MIEnvId false.
@@ -829,7 +829,7 @@ Existing Instances MIEnvIsEmpty_spatial MIEnvForall_spatial
   MIEnvTransform_spatial MIEnvClear_spatial MIEnvId_spatial.
 
 Section tac_modal_intro.
-  Context {PROP1 PROP2 : bi} (M : modality PROP1 PROP2).
+  Context {SI} {PROP1 PROP2 : bi SI} (M : modality PROP1 PROP2).
 
   Global Instance transform_intuitionistic_env_nil C : TransformIntuitionisticEnv M C Enil Enil.
   Proof.
@@ -940,7 +940,7 @@ Section tac_modal_intro.
 End tac_modal_intro.
 
 Section sbi_tactics.
-Context {PROP : sbi}.
+Context {SI} {PROP : sbi SI}.
 Implicit Types Γ : env PROP.
 Implicit Types Δ : envs PROP.
 Implicit Types P Q : PROP.
@@ -948,7 +948,7 @@ Implicit Types P Q : PROP.
 (** * Rewriting *)
 Lemma tac_rewrite Δ i p Pxy d Q :
   envs_lookup i Δ = Some (p, Pxy) →
-  ∀ {A : ofeT} (x y : A) (Φ : A → PROP),
+  ∀ {A : ofeT SI} (x y : A) (Φ : A → PROP),
     IntoInternalEq Pxy x y →
     (Q ⊣⊢ Φ (if d is Left then y else x)) →
     NonExpansive Φ →
@@ -963,7 +963,7 @@ Qed.
 Lemma tac_rewrite_in Δ i p Pxy j q P d Q :
   envs_lookup i Δ = Some (p, Pxy) →
   envs_lookup j Δ = Some (q, P) →
-  ∀ {A : ofeT} (x y : A) (Φ : A → PROP),
+  ∀ {A : ofeT SI} (x y : A) (Φ : A → PROP),
     IntoInternalEq Pxy x y →
     (P ⊣⊢ Φ (if d is Left then y else x)) →
     NonExpansive Φ →
@@ -1006,7 +1006,7 @@ Proof. by split. Qed.
 Lemma into_laterN_env_sound n Δ1 Δ2 :
   MaybeIntoLaterNEnvs n Δ1 Δ2 → of_envs Δ1 ⊢ ▷^n (of_envs Δ2).
 Proof.
-  intros [[Hp ??] [Hs ??]]; rewrite !of_envs_eq /= !laterN_and !laterN_sep.
+  intros [[Hp ??] [Hs ??]]; rewrite !of_envs_eq /= !laterN_and -laterN_sep_2.
   rewrite -{1}laterN_intro. apply and_mono, sep_mono.
   - apply pure_mono; destruct 1; constructor; naive_solver.
   - apply Hp; rewrite /= /MaybeIntoLaterN.

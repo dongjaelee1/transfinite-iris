@@ -4,7 +4,7 @@ Set Default Proof Using "Type".
 Import bi.
 
 Module bi_reflection. Section bi_reflection.
-  Context {PROP : bi}.
+  Context {SI} {PROP : bi SI}.
 
   Inductive expr :=
     | EEmp : expr
@@ -32,7 +32,7 @@ Module bi_reflection. Section bi_reflection.
   Qed.
 
   (* Can be related to the RHS being affine *)
-  Lemma flatten_entails `{BiAffine PROP} Σ e1 e2 :
+  Lemma flatten_entails `{BiAffine SI PROP} Σ e1 e2 :
     flatten e2 ⊆+ flatten e1 → eval Σ e1 ⊢ eval Σ e2.
   Proof. intros. rewrite !eval_flatten. by apply big_sepL_submseteq. Qed.
   Lemma flatten_equiv Σ e1 e2 :

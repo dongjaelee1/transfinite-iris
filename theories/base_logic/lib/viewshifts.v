@@ -2,11 +2,11 @@ From iris.base_logic.lib Require Export invariants.
 From iris.proofmode Require Import tactics.
 Set Default Proof Using "Type".
 
-Definition vs `{!invG Σ} (E1 E2 : coPset) (P Q : iProp Σ) : iProp Σ :=
+Definition vs {SI} {Σ : gFunctors SI} `{!invG Σ} (E1 E2 : coPset) (P Q : iProp Σ) : iProp Σ :=
   (□ (P -∗ |={E1,E2}=> Q))%I.
-Arguments vs {_ _} _ _ _%I _%I.
+Arguments vs {_ _ _} _ _ _%I _%I.
 
-Instance: Params (@vs) 4 := {}.
+Instance: Params (@vs) 5 := {}.
 Notation "P ={ E1 , E2 }=> Q" := (vs E1 E2 P Q)
   (at level 99, E1,E2 at level 50, Q at level 200,
    format "P  ={ E1 , E2 }=>  Q") : bi_scope.
@@ -22,7 +22,7 @@ Notation "P ={ E }=> Q" := (P ={E}=> Q)%I
    format "P  ={ E }=>  Q") : stdpp_scope.
 
 Section vs.
-Context `{!invG Σ}.
+Context {SI} {Σ : gFunctors SI} `{!invG Σ}.
 Implicit Types P Q R : iProp Σ.
 Implicit Types N : namespace.
 

@@ -1,16 +1,18 @@
-opam-version: "1.2"
+opam-version: "2.0"
 name: "coq-iris"
-synopsis: "This is the Coq development of the Iris Project"
 maintainer: "Ralf Jung <jung@mpi-sws.org>"
 authors: "The Iris Team"
-homepage: "http://iris-project.org/"
-bug-reports: "https://gitlab.mpi-sws.org/iris/iris/issues"
 license: "BSD"
-dev-repo: "https://gitlab.mpi-sws.org/iris/iris.git"
+homepage: "https://iris-project.org/"
+bug-reports: "https://gitlab.mpi-sws.org/iris/iris/issues"
+dev-repo: "git+https://gitlab.mpi-sws.org/iris/iris.git"
+
+synopsis: "This is the Coq development of the Iris Project"
+
+depends: [
+  "coq" { (= "8.10.2") }
+  "coq-stdpp" { (= "1.3.0") }
+]
+
 build: [make "-j%{jobs}%"]
 install: [make "install"]
-remove: ["rm" "-rf" "%{lib}%/coq/user-contrib/iris"]
-depends: [
-  "coq" { (= "8.7.2") | (= "8.8.2") | (>= "8.9" & < "8.11~") | (= "dev") }
-  "coq-stdpp" { (= "dev.2019-07-08.0.2e0bf441") | (= "dev") }
-]

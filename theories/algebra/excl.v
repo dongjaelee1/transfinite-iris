@@ -21,7 +21,7 @@ Instance maybe_Excl {A} : Maybe (@Excl A) := λ x,
   match x with Excl a => Some a | _ => None end.
 
 Section excl.
-Context {A : ofeT}.
+Context {SI} {A : ofeT SI}.
 Implicit Types a b : A.
 Implicit Types x y : excl A.
 
@@ -30,7 +30,7 @@ Inductive excl_equiv : Equiv (excl A) :=
   | Excl_equiv a b : a ≡ b → Excl a ≡ Excl b
   | ExclBot_equiv : ExclBot ≡ ExclBot.
 Existing Instance excl_equiv.
-Inductive excl_dist : Dist (excl A) :=
+Inductive excl_dist : Dist SI (excl A) :=
   | Excl_dist a b n : a ≡{n}≡ b → Excl a ≡{n}≡ Excl b
   | ExclBot_dist n : ExclBot ≡{n}≡ ExclBot.
 Existing Instance excl_dist.
@@ -44,13 +44,13 @@ Proof. by inversion_clear 1. Qed.
 Global Instance Excl_dist_inj n : Inj (dist n) (dist n) (@Excl A).
 Proof. by inversion_clear 1. Qed.
 
-Definition excl_ofe_mixin : OfeMixin (excl A).
+Definition excl_ofe_mixin : OfeMixin SI (excl A).
 Proof.
   apply (iso_ofe_mixin (maybe Excl)).
   - by intros [a|] [b|]; split; inversion_clear 1; constructor.
   - by intros n [a|] [b|]; split; inversion_clear 1; constructor.
 Qed.
-Canonical Structure exclO : ofeT := OfeT (excl A) excl_ofe_mixin.
+Canonical Structure exclO : ofeT SI := OfeT (excl A) excl_ofe_mixin.
 
 Global Instance excl_cofe `{!Cofe A} : Cofe exclO.
 Proof.
@@ -72,24 +72,24 @@ Proof. by inversion_clear 1; constructor. Qed.
 (* CMRA *)
 Instance excl_valid : Valid (excl A) := λ x,
   match x with Excl _ => True | ExclBot => False end.
-Instance excl_validN : ValidN (excl A) := λ n x,
+Instance excl_validN : ValidN SI (excl A) := λ n x,
   match x with Excl _ => True | ExclBot => False end.
 Instance excl_pcore : PCore (excl A) := λ _, None.
 Instance excl_op : Op (excl A) := λ x y, ExclBot.
 
-Lemma excl_cmra_mixin : CmraMixin (excl A).
+Lemma excl_cmra_mixin : CmraMixin SI (excl A).
 Proof.
   split; try discriminate.
-  - by intros n []; destruct 1; constructor.
+  - intros [] n; destruct 1; constructor.
   - by destruct 1; intros ?.
-  - intros x; split. done. by move=> /(_ 0).
-  - intros n [?|]; simpl; auto with lia.
+  - intros x; split. done. by move=> /(_ zero).
+  - intros n m [?|]; simpl; auto.
   - by intros [?|] [?|] [?|]; constructor.
   - by intros [?|] [?|]; constructor.
   - by intros n [?|] [?|].
   - intros n x [?|] [?|] ? Hx; eexists _, _; inversion_clear Hx; eauto.
 Qed.
-Canonical Structure exclR := CmraT (excl A) excl_cmra_mixin.
+Canonical Structure exclR := CmraT SI (excl A) excl_cmra_mixin.
 
 Global Instance excl_cmra_discrete : OfeDiscrete A → CmraDiscrete exclR.
 Proof. split. apply _. by intros []. Qed.
@@ -124,8 +124,8 @@ Lemma Excl_included a b : Excl' a ≼ Excl' b → a ≡ b.
 Proof. by intros [[c|] Hb%(inj Some)]; inversion_clear Hb. Qed.
 End excl.
 
-Arguments exclO : clear implicits.
-Arguments exclR : clear implicits.
+Arguments exclO {_} _.
+Arguments exclR {_} _.
 
 (* Functor *)
 Definition excl_map {A B} (f : A → B) (x : excl A) : excl B :=
@@ -135,38 +135,38 @@ Proof. by destruct x. Qed.
 Lemma excl_map_compose {A B C} (f : A → B) (g : B → C) (x : excl A) :
   excl_map (g ∘ f) x = excl_map g (excl_map f x).
 Proof. by destruct x. Qed.
-Lemma excl_map_ext {A B : ofeT} (f g : A → B) x :
+Lemma excl_map_ext {SI} {A B : ofeT SI} (f g : A → B) x :
   (∀ x, f x ≡ g x) → excl_map f x ≡ excl_map g x.
 Proof. by destruct x; constructor. Qed.
-Instance excl_map_ne {A B : ofeT} n :
+Instance excl_map_ne {SI} {A B : ofeT SI} n :
   Proper ((dist n ==> dist n) ==> dist n ==> dist n) (@excl_map A B).
 Proof. by intros f f' Hf; destruct 1; constructor; apply Hf. Qed.
-Instance excl_map_cmra_morphism {A B : ofeT} (f : A → B) :
+Instance excl_map_cmra_morphism {SI} {A B : ofeT SI} (f : A → B) :
   NonExpansive f → CmraMorphism (excl_map f).
 Proof. split; try done; try apply _. by intros n [a|]. Qed.
-Definition exclO_map {A B} (f : A -n> B) : exclO A -n> exclO B :=
+Definition exclO_map {SI} {A B: ofeT SI} (f : A -n> B) : exclO A -n> exclO B :=
   OfeMor (excl_map f).
-Instance exclO_map_ne A B : NonExpansive (@exclO_map A B).
+Instance exclO_map_ne {SI} (A B: ofeT SI) : NonExpansive (@exclO_map SI A B).
 Proof. by intros n f f' Hf []; constructor; apply Hf. Qed.
 
-Program Definition exclRF (F : oFunctor) : rFunctor := {|
-  rFunctor_car A _ B _ := (exclR (oFunctor_car F A B));
-  rFunctor_map A1 _ A2 _ B1 _ B2 _ fg := exclO_map (oFunctor_map F fg)
+Program Definition exclRF {SI} (F : oFunctor SI) : rFunctor SI := {|
+  rFunctor_car A B := (exclR (oFunctor_car F A B));
+  rFunctor_map A1 A2 B1 B2 fg := exclO_map (oFunctor_map F fg)
 |}.
 Next Obligation.
-  intros F A1 ? A2 ? B1 ? B2 ? n x1 x2 ??. by apply exclO_map_ne, oFunctor_ne.
+  intros SI F A1 A2 B1 B2 n x1 x2 ??. by apply exclO_map_ne, oFunctor_ne.
 Qed.
 Next Obligation.
-  intros F A ? B ? x; simpl. rewrite -{2}(excl_map_id x).
+  intros SI F A B x; simpl. rewrite -{2}(excl_map_id x).
   apply excl_map_ext=>y. by rewrite oFunctor_id.
 Qed.
 Next Obligation.
-  intros F A1 ? A2 ? A3 ? B1 ? B2 ? B3 ? f g f' g' x; simpl. rewrite -excl_map_compose.
+  intros SI F A1 A2 A3 B1 B2 B3 f g f' g' x; simpl. rewrite -excl_map_compose.
   apply excl_map_ext=>y; apply oFunctor_compose.
 Qed.
 
-Instance exclRF_contractive F :
+Instance exclRF_contractive {SI} (F: oFunctor SI) :
   oFunctorContractive F → rFunctorContractive (exclRF F).
 Proof.
-  intros A1 ? A2 ? B1 ? B2 ? n x1 x2 ??. by apply exclO_map_ne, oFunctor_contractive.
+  intros A1 A2 B1 B2 n x1 x2 ??. by apply exclO_map_ne, oFunctor_contractive.
 Qed.

@@ -20,13 +20,13 @@ Since these big operators are like quantifiers, they have the same precedence as
 [∀] and [∃]. *)
 
 (** * Big ops over lists *)
-Fixpoint big_opL `{Monoid M o} {A} (f : nat → A → M) (xs : list A) : M :=
+Fixpoint big_opL `{Monoid SI M o} {A} (f : nat → A → M) (xs : list A) : M :=
   match xs with
   | [] => monoid_unit
   | x :: xs => o (f 0 x) (big_opL (λ n, f (S n)) xs)
   end.
-Instance: Params (@big_opL) 4 := {}.
-Arguments big_opL {M} o {_ A} _ !_ /.
+Instance: Params (@big_opL) 5 := {}.
+Arguments big_opL {_ M} o {_ A} _ !_ /.
 Typeclasses Opaque big_opL.
 Notation "'[^' o 'list]' k ↦ x ∈ l , P" := (big_opL o (λ k x, P) l)
   (at level 200, o at level 1, l at level 10, k, x at level 1, right associativity,
@@ -35,10 +35,10 @@ Notation "'[^' o 'list]' x ∈ l , P" := (big_opL o (λ _ x, P) l)
   (at level 200, o at level 1, l at level 10, x at level 1, right associativity,
    format "[^ o  list]  x  ∈  l ,  P") : stdpp_scope.
 
-Definition big_opM `{Monoid M o} `{Countable K} {A} (f : K → A → M)
+Definition big_opM `{Monoid SI M o} `{Countable K} {A} (f : K → A → M)
     (m : gmap K A) : M := big_opL o (λ _, curry f) (map_to_list m).
-Instance: Params (@big_opM) 7 := {}.
-Arguments big_opM {M} o {_ K _ _ A} _ _ : simpl never.
+Instance: Params (@big_opM) 8 := {}.
+Arguments big_opM {_ M} o {_ K _ _ A} _ _ : simpl never.
 Typeclasses Opaque big_opM.
 Notation "'[^' o 'map]' k ↦ x ∈ m , P" := (big_opM o (λ k x, P) m)
   (at level 200, o at level 1, m at level 10, k, x at level 1, right associativity,
@@ -47,19 +47,19 @@ Notation "'[^' o 'map]' x ∈ m , P" := (big_opM o (λ _ x, P) m)
   (at level 200, o at level 1, m at level 10, x at level 1, right associativity,
    format "[^ o  map]  x  ∈  m ,  P") : stdpp_scope.
 
-Definition big_opS `{Monoid M o} `{Countable A} (f : A → M)
+Definition big_opS `{Monoid SI M o} `{Countable A} (f : A → M)
   (X : gset A) : M := big_opL o (λ _, f) (elements X).
-Instance: Params (@big_opS) 6 := {}.
-Arguments big_opS {M} o {_ A _ _} _ _ : simpl never.
+Instance: Params (@big_opS) 7 := {}.
+Arguments big_opS {_ M} o {_ A _ _} _ _ : simpl never.
 Typeclasses Opaque big_opS.
 Notation "'[^' o 'set]' x ∈ X , P" := (big_opS o (λ x, P) X)
   (at level 200, o at level 1, X at level 10, x at level 1, right associativity,
    format "[^ o  set]  x  ∈  X ,  P") : stdpp_scope.
 
-Definition big_opMS `{Monoid M o} `{Countable A} (f : A → M)
+Definition big_opMS `{Monoid SI M o} `{Countable A} (f : A → M)
   (X : gmultiset A) : M := big_opL o (λ _, f) (elements X).
 Instance: Params (@big_opMS) 7 := {}.
-Arguments big_opMS {M} o {_ A _ _} _ _ : simpl never.
+Arguments big_opMS {_ M} o {_ A _ _} _ _ : simpl never.
 Typeclasses Opaque big_opMS.
 Notation "'[^' o 'mset]' x ∈ X , P" := (big_opMS o (λ x, P) X)
   (at level 200, o at level 1, X at level 10, x at level 1, right associativity,
@@ -67,7 +67,7 @@ Notation "'[^' o 'mset]' x ∈ X , P" := (big_opMS o (λ x, P) X)
 
 (** * Properties about big ops *)
 Section big_op.
-Context `{Monoid M o}.
+Context `{Monoid SI M o}.
 Implicit Types xs : list M.
 Infix "`o`" := o (at level 50, left associativity).
 
@@ -416,7 +416,7 @@ End gmultiset.
 End big_op.
 
 Section homomorphisms.
-  Context `{Monoid M1 o1, Monoid M2 o2}.
+  Context `{Monoid SI M1 o1, Monoid SI M2 o2}.
   Infix "`o1`" := o1 (at level 50, left associativity).
   Infix "`o2`" := o2 (at level 50, left associativity).
   (** The ssreflect rewrite tactic only works for relations that have a

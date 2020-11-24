@@ -5,14 +5,14 @@ From iris.proofmode Require Import tactics.
 Set Default Proof Using "Type".
 Import uPred.
 
-Class cinvG Σ := cinv_inG :> inG Σ fracR.
-Definition cinvΣ : gFunctors := #[GFunctor fracR].
+Class cinvG {SI} Σ := cinv_inG :> inG Σ (fracR SI).
+Definition cinvΣ SI : gFunctors SI := #[GFunctor (fracR SI)].
 
-Instance subG_cinvΣ {Σ} : subG cinvΣ Σ → cinvG Σ.
+Instance subG_cinvΣ {SI} {Σ} : subG (cinvΣ SI) Σ → cinvG Σ.
 Proof. solve_inG. Qed.
 
 Section defs.
-  Context `{!invG Σ, !cinvG Σ}.
+  Context {SI} {Σ : gFunctors SI} `{!invG Σ, !cinvG Σ}.
 
   Definition cinv_own (γ : gname) (p : frac) : iProp Σ := own γ p.
 
@@ -20,10 +20,10 @@ Section defs.
     (∃ P', □ ▷ (P ↔ P') ∗ inv N (P' ∨ cinv_own γ 1%Qp))%I.
 End defs.
 
-Instance: Params (@cinv) 5 := {}.
+Instance: Params (@cinv) 6 := {}.
 
 Section proofs.
-  Context `{!invG Σ, !cinvG Σ}.
+  Context {SI} {Σ : gFunctors SI} `{!invG Σ, !cinvG Σ}.
 
   Global Instance cinv_own_timeless γ p : Timeless (cinv_own γ p).
   Proof. rewrite /cinv_own; apply _. Qed.
@@ -64,7 +64,7 @@ Section proofs.
 
   Lemma cinv_alloc_strong (I : gname → Prop) E N :
     pred_infinite I →
-    (|={E}=> ∃ γ, ⌜ I γ ⌝ ∧ cinv_own γ 1 ∗ ∀ P, ▷ P ={E}=∗ cinv N γ P)%I.
+    ⊢ (|={E}=> ∃ γ, ⌜ I γ ⌝ ∧ cinv_own γ 1 ∗ ∀ P, ▷ P ={E}=∗ cinv N γ P)%I.
   Proof.
     iIntros (?). iMod (own_alloc_strong 1%Qp I) as (γ) "[Hfresh Hγ]"; [done|done|].
     iExists γ; iIntros "!> {$Hγ $Hfresh}" (P) "HP".
@@ -73,13 +73,13 @@ Section proofs.
   Qed.
 
   Lemma cinv_alloc_cofinite (G : gset gname) E N :
-    (|={E}=> ∃ γ, ⌜ γ ∉ G ⌝ ∧ cinv_own γ 1 ∗ ∀ P, ▷ P ={E}=∗ cinv N γ P)%I.
+    ⊢ (|={E}=> ∃ γ, ⌜ γ ∉ G ⌝ ∧ cinv_own γ 1 ∗ ∀ P, ▷ P ={E}=∗ cinv N γ P)%I.
   Proof.
     apply cinv_alloc_strong. apply (pred_infinite_set (C:=gset gname))=> E'.
     exists (fresh (G ∪ E')). apply not_elem_of_union, is_fresh.
   Qed.
 
-  Lemma cinv_open_strong E N γ p P :
+  Lemma cinv_open_strong `{FiniteBoundedExistential SI}  E N γ p P :
     ↑N ⊆ E →
     cinv N γ P -∗ cinv_own γ p ={E,E∖↑N}=∗
     ▷ P ∗ cinv_own γ p ∗ (▷ P ∨ cinv_own γ 1 ={E∖↑N,E}=∗ True).
@@ -100,14 +100,14 @@ Section proofs.
     iExists γ. iFrame "Hγ". by iApply "Halloc".
   Qed.
 
-  Lemma cinv_cancel E N γ P : ↑N ⊆ E → cinv N γ P -∗ cinv_own γ 1 ={E}=∗ ▷ P.
+  Lemma cinv_cancel `{FiniteBoundedExistential SI} E N γ P : ↑N ⊆ E → cinv N γ P -∗ cinv_own γ 1 ={E}=∗ ▷ P.
   Proof.
     iIntros (?) "#Hinv Hγ".
     iMod (cinv_open_strong with "Hinv Hγ") as "($ & Hγ & H)"; first done.
     iApply "H". by iRight.
   Qed.
 
-  Lemma cinv_open E N γ p P :
+  Lemma cinv_open `{FiniteBoundedExistential SI} E N γ p P :
     ↑N ⊆ E →
     cinv N γ P -∗ cinv_own γ p ={E,E∖↑N}=∗ ▷ P ∗ cinv_own γ p ∗ (▷ P ={E∖↑N,E}=∗ True).
   Proof.
@@ -118,7 +118,7 @@ Section proofs.
 
   Global Instance into_inv_cinv N γ P : IntoInv (cinv N γ P) N := {}.
 
-  Global Instance into_acc_cinv E N γ P p :
+  Global Instance into_acc_cinv `{FiniteBoundedExistential SI} E N γ P p :
     IntoAcc (X:=unit) (cinv N γ P)
             (↑N ⊆ E) (cinv_own γ p) (fupd E (E∖↑N)) (fupd (E∖↑N) E)
             (λ _, ▷ P ∗ cinv_own γ p)%I (λ _, ▷ P)%I (λ _, None)%I.
