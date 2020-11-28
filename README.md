@@ -5,8 +5,6 @@ It is based on the Coq development of the [Iris Project](http://iris-project.org
 which includes [MoSeL](http://iris-project.org/mosel/), a general proof mode
 for carrying out separation logic proofs in Coq.
 
-For understanding the theory of Transfinite Iris, a supplementary appendix PDF has been submitted alongside this artifact.
-
 For using Transfinite Iris and inspecting the development interactively, it needs to be compiled.
 
 ## Building Transfinite Iris
