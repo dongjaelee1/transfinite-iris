@@ -26,35 +26,35 @@ Section eventually.
 
   Lemma eventuallyN_plain `{BP: BiPlainly SI PROP} `{@BiFUpdPlainly SI PROP FU BP} (P : PROP) n E:
     Plain P → (<E>_n P) ⊢ |={E}=> ▷^(S n) P.
-  Proof. 
+  Proof.
     iIntros (HP) "H". iInduction n as [ | n] "IH".
-    - iMod "H". by iModIntro. 
-    - simpl. iSpecialize ("IH" with "H"). 
-      iMod "IH". 
-      iPoseProof (fupd_trans with "IH") as "IH". 
+    - iMod "H". by iModIntro.
+    - simpl. iSpecialize ("IH" with "H").
+      iMod "IH".
+      iPoseProof (fupd_trans with "IH") as "IH".
       iPoseProof (fupd_plain_later with "IH") as "IH".
-      iMod "IH". iModIntro. 
-      iNext. by iApply except_0_later. 
+      iMod "IH". iModIntro.
+      iNext. by iApply except_0_later.
   Qed.
 
   Lemma eventually_plain `{BP: BiPlainly SI PROP} `{@BiFUpdPlainly SI PROP FU BP} (P : PROP) E:
     Plain P → (<E> P) ⊢ |={E}=> ⧍ P.
   Proof.
-    intros HP. iIntros "H". 
-    unfold eventually. iMod "H". iDestruct "H" as (n) "H". 
-    iDestruct (eventuallyN_plain _ with "H") as "H". 
+    intros HP. iIntros "H".
+    unfold eventually. iMod "H". iDestruct "H" as (n) "H".
+    iDestruct (eventuallyN_plain _ with "H") as "H".
     iMod "H". iModIntro. eauto.
   Qed.
 
-  Existing Instance elim_eventuallyN. 
+  Existing Instance elim_eventuallyN.
   Lemma lstep_fupd_plain `{BP: BiPlainly SI PROP} `{@BiFUpdPlainly SI PROP FU BP} (P : PROP):
     Plain P → ((>={⊤}=={⊤}=> P) ⊢ |={⊤}=> ⧍ P)%I.
   Proof.
-    iIntros (HP) "H". 
+    iIntros (HP) "H".
     iApply (fupd_plain_mask _ ∅). iMod "H".
-    iApply eventually_plain. 
-    iApply eventually_fupd_right. 
-    iMod "H" as (n) "H". iApply (eventuallyN_eventually (n)).  iMod "H". 
+    iApply eventually_plain.
+    iApply eventually_fupd_right.
+    iMod "H" as (n) "H". iApply (eventuallyN_eventually (n)).  iMod "H".
     by iApply (fupd_plain_mask _ ⊤).
   Qed.
 
@@ -64,10 +64,10 @@ Section eventually.
     intros HP. iIntros "H". iInduction n as [|n] "IH"; simpl.
     - by iModIntro.
     - iAssert (>={⊤}=={⊤}=> ⧍^n P)%I with "[H]" as "H".
-      { do 2 iMod "H". iModIntro. iDestruct "H" as (n') "H". 
-        iApply (eventuallyN_eventually (n' )). iMod "H". 
-        iMod "H". by iSpecialize ("IH" with "H"). 
-      } 
+      { do 2 iMod "H". iModIntro. iDestruct "H" as (n') "H".
+        iApply (eventuallyN_eventually (n' )). iMod "H".
+        iMod "H". by iSpecialize ("IH" with "H").
+      }
       iApply (lstep_fupd_plain with "H").
   Qed.
 End eventually.
@@ -189,7 +189,7 @@ Lemma wp_value_inv' s E Φ v : WP of_val v @ s; E {{ Φ }} ={E}=∗ Φ v.
 Proof. by rewrite wp_unfold /wp_pre to_of_val. Qed.
 
 Section gstep.
-Local Existing Instance elim_gstep. 
+Local Existing Instance elim_gstep.
 Lemma wp_strong_mono s1 s2 E1 E2 e Φ Ψ :
   s1 ⊑ s2 → E1 ⊆ E2 →
   WP e @ s1; E1 {{ Φ }} -∗ (∀ v, Φ v ={E2}=∗ Ψ v) -∗ WP e @ s2; E2 {{ Ψ }}.
@@ -199,7 +199,7 @@ Proof.
   destruct (to_val e) as [v|] eqn:?.
   { iApply ("HΦ" with "[> -]"). by iApply (fupd_mask_mono E1 _). }
   iIntros (σ1 κ κs n) "Hσ". iMod (fupd_intro_mask' E2 E1) as "Hclose"; first done.
-  iMod ("H" with "[$]") as "[? H]". 
+  iMod ("H" with "[$]") as "[? H]".
   iSplit; [by destruct s1, s2|]. iIntros (e2 σ2 efs Hstep).
   iSpecialize ("H" with "[//]"). iMod "H". iModIntro. iNext. iMod "H". iMod "Hclose" as "_".
   iModIntro.
@@ -235,7 +235,7 @@ Proof.
 Qed.
 
 
-Local Existing Instance elim_gstepN. 
+Local Existing Instance elim_gstepN.
 Lemma swp_strong_mono k1 k2 s1 s2 E1 E2 e Φ Ψ :
   s1 ⊑ s2 → E1 ⊆ E2 → k1 ≤ k2 →
   SWP e at k1 @ s1; E1 {{ Φ }} -∗ (∀ v, Φ v ={E2}=∗ Ψ v) -∗ SWP e at k2 @ s2; E2 {{ Ψ }}.
@@ -268,7 +268,7 @@ Lemma swp_atomic k E1 E2 e s Φ `{!Atomic StronglyAtomic e} :
   (|={E1, E2}=> SWP e at k @ s; E2 {{ v, |={E2, E1}=> Φ v}})%I ⊢ SWP e at k @ s; E1 {{ Φ }}.
 Proof.
   rewrite !swp_unfold /swp_def. iIntros "SWP". iIntros (σ1 κ κs n) "S".
-  iMod "SWP". iMod ("SWP" with "S") as "[$ SWP]". 
+  iMod "SWP". iMod ("SWP" with "S") as "[$ SWP]".
   iIntros (e2 σ2 efs Hstep). iMod ("SWP" with "[//]") as "SWP". iModIntro. iNext.
   iMod "SWP" as "($& SWP & $)". destruct (atomic _ _ _ _ _ Hstep) as [v Hv].
   rewrite !wp_unfold /wp_pre Hv. do 2 iMod "SWP". by do 2 iModIntro.
@@ -278,7 +278,7 @@ Lemma swp_wp k s E e Φ : to_val e = None →
    SWP e at k @ s; E {{ Φ }} ⊢ WP e @ s; E {{ Φ }}%I.
 Proof.
   intros H; rewrite swp_unfold wp_unfold /swp_def /wp_pre H.
-  iIntros "SWP". iIntros (σ1 κ κs n) "S". 
+  iIntros "SWP". iIntros (σ1 κ κs n) "S".
   iApply gstepN_gstep. iMod ("SWP" with "S") as "$".
 Qed.
 
@@ -286,7 +286,7 @@ Lemma swp_step k E e s Φ : ▷ SWP e at k @ s; E {{ Φ }} ⊢ SWP e at S k @ s;
 Proof.
   rewrite !swp_unfold /swp_def. iIntros "SWP". iIntros (σ1 κ κs n) "S".
   iMod (fupd_intro_mask') as "M". apply empty_subseteq.
-  do 3 iModIntro. iMod "M" as "_". 
+  do 3 iModIntro. iMod "M" as "_".
   iMod ("SWP" with "S") as "$".
 Qed.
 
@@ -342,7 +342,7 @@ Lemma swp_bind_inv K `{!LanguageCtx K} k s E e Φ : to_val e = None →
   SWP K e at k @ s; E {{ Φ }} ⊢ SWP e at k @ s; E {{ v, WP K (of_val v) @ s; E {{ Φ }} }}.
 Proof.
   iIntros (H) "H". rewrite !swp_unfold /swp_def.
-  iIntros (σ1 κ κs n) "Hσ". iMod ("H" with "[$]") as "[% H]"; iSplit. 
+  iIntros (σ1 κ κs n) "Hσ". iMod ("H" with "[$]") as "[% H]"; iSplit.
   { destruct s; eauto using reducible_fill. }
   iIntros (e2 σ2 efs Hstep).
   iMod ("H" $! (K e2) σ2 efs with "[]") as "H"; [by eauto using fill_step|].
@@ -383,7 +383,7 @@ Proof. iIntros "[? H]". iApply (wp_strong_mono with "H"); auto with iFrame. Qed.
 Lemma wp_frame_r s E e Φ R : WP e @ s; E {{ Φ }} ∗ R ⊢ WP e @ s; E {{ v, Φ v ∗ R }}.
 Proof. iIntros "[H ?]". iApply (wp_strong_mono with "H"); auto with iFrame. Qed.
 
-End gstep. 
+End gstep.
 
 Existing Instance elim_eventuallyN.
 Lemma wp_step_fupd s E1 E2 e P Φ :
@@ -391,16 +391,35 @@ Lemma wp_step_fupd s E1 E2 e P Φ :
   (|={E1,E2}▷=> P) -∗ WP e @ s; E2 {{ v, P ={E1}=∗ Φ v }} -∗ WP e @ s; E1 {{ Φ }}.
 Proof.
   rewrite !wp_unfold /wp_pre. iIntros (-> ?) "HR H".
-  iIntros (σ1 κ κs n) "Hσ". iMod "HR". 
-  iMod ("H" with "[$]") as ">H". iDestruct "H" as (n1) "H". 
-  iApply (gstepN_gstep _ _ _ (S n1)). iApply gstepN_later; first eauto. iNext. 
-  iModIntro. iMod "H". iMod "H" as "[$ H]". iModIntro. 
+  iIntros (σ1 κ κs n) "Hσ". iMod "HR".
+  iMod ("H" with "[$]") as ">H". iDestruct "H" as (n1) "H".
+  iApply (gstepN_gstep _ _ _ (S n1)). iApply gstepN_later; first eauto. iNext.
+  iModIntro. iMod "H". iMod "H" as "[$ H]". iModIntro.
   iIntros(e2 σ2 efs Hstep).
   iSpecialize ("H" $! e2 σ2 efs with "[% //]"). iMod "H". iModIntro. iNext.
   iMod "H" as "(Hσ & H & Hefs)".
   iMod "HR". iModIntro. iFrame "Hσ Hefs".
   iApply (wp_strong_mono s s E2 with "H"); [done..|].
   iIntros (v) "H". by iApply "H".
+Qed.
+
+
+Lemma wp_step_gstep s E e P Φ :
+  to_val e = None →
+  (>={E}=={E}=> P) -∗ WP e @ s; ∅ {{ v, P ={E}=∗ Φ v }} -∗ WP e @ s; E {{ Φ }}.
+Proof.
+  rewrite !wp_unfold /wp_pre. iIntros (->) "HR H".
+  iIntros (σ1 κ κs n) "Hσ". iMod "HR". iMod "HR". iDestruct "HR" as (n1) "HR".
+  iMod ("H" with "[$]") as ">H". iDestruct "H" as (n2) "H".
+  iApply (gstepN_gstep _ _ _ (n1 + n2)).
+  iModIntro. iApply eventuallyN_compose.
+  iMod "HR". iMod "H". iMod "H" as "[$ H]". iMod "HR".
+  iMod (fupd_intro_mask' _ ∅) as "Hcnt"; first set_solver.
+  iModIntro. iIntros(e2 σ2 efs Hstep).
+  iSpecialize ("H" $! e2 σ2 efs with "[% //]"). iMod "H". iModIntro. iNext.
+  iMod "H" as "($ & H & $)". iMod "Hcnt". iModIntro.
+  iApply (wp_strong_mono s s ∅ with "H"); [done | set_solver|].
+  iIntros (v) "Hv". iApply ("Hv" with "HR").
 Qed.
 
 Lemma swp_step_fupd k s E1 E2 e P Φ :
@@ -463,39 +482,39 @@ Instance elim_fupd_stepN b E P Q n:
   ElimModal True b false (|={E, E}▷=>^n P)%I P (|={E, E}▷=>^n Q)%I Q.
 Proof.
   iIntros (_) "(P & HPQ)". iPoseProof (intuitionistically_if_elim with "P") as "P".
-  iInduction n as [ |n] "IH"; cbn. 
-  - by iApply "HPQ". 
-  - iMod "P". fold Nat.iter. by iApply ("IH" with "HPQ"). 
+  iInduction n as [ |n] "IH"; cbn.
+  - by iApply "HPQ".
+  - iMod "P". fold Nat.iter. by iApply ("IH" with "HPQ").
 Qed.
-Lemma fupd_fupd_step E P n : 
+Lemma fupd_fupd_step E P n :
  (|={E}=> |={E, E}▷=>^n P)%I -∗ |={E, E}▷=>^n (|={E}=> P)%I.
-Proof. 
+Proof.
   iIntros "H". iInduction n as [ | n] "IH"; cbn.
-  iApply "H". 
-  iMod "H". 
-  iApply "IH". iMod "H". iModIntro. iApply "H". 
+  iApply "H".
+  iMod "H".
+  iApply "IH". iMod "H". iModIntro. iApply "H".
 Qed.
 
-Lemma fupd_step_fupd E P n : 
+Lemma fupd_step_fupd E P n :
  (|={E, E}▷=>^n |={E}=> P)%I -∗ (|={E}=> |={E, E}▷=>^n P)%I .
-Proof. 
+Proof.
   iIntros "H". iInduction n as [ | n] "IH". cbn.
   iApply "H". iApply "IH". iModIntro.
-  iMod "H". iModIntro. iNext. iApply fupd_fupd_step. 
-  iMod "H". iApply "IH". iApply "H". 
+  iMod "H". iModIntro. iNext. iApply fupd_fupd_step.
+  iMod "H". iApply "IH". iApply "H".
 Qed.
 
-Lemma swp_wp_lstep k2 s E e Φ : to_val e = None → 
-  (>={E}=={E}=> SWP e at k2 @ s ; E {{ Φ }}) ⊢ WP e @ s; E {{ Φ }}%I. 
+Lemma swp_wp_lstep k2 s E e Φ : to_val e = None →
+  (>={E}=={E}=> SWP e at k2 @ s ; E {{ Φ }}) ⊢ WP e @ s; E {{ Φ }}%I.
 Proof.
-  intros H; rewrite wp_unfold swp_unfold /wp_pre /swp_def H. 
-  iIntros "WP". iIntros (σ1 κ κs n) "S". 
-  do 2 iMod "WP". iDestruct ("WP") as (k1) "WP". 
-  iApply (lstepN_lstep _ _ (k1 + (1 + k2))). iModIntro. iApply eventuallyN_compose. 
-  iMod ("WP"). iApply eventuallyN_compose. iMod "WP". 
-  iMod ("WP" with "S") as "WP". 
-  do 4 iModIntro. do 2 iMod "WP". iModIntro. 
-  iApply "WP".  
+  intros H; rewrite wp_unfold swp_unfold /wp_pre /swp_def H.
+  iIntros "WP". iIntros (σ1 κ κs n) "S".
+  do 2 iMod "WP". iDestruct ("WP") as (k1) "WP".
+  iApply (lstepN_lstep _ _ (k1 + (1 + k2))). iModIntro. iApply eventuallyN_compose.
+  iMod ("WP"). iApply eventuallyN_compose. iMod "WP".
+  iMod ("WP" with "S") as "WP".
+  do 4 iModIntro. do 2 iMod "WP". iModIntro.
+  iApply "WP".
 Qed.
 End wp.
 
