@@ -48,6 +48,8 @@ under the terms of the BSD license, included below.
   - `theories/program_logic/refinement/`
   - `theories/base_logic/satisfiable.v`
   - `theories/bi/satisfiable.v`
+  - `theories/heap_lang/refinement_adequacy.v`
+  - `theories/heap_lang/termination_adequacy.v`
   - `theories/examples/` except for `theories/examples/safety/`
   - `theories/algebra/ordinals/arithmetic.v`
   - `theories/algebra/ordinals/ord_stepindex.v`
