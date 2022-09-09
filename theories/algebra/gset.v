@@ -1,7 +1,7 @@
-From iris.algebra Require Export cmra.
-From iris.algebra Require Import updates local_updates.
 From stdpp Require Export sets gmap mapset.
-Set Default Proof Using "Type".
+From iris.algebra Require Export cmra.
+From iris.algebra Require Import updates local_updates big_op.
+From iris.prelude Require Import options.
 
 (* The union CMRA *)
 Section gset.
@@ -10,10 +10,10 @@ Section gset.
 
   Canonical Structure gsetO := discreteO SI (gset K).
 
-  Instance gset_valid : Valid (gset K) := λ _, True.
-  Instance gset_unit : Unit (gset K) := (∅ : gset K).
-  Instance gset_op : Op (gset K) := union.
-  Instance gset_pcore : PCore (gset K) := λ X, Some X.
+  Local Instance gset_valid_instance : Valid (gset K) := λ _, True.
+  Local Instance gset_unit_instance : Unit (gset K) := (∅ : gset K).
+  Local Instance gset_op_instance : Op (gset K) := union.
+  Local Instance gset_pcore_instance : PCore (gset K) := λ X, Some X.
 
   Lemma gset_op_union X Y : X ⋅ Y = X ∪ Y.
   Proof. done. Qed.
@@ -28,13 +28,8 @@ Section gset.
 
   Lemma gset_ra_mixin : RAMixin (gset K).
   Proof.
-    apply ra_total_mixin; eauto.
-    - solve_proper.
-    - solve_proper.
-    - solve_proper.
-    - intros X1 X2 X3. by rewrite !gset_op_union assoc_L.
-    - intros X1 X2. by rewrite !gset_op_union comm_L.
-    - intros X. by rewrite gset_core_self idemp_L.
+    apply ra_total_mixin; apply _ || eauto; [].
+    intros X. by rewrite gset_core_self idemp_L.
   Qed.
   Canonical Structure gsetR := discreteR SI (gset K) gset_ra_mixin.
 
@@ -42,8 +37,8 @@ Section gset.
   Proof. apply discrete_cmra_discrete. Qed.
 
   Lemma gset_ucmra_mixin : UcmraMixin SI (gset K).
-  Proof. split. done. intros X. by rewrite gset_op_union left_id_L. done. Qed.
-  Canonical Structure gsetUR := UcmraT SI (gset K) gset_ucmra_mixin.
+  Proof. split; [ done | | done ]. intros X. by rewrite gset_op_union left_id_L. Qed.
+  Canonical Structure gsetUR := Ucmra SI (gset K) gset_ucmra_mixin.
 
   Lemma gset_opM X mY : X ⋅? mY = X ∪ default ∅ mY.
   Proof. destruct mY; by rewrite /= ?right_id_L. Qed.
@@ -55,44 +50,53 @@ Section gset.
   Proof.
     intros (Z&->&?)%subseteq_disjoint_union_L.
     rewrite local_update_unital_discrete=> Z' _ /leibniz_equiv_iff->.
-    split. done. rewrite gset_op_union. set_solver.
+    split; [done|]. rewrite gset_op_union. set_solver.
   Qed.
 
   Global Instance gset_core_id X : CoreId X.
   Proof. by apply core_id_total; rewrite gset_core_self. Qed.
+
+  Lemma big_opS_singletons X :
+    ([^op set] x ∈ X, {[ x ]}) = X.
+  Proof.
+    induction X as [|x X Hx IH] using set_ind_L.
+    - rewrite big_opS_empty. done.
+    - unfold_leibniz. rewrite big_opS_insert // IH //.
+  Qed.
+
 End gset.
 
-Arguments gsetO {_} _ {_ _}.
-Arguments gsetR {_} _ {_ _}.
-Arguments gsetUR {_} _ {_ _}.
+Global Arguments gsetO {_} _ {_ _}.
+Global Arguments gsetR {_} _ {_ _}.
+Global Arguments gsetUR {_} _ {_ _}.
 
 (* The disjoint union CMRA *)
 Inductive gset_disj K `{Countable K} :=
   | GSet : gset K → gset_disj K
   | GSetBot : gset_disj K.
-Arguments GSet {_ _ _} _.
-Arguments GSetBot {_ _ _}.
+Global Arguments GSet {_ _ _} _.
+Global Arguments GSetBot {_ _ _}.
 
 Global Instance gset_disj_inhab K `{Countable K}: Inhabited (gset_disj K).
 Proof. constructor. exact GSetBot. Qed.
 
 Section gset_disj.
   Context {SI: indexT} `{Countable K}.
-  Arguments op _ _ !_ !_ /.
-  Arguments cmra_op _ !_ !_ /.
-  Arguments ucmra_op _ !_ !_ /.
+  Local Arguments op _ _ !_ !_ /.
+  Local Arguments cmra_op _ !_ !_ /.
+  Local Arguments ucmra_op _ !_ !_ /.
 
   Canonical Structure gset_disjO := leibnizO SI (gset_disj K).
 
-  Instance gset_disj_valid : Valid (gset_disj K) := λ X,
+  Local Instance gset_disj_valid_instance : Valid (gset_disj K) := λ X,
     match X with GSet _ => True | GSetBot => False end.
-  Instance gset_disj_unit : Unit (gset_disj K) := GSet ∅.
-  Instance gset_disj_op : Op (gset_disj K) := λ X Y,
+  Local Instance gset_disj_unit_instance : Unit (gset_disj K) := GSet ∅.
+  Local Instance gset_disj_op_instance : Op (gset_disj K) := λ X Y,
     match X, Y with
     | GSet X, GSet Y => if decide (X ## Y) then GSet (X ∪ Y) else GSetBot
     | _, _ => GSetBot
     end.
-  Instance gset_disj_pcore : PCore (gset_disj K) := λ _, Some ε.
+  Local Instance gset_disj_pcore_instance : PCore (gset_disj K) := λ _, Some ε.
 
   Ltac gset_disj_solve :=
     repeat (simpl || case_decide);
@@ -131,9 +135,9 @@ Section gset_disj.
 
   Lemma gset_disj_ucmra_mixin : UcmraMixin SI (gset_disj K).
   Proof. split; try apply _ || done. intros [X|]; gset_disj_solve. Qed.
-  Canonical Structure gset_disjUR := UcmraT SI (gset_disj K) gset_disj_ucmra_mixin.
+  Canonical Structure gset_disjUR := Ucmra SI (gset_disj K) gset_disj_ucmra_mixin.
 
-  Arguments op _ _ _ _ : simpl never.
+  Local Arguments op _ _ _ _ : simpl never.
 
   Lemma gset_disj_alloc_updateP_strong P (Q : gset_disj K → Prop) X :
     (∀ Y, X ⊆ Y → ∃ j, j ∉ Y ∧ P j) →
@@ -172,7 +176,7 @@ Section gset_disj.
       (∀ i, i ∉ X → Q (GSet ({[i]} ∪ X))) → GSet X ~~>: Q.
     Proof.
       intro; eapply gset_disj_alloc_updateP_strong with (λ _, True); eauto.
-      intros Y ?; exists (fresh Y). split. apply is_fresh. done.
+      intros Y ?; exists (fresh Y). split; [|done]. apply is_fresh.
     Qed.
     Lemma gset_disj_alloc_updateP' X :
       GSet X ~~>: λ Y, ∃ i, Y = GSet ({[ i ]} ∪ X) ∧ i ∉ X.
@@ -230,6 +234,6 @@ Section gset_disj.
   Qed.
 End gset_disj.
 
-Arguments gset_disjO {_} _ {_ _}.
-Arguments gset_disjR {_} _ {_ _}.
-Arguments gset_disjUR {_} _ {_ _}.
+Global Arguments gset_disjO {_} _ {_ _}.
+Global Arguments gset_disjR {_} _ {_ _}.
+Global Arguments gset_disjUR {_} _ {_ _}.

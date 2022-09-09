@@ -1,20 +1,25 @@
-From stdpp Require Export strings.
-From iris.algebra Require Export base.
 From Coq Require Export Ascii.
-Set Default Proof Using "Type".
+From stdpp Require Export strings.
+From iris.prelude Require Export prelude.
+From iris.prelude Require Import options.
 
 (** * Utility definitions used by the proofmode *)
 
 (* Directions of rewrites *)
 Inductive direction := Left | Right.
 
+Local Open Scope lazy_bool_scope.
+
 (* Some specific versions of operations on strings, booleans, positive for the
 proof mode. We need those so that we can make [cbv] unfold just them, but not
 the actual operations that may appear in users' proofs. *)
-Local Notation "b1 && b2" := (if b1 then b2 else false) : bool_scope.
 
-Lemma lazy_andb_true (b1 b2 : bool) : b1 && b2 = true ↔ b1 = true ∧ b2 = true.
+Lemma lazy_andb_true (b1 b2 : bool) : b1 &&& b2 = true ↔ b1 = true ∧ b2 = true.
 Proof. destruct b1, b2; intuition congruence. Qed.
+
+Definition negb (b : bool) : bool := if b then false else true.
+Lemma negb_true b : negb b = true ↔ b = false.
+Proof. by destruct b. Qed.
 
 Fixpoint Pos_succ (x : positive) : positive :=
   match x with
@@ -32,13 +37,13 @@ Definition beq (b1 b2 : bool) : bool :=
 Definition ascii_beq (x y : ascii) : bool :=
   let 'Ascii x1 x2 x3 x4 x5 x6 x7 x8 := x in
   let 'Ascii y1 y2 y3 y4 y5 y6 y7 y8 := y in
-  beq x1 y1 && beq x2 y2 && beq x3 y3 && beq x4 y4 &&
-    beq x5 y5 && beq x6 y6 && beq x7 y7 && beq x8 y8.
+  beq x1 y1 &&& beq x2 y2 &&& beq x3 y3 &&& beq x4 y4 &&&
+    beq x5 y5 &&& beq x6 y6 &&& beq x7 y7 &&& beq x8 y8.
 
 Fixpoint string_beq (s1 s2 : string) : bool :=
   match s1, s2 with
   | "", "" => true
-  | String a1 s1, String a2 s2 => ascii_beq a1 a2 && string_beq s1 s2
+  | String a1 s1, String a2 s2 => ascii_beq a1 a2 &&& string_beq s1 s2
   | _, _ => false
   end.
 
@@ -65,12 +70,12 @@ Inductive ident :=
   | INamed :> string → ident.
 End ident.
 
-Instance maybe_IAnon : Maybe IAnon := λ i,
+Global Instance maybe_IAnon : Maybe IAnon := λ i,
   match i with IAnon n => Some n | _ => None end.
-Instance maybe_INamed : Maybe INamed := λ i,
+Global Instance maybe_INamed : Maybe INamed := λ i,
   match i with INamed s => Some s | _ => None end.
 
-Instance beq_eq_dec : EqDecision ident.
+Global Instance beq_eq_dec : EqDecision ident.
 Proof. solve_decision. Defined.
 
 Definition positive_beq := Eval compute in Pos.eqb.
@@ -93,18 +98,21 @@ Qed.
 Lemma ident_beq_reflect i1 i2 : reflect (i1 = i2) (ident_beq i1 i2).
 Proof. apply iff_reflect. by rewrite ident_beq_true. Qed.
 
-(** Copies of some [option] combinators for better reduction control. *)
+(** Copies of some functions on [list] and [option] for better reduction control. *)
+Fixpoint pm_app {A} (l1 l2 : list A) : list A :=
+  match l1 with [] => l2 | x :: l1 => x :: pm_app l1 l2 end.
+
 Definition pm_option_bind {A B} (f : A → option B) (mx : option A) : option B :=
   match mx with Some x => f x | None => None end.
-Arguments pm_option_bind {_ _} _ !_ /.
+Global Arguments pm_option_bind {_ _} _ !_ /.
 
 Definition pm_from_option {A B} (f : A → B) (y : B) (mx : option A) : B :=
   match mx with None => y | Some x => f x end.
-Arguments pm_from_option {_ _} _ _ !_ /.
+Global Arguments pm_from_option {_ _} _ _ !_ /.
 
 Definition pm_option_fun {A B} (f : option (A → B)) (x : A) : option B :=
   match f with None => None | Some f => Some (f x) end.
-Arguments pm_option_fun {_ _} !_ _ /.
+Global Arguments pm_option_fun {_ _} !_ _ /.
 
 (* Can't write [id] here as that would not reduce. *)
 Notation pm_default := (pm_from_option (λ x, x)).

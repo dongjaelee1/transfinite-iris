@@ -1,32 +1,27 @@
-From iris.algebra Require Import auth excl list gmap.
-From iris.base_logic.lib Require Export own.
 From iris.proofmode Require Import tactics.
-Set Default Proof Using "Type".
+From iris.algebra Require Import gmap_view list.
+From iris.base_logic.lib Require Export own.
+From iris.prelude Require Import options.
 Import uPred.
 
 Local Notation proph_map P V := (gmap P (list V)).
 Definition proph_val_list (P V : Type) := list (P * V).
 
-Definition proph_mapUR (SI: indexT) (P V : Type) `{Countable P} : ucmraT SI :=
-  gmapUR P $ exclR $ listO $ leibnizO SI V.
-
-Definition to_proph_map SI {P V} `{Countable P} (pvs : proph_map P V) : proph_mapUR SI P V :=
-  fmap (λ vs, Excl (vs : list (leibnizO SI V))) pvs.
-
 (** The CMRA we need. *)
+Class proph_mapPreG {SI} (P V : Type) (Σ : gFunctors SI) `{Countable P} := {
+  proph_map_preG_inG :> inG Σ (gmap_viewR P (listO $ leibnizO SI V))
+}.
+
 Class proph_mapG {SI} (P V : Type) (Σ : gFunctors SI) `{Countable P} := ProphMapG {
-  proph_map_inG :> inG Σ (authR (proph_mapUR SI P V));
+  proph_map_inG :> proph_mapPreG P V Σ;
   proph_map_name : gname
 }.
-Arguments proph_map_name {_ _ _ _ _ _} _ : assert.
-
-Class proph_mapPreG {SI} (P V : Type) (Σ : gFunctors SI) `{Countable P} :=
-  { proph_map_preG_inG :> inG Σ (authR (proph_mapUR SI P V)) }.
+Global Arguments proph_map_name {_ _ _ _ _ _} _ : assert.
 
 Definition proph_mapΣ {SI} (P V : Type) `{Countable P} : gFunctors SI :=
-  #[GFunctor (authR (proph_mapUR SI P V))].
+  #[GFunctor (gmap_viewR P (listO $ leibnizO SI V))].
 
-Instance subG_proph_mapPreG {SI} {Σ: gFunctors SI} {P V} `{Countable P} :
+Global Instance subG_proph_mapPreG {SI} {Σ: gFunctors SI} {P V} `{Countable P} :
   subG (proph_mapΣ P V) Σ → proph_mapPreG P V Σ.
 Proof. solve_inG. Qed.
 
@@ -47,15 +42,15 @@ Section definitions.
   Definition proph_resolves_in_list R pvs :=
     map_Forall (λ p vs, vs = proph_list_resolves pvs p) R.
 
-  Definition proph_map_ctx pvs (ps : gset P) : iProp Σ :=
+  Definition proph_map_interp pvs (ps : gset P) : iProp Σ :=
     (∃ R, ⌜proph_resolves_in_list R pvs ∧
           dom (gset _) R ⊆ ps⌝ ∗
-          own (proph_map_name pG) (● (to_proph_map SI R)))%I.
+          own (proph_map_name pG) (gmap_view_auth (V:=listO $ leibnizO SI V) 1 R))%I.
 
   Definition proph_def (p : P) (vs : list V) : iProp Σ :=
-    own (proph_map_name pG) (◯ {[p := Excl vs]}).
+    own (proph_map_name pG) (gmap_view_frag (V:=listO $ leibnizO SI V) p (DfracOwn 1) vs).
 
-  Definition proph_aux : seal (@proph_def). by eexists. Qed.
+  Definition proph_aux : seal (@proph_def). Proof. by eexists. Qed.
   Definition proph := proph_aux.(unseal).
   Definition proph_eq : @proph = @proph_def := proph_aux.(seal_eq).
 End definitions.
@@ -78,49 +73,24 @@ Section list_resolves.
   Qed.
 End list_resolves.
 
-Section to_proph_map.
-  Context (SI: indexT) (P V : Type) `{Countable P}.
-  Implicit Types p : P.
-  Implicit Types vs : list V.
-  Implicit Types R : proph_map P V.
-
-  Lemma to_proph_map_valid R : ✓ to_proph_map SI R.
-  Proof. intros l. rewrite lookup_fmap. by case (R !! l). Qed.
-
-  Lemma to_proph_map_insert p vs R :
-    to_proph_map SI (<[p := vs]> R) = <[p := Excl (vs: list (leibnizO SI V))]> (to_proph_map SI R).
-  Proof. by rewrite /to_proph_map fmap_insert. Qed.
-
-  Lemma to_proph_map_delete p R :
-    to_proph_map SI (delete p R) = delete p (to_proph_map SI R).
-  Proof. by rewrite /to_proph_map fmap_delete. Qed.
-
-  Lemma lookup_to_proph_map_None R p :
-    R !! p = None → to_proph_map SI R !! p = None.
-  Proof. by rewrite /to_proph_map lookup_fmap=> ->. Qed.
-
-  Lemma proph_map_singleton_included R p vs :
-    {[p := Excl vs]} ≼ to_proph_map SI R → R !! p = Some vs.
-  Proof.
-    rewrite singleton_included_exclusive; last by apply to_proph_map_valid.
-    by rewrite leibniz_equiv_iff /to_proph_map lookup_fmap fmap_Some=> -[v' [-> [->]]].
-  Qed.
-End to_proph_map.
-
-Lemma proph_map_init' {SI: indexT} {Σ: gFunctors SI} `{Countable P, !proph_mapPreG P V Σ} pvs ps :
-  sbi_emp_valid (|==> ∃ γ, let H := ProphMapG SI P V Σ _ _ _ γ in proph_map_ctx pvs ps)%I.
+(** This variant of [proph_map_init] should only be used when absolutely needed.
+The key difference to [proph_map_init] is that the [inG] instances in the new
+[proph_mapPreG] instance are related to the original [proph_mapPreG] instance,
+whereas [proph_map_init] forgets about that relation. *)
+Lemma proph_map_init_names {SI: indexT} {Σ: gFunctors SI} `{Countable P, !proph_mapPreG P V Σ} pvs ps :
+  ⊢ |==> ∃ γ, let H := ProphMapG SI P V Σ _ _ _ γ in proph_map_interp pvs ps.
 Proof.
-  iMod (own_alloc (● to_proph_map SI ∅)) as (γ) "Hh".
-  { rewrite auth_auth_valid. exact: to_proph_map_valid. }
+  iMod (own_alloc (gmap_view_auth 1 ∅)) as (γ) "Hh".
+  { apply gmap_view_auth_valid. }
   iModIntro. iExists γ, ∅. iSplit; last by iFrame.
-  iPureIntro. split =>//.
+  iPureIntro. done.
 Qed.
 
-Lemma proph_map_init {SI: indexT} {PVS: gFunctors SI} `{Countable P, !proph_mapPreG P V PVS} pvs ps :
-  sbi_emp_valid (|==> ∃ _ : proph_mapG P V PVS, proph_map_ctx pvs ps)%I.
+Lemma proph_map_init {SI: indexT} {Σ: gFunctors SI} `{Countable P, !proph_mapPreG P V Σ} pvs ps :
+  ⊢ |==> ∃ _ : proph_mapG P V Σ, proph_map_interp pvs ps.
 Proof.
-  iMod (proph_map_init' pvs ps) as (γ) "H". iModIntro.
-  by iExists (ProphMapG SI P V PVS _ _ _ γ).
+  iMod (proph_map_init_names pvs ps) as (γ) "H". iModIntro.
+  by iExists (ProphMapG SI P V Σ _ _ _ γ).
 Qed.
 
 Section proph_map.
@@ -140,45 +110,38 @@ Section proph_map.
   Proof.
     rewrite proph_eq /proph_def. iIntros "Hp1 Hp2".
     iCombine "Hp1 Hp2" as "Hp".
-    iDestruct (own_valid with "Hp") as %Hp.
-    (* FIXME: FIXME(Coq #6294): needs new unification *)
-    move:Hp. rewrite auth_frag_valid singleton_valid //.
+    iDestruct (own_valid with "Hp") as %[Hp _]%gmap_view_frag_op_valid_L.
+    done.
   Qed.
 
   Lemma proph_map_new_proph p ps pvs :
     p ∉ ps →
-    proph_map_ctx pvs ps ==∗
-    proph_map_ctx pvs ({[p]} ∪ ps) ∗ proph p (proph_list_resolves pvs p).
+    proph_map_interp pvs ps ==∗
+    proph_map_interp pvs ({[p]} ∪ ps) ∗ proph p (proph_list_resolves pvs p).
   Proof.
     iIntros (Hp) "HR". iDestruct "HR" as (R) "[[% %] H●]".
     rewrite proph_eq /proph_def.
     iMod (own_update with "H●") as "[H● H◯]".
-    { eapply auth_update_alloc, (alloc_singleton_local_update _ p (Excl _))=> //.
-      apply lookup_to_proph_map_None.
+    { eapply (gmap_view_alloc _ p (DfracOwn 1)); last done.
       apply (not_elem_of_dom (D:=gset P)). set_solver. }
     iModIntro. iFrame.
-    iExists (<[p := proph_list_resolves pvs p]> R). iSplitR "H●".
-    - iPureIntro. split.
-      + apply resolves_insert; first done. set_solver.
-      + rewrite dom_insert. set_solver.
-    - by rewrite /to_proph_map fmap_insert.
+    iExists (<[p := proph_list_resolves pvs p]> R).
+    iFrame. iPureIntro. split.
+    - apply resolves_insert; first done. set_solver.
+    - rewrite dom_insert. set_solver.
   Qed.
 
   Lemma proph_map_resolve_proph p v pvs ps vs :
-    proph_map_ctx ((p,v) :: pvs) ps ∗ proph p vs ==∗
-    ∃vs', ⌜vs = v::vs'⌝ ∗ proph_map_ctx pvs ps ∗ proph p vs'.
+    proph_map_interp ((p,v) :: pvs) ps ∗ proph p vs ==∗
+    ∃vs', ⌜vs = v::vs'⌝ ∗ proph_map_interp pvs ps ∗ proph p vs'.
   Proof.
     iIntros "[HR Hp]". iDestruct "HR" as (R) "[HP H●]". iDestruct "HP" as %[Hres Hdom].
-    rewrite /proph_map_ctx proph_eq /proph_def.
-    iDestruct (own_valid_2 with "H● Hp") as %[HR%proph_map_singleton_included _]%auth_both_valid.
+    rewrite /proph_map_interp proph_eq /proph_def.
+    iDestruct (own_valid_2 with "H● Hp") as %[_ HR]%gmap_view_both_valid_L.
     assert (vs = v :: proph_list_resolves pvs p) as ->.
     { rewrite (Hres p vs HR). simpl. by rewrite decide_True. }
     iMod (own_update_2 with "H● Hp") as "[H● H◯]".
-    { (* FIXME: FIXME(Coq #6294): needs new unification *)
-      eapply auth_update. apply: singleton_local_update.
-      - by rewrite /to_proph_map lookup_fmap HR.
-      - by apply (exclusive_local_update _ (Excl (proph_list_resolves pvs p : list (leibnizO SI V)))). }
-    rewrite /to_proph_map -fmap_insert.
+    { eapply gmap_view_update. }
     iModIntro. iExists (proph_list_resolves pvs p). iFrame. iSplitR.
     - iPureIntro. done.
     - iExists _. iFrame. iPureIntro. split.

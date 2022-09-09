@@ -1,17 +1,16 @@
-From iris.proofmode Require Import base.
-From iris.algebra Require Export base.
+From iris.prelude Require Export prelude.
 From iris.bi Require Export bi.
-From iris.bi Require Import tactics.
-Set Default Proof Using "Type".
+From iris.proofmode Require Import base.
+From iris.prelude Require Import options.
 Import bi.
 
 Inductive env (A : Type) : Type :=
   | Enil : env A
   | Esnoc : env A → ident → A → env A.
-Arguments Enil {_}.
-Arguments Esnoc {_} _ _ _.
-Instance: Params (@Enil) 1 := {}.
-Instance: Params (@Esnoc) 1 := {}.
+Global Arguments Enil {_}.
+Global Arguments Esnoc {_} _ _ _.
+Global Instance: Params (@Enil) 1 := {}.
+Global Instance: Params (@Esnoc) 1 := {}.
 
 Fixpoint env_lookup {A} (i : ident) (Γ : env A) : option A :=
   match Γ with
@@ -22,13 +21,12 @@ Fixpoint env_lookup {A} (i : ident) (Γ : env A) : option A :=
 Module env_notations.
   Notation "y ≫= f" := (pm_option_bind f y).
   Notation "x ← y ; z" := (y ≫= λ x, z).
-  Notation "' x1 .. xn ← y ; z" := (y ≫= (λ x1, .. (λ xn, z) .. )).
+  Notation "' x1 ← y ; z" := (y ≫= (λ x1, z)).
   Notation "Γ !! j" := (env_lookup j Γ).
-
-  (* andb will not be simplified by pm_reduce *)
-  Notation "b1 && b2" := (if b1 then b2 else false) : bool_scope.
 End env_notations.
 Import env_notations.
+
+Local Open Scope lazy_bool_scope.
 
 Inductive env_wf {A} : env A → Prop :=
   | Enil_wf : env_wf Enil
@@ -37,7 +35,7 @@ Inductive env_wf {A} : env A → Prop :=
 Fixpoint env_to_list {A} (E : env A) : list A :=
   match E with Enil => [] | Esnoc Γ _ x => x :: env_to_list Γ end.
 Coercion env_to_list : env >-> list.
-Instance: Params (@env_to_list) 1 := {}.
+Global Instance: Params (@env_to_list) 1 := {}.
 
 Fixpoint env_dom {A} (Γ : env A) : list ident :=
   match Γ with Enil => [] | Esnoc Γ i _ => i :: env_dom Γ end.
@@ -72,7 +70,7 @@ Fixpoint env_lookup_delete {A} (i : ident) (Γ : env A) : option (A * env A) :=
   | Enil => None
   | Esnoc Γ j x =>
      if ident_beq i j then Some (x,Γ)
-     else ''(y,Γ') ← env_lookup_delete i Γ; Some (y, Esnoc Γ' j x)
+     else '(y,Γ') ← env_lookup_delete i Γ; Some (y, Esnoc Γ' j x)
   end.
 
 Inductive env_Forall2 {A B} (P : A → B → Prop) : env A → env B → Prop :=
@@ -92,7 +90,7 @@ Context {A : Type}.
 Implicit Types Γ : env A.
 Implicit Types i : ident.
 Implicit Types x : A.
-Hint Resolve Esnoc_wf Enil_wf : core.
+Local Hint Resolve Esnoc_wf Enil_wf : core.
 
 Ltac simplify :=
   repeat match goal with
@@ -218,10 +216,10 @@ Record envs {SI} (PROP : bi SI) := Envs {
   env_counter : positive (** A counter to generate fresh hypothesis names *)
 }.
 Add Printing Constructor envs.
-Arguments Envs {_ _} _ _ _.
-Arguments env_intuitionistic {_ _} _.
-Arguments env_spatial {_ _} _.
-Arguments env_counter {_ _} _.
+Global Arguments Envs {_ _} _ _ _.
+Global Arguments env_intuitionistic {_ _} _.
+Global Arguments env_spatial {_ _} _.
+Global Arguments env_counter {_ _} _.
 
 (** We now define the judgment [envs_entails Δ Q] for proof mode entailments.
 This judgment expresses that [Q] can be proved under the proof mode environment
@@ -235,12 +233,12 @@ an efficient way. Concretely, we made sure that [envs_entails (Envs Γp Γs c) Q
 and [envs_entails (Envs Γp Γs c') Q] are convertible for any [c] and [c']. This
 way, [iFresh] can simply be implemented by changing the goal from
 [envs_entails (Envs Γp Γs c) Q] into [envs_entails (Envs Γp Γs (Pos_succ c)) Q]
-using the tactic [convert_concl_no_check]. This way, the generated proof term
+using the tactic [change_no_check]. This way, the generated proof term
 contains no additional steps for changing the counter.
 
-For all definitions below, we first define a version that take the two contexts
-[env_intuitionistic] and [env_spatial] as its arguments, and then lift these
-definitions that take the whole proof mode context [Δ : envs PROP]. This is
+We first define a version [pre_envs_entails] that takes the two contexts
+[env_intuitionistic] and [env_spatial] as its arguments. We seal this definition
+and then lift it to take the whole proof mode context [Δ : envs PROP]. This is
 crucial to make sure that the counter [env_counter] is not part of the seal. *)
 Record envs_wf' {SI} {PROP : bi SI} (Γp Γs : env PROP) := {
   env_intuitionistic_valid : env_wf Γp;
@@ -252,22 +250,26 @@ Definition envs_wf {SI} {PROP : bi SI} (Δ : envs PROP) :=
 
 Definition of_envs' {SI} {PROP : bi SI} (Γp Γs : env PROP) : PROP :=
   (⌜envs_wf' Γp Γs⌝ ∧ □ [∧] Γp ∗ [∗] Γs)%I.
-Instance: Params (@of_envs') 2 := {}.
+Global Instance: Params (@of_envs') 2 := {}.
 Definition of_envs {SI} {PROP : bi SI} (Δ : envs PROP) : PROP :=
   of_envs' (env_intuitionistic Δ) (env_spatial Δ).
-Instance: Params (@of_envs) 2 := {}.
-Arguments of_envs : simpl never.
+Global Instance: Params (@of_envs) 2 := {}.
+Global Arguments of_envs : simpl never.
 
-Definition envs_entails_aux :
-  seal (λ {SI} {PROP : bi SI} (Γp Γs : env PROP) (Q : PROP), of_envs' Γp Γs ⊢ Q).
-Proof. by eexists. Qed.
+Definition pre_envs_entails_def {SI} {PROP : bi SI} (Γp Γs : env PROP) (Q : PROP) :=
+  of_envs' Γp Γs ⊢ Q.
+Definition pre_envs_entails_aux : seal (@pre_envs_entails_def). Proof. by eexists. Qed.
+Definition pre_envs_entails := pre_envs_entails_aux.(unseal).
+Definition pre_envs_entails_eq : @pre_envs_entails = @pre_envs_entails_def :=
+  pre_envs_entails_aux.(seal_eq).
+
 Definition envs_entails {SI} {PROP : bi SI} (Δ : envs PROP) (Q : PROP) : Prop :=
-  envs_entails_aux.(unseal) SI PROP (env_intuitionistic Δ) (env_spatial Δ) Q.
+  pre_envs_entails SI PROP (env_intuitionistic Δ) (env_spatial Δ) Q.
 Definition envs_entails_eq :
-  @envs_entails = λ {SI PROP} (Δ : envs PROP) Q, (of_envs Δ ⊢ Q).
-Proof. by rewrite /envs_entails envs_entails_aux.(seal_eq). Qed.
-Arguments envs_entails {SI PROP} Δ Q%I : rename.
-Instance: Params (@envs_entails) 2 := {}.
+  @envs_entails = λ SI (PROP: bi SI) (Δ : envs PROP) Q, (of_envs Δ ⊢ Q).
+Proof. by rewrite /envs_entails pre_envs_entails_eq. Qed.
+Global Arguments envs_entails {SI} {PROP} Δ Q%I.
+Global Instance: Params (@envs_entails) 2 := {}.
 
 Record envs_Forall2 {SI} {PROP : bi SI} (R : relation PROP) (Δ1 Δ2 : envs PROP) := {
   env_intuitionistic_Forall2 : env_Forall2 R (env_intuitionistic Δ1) (env_intuitionistic Δ2);
@@ -297,7 +299,7 @@ Definition envs_lookup_delete {SI} {PROP: bi SI} (remove_intuitionistic : bool)
   let (Γp,Γs,n) := Δ in
   match env_lookup_delete i Γp with
   | Some (P,Γp') => Some (true, P, Envs (if remove_intuitionistic then Γp' else Γp) Γs n)
-  | None => ''(P,Γs') ← env_lookup_delete i Γs; Some (false, P, Envs Γp Γs' n)
+  | None => '(P,Γs') ← env_lookup_delete i Γs; Some (false, P, Envs Γp Γs' n)
   end.
 
 Fixpoint envs_lookup_delete_list {SI} {PROP: bi SI} (remove_intuitionistic : bool)
@@ -305,9 +307,9 @@ Fixpoint envs_lookup_delete_list {SI} {PROP: bi SI} (remove_intuitionistic : boo
   match js with
   | [] => Some (true, [], Δ)
   | j :: js =>
-     ''(p,P,Δ') ← envs_lookup_delete remove_intuitionistic j Δ;
-     ''(q,Ps,Δ'') ← envs_lookup_delete_list remove_intuitionistic js Δ';
-     Some ((p:bool) && q, P :: Ps, Δ'')
+     '(p,P,Δ') ← envs_lookup_delete remove_intuitionistic j Δ;
+     '(q,Ps,Δ'') ← envs_lookup_delete_list remove_intuitionistic js Δ';
+     Some ((p:bool) &&& q, P :: Ps, Δ'')
   end.
 
 Definition envs_snoc {SI} {PROP: bi SI} (Δ : envs PROP)
@@ -353,7 +355,7 @@ Fixpoint envs_split_go {SI} {PROP: bi SI}
   match js with
   | [] => Some (Δ1, Δ2)
   | j :: js =>
-     ''(p,P,Δ1') ← envs_lookup_delete true j Δ1;
+     '(p,P,Δ1') ← envs_lookup_delete true j Δ1;
      if p : bool then envs_split_go js Δ1 Δ2 else
      envs_split_go js Δ1' (envs_snoc Δ2 false j P)
   end.
@@ -361,14 +363,18 @@ Fixpoint envs_split_go {SI} {PROP: bi SI}
    if [d = Left] then [result = (hyps named js, remaining hyps)] *)
 Definition envs_split {SI} {PROP: bi SI} (d : direction)
     (js : list ident) (Δ : envs PROP) : option (envs PROP * envs PROP) :=
-  ''(Δ1,Δ2) ← envs_split_go js Δ (envs_clear_spatial Δ);
+  '(Δ1,Δ2) ← envs_split_go js Δ (envs_clear_spatial Δ);
   if d is Right then Some (Δ1,Δ2) else Some (Δ2,Δ1).
 
-Definition env_to_prop {SI} {PROP: bi SI} (Γ : env PROP) : PROP :=
-  let fix aux Γ acc :=
-    match Γ with Enil => acc | Esnoc Γ _ P => aux Γ (P ∗ acc)%I end
-  in
-  match Γ with Enil => emp%I | Esnoc Γ _ P => aux Γ P end.
+Fixpoint env_to_prop_go {SI} {PROP : bi SI} (acc : PROP) (Γ : env PROP) : PROP :=
+  match Γ with Enil => acc | Esnoc Γ _ P => env_to_prop_go (P ∗ acc)%I Γ end.
+Definition env_to_prop {SI} {PROP : bi SI} (Γ : env PROP) : PROP :=
+  match Γ with Enil => emp%I | Esnoc Γ _ P => env_to_prop_go P Γ end.
+
+Fixpoint env_to_prop_and_go {SI} {PROP : bi SI} (acc : PROP) (Γ : env PROP) : PROP :=
+  match Γ with Enil => acc | Esnoc Γ _ P => env_to_prop_and_go (P ∧ acc)%I Γ end.
+Definition env_to_prop_and {SI} {PROP : bi SI} (Γ : env PROP) : PROP :=
+  match Γ with Enil => True%I | Esnoc Γ _ P => env_to_prop_and_go P Γ end.
 
 Section envs.
 Context {SI} {PROP : bi SI}.
@@ -503,12 +509,10 @@ Proof.
   rewrite /envs_lookup !of_envs_eq=>Hwf ?.
   rewrite [⌜envs_wf Δ⌝%I]pure_True // left_id.
   destruct Δ as [Γp Γs], (Γp !! i) eqn:?; simplify_eq/=.
-  - rewrite (env_lookup_perm Γp) //= intuitionistically_and
-      and_sep_intuitionistically and_elim_r.
-    cancel [□ P]%I. solve_sep_entails.
+  - by rewrite (env_lookup_perm Γp) //= intuitionistically_and
+      and_sep_intuitionistically and_elim_r assoc.
   - destruct (Γs !! i) eqn:?; simplify_eq/=.
-    rewrite (env_lookup_perm Γs) //= and_elim_r.
-    cancel [P]. solve_sep_entails.
+    by rewrite (env_lookup_perm Γs) //= and_elim_r !assoc (comm _ P).
 Qed.
 
 Lemma envs_lookup_split Δ i p P :
@@ -541,7 +545,7 @@ Qed.
 Lemma envs_lookup_delete_list_cons Δ Δ' Δ'' rp j js p1 p2 P Ps :
   envs_lookup_delete rp j Δ = Some (p1, P, Δ') →
   envs_lookup_delete_list rp js Δ' = Some (p2, Ps, Δ'') →
-  envs_lookup_delete_list rp (j :: js) Δ = Some (p1 && p2, (P :: Ps), Δ'').
+  envs_lookup_delete_list rp (j :: js) Δ = Some (p1 &&& p2, (P :: Ps), Δ'').
 Proof. rewrite //= => -> //= -> //=. Qed.
 
 Lemma envs_lookup_delete_list_nil Δ rp :
@@ -574,7 +578,7 @@ Proof.
   - apply and_intro; [apply pure_intro|].
     + destruct Hwf; constructor; simpl; eauto using Esnoc_wf.
       intros j; destruct (ident_beq_reflect j i); naive_solver.
-    + solve_sep_entails.
+    + by rewrite !assoc (comm _ P).
 Qed.
 
 Lemma envs_app_sound Δ Δ' p Γ :
@@ -591,14 +595,14 @@ Proof.
       naive_solver eauto using env_app_fresh.
     + rewrite (env_app_perm _ _ Γp') //.
       rewrite big_opL_app intuitionistically_and and_sep_intuitionistically.
-      solve_sep_entails.
+      by rewrite assoc.
   - destruct (env_app Γ Γp) eqn:Happ,
       (env_app Γ Γs) as [Γs'|] eqn:?; simplify_eq/=.
     apply wand_intro_l, and_intro; [apply pure_intro|].
     + destruct Hwf; constructor; simpl; eauto using env_app_wf.
       intros j. apply (env_app_disjoint _ _ _ j) in Happ.
       naive_solver eauto using env_app_fresh.
-    + rewrite (env_app_perm _ _ Γs') // big_opL_app. solve_sep_entails.
+    + by rewrite (env_app_perm _ _ Γs') // big_opL_app !assoc (comm _ ([∗] Γ)%I).
 Qed.
 
 Lemma envs_app_singleton_sound Δ Δ' p j Q :
@@ -619,14 +623,15 @@ Proof.
       destruct (decide (i = j)); try naive_solver eauto using env_replace_fresh.
     + rewrite (env_replace_perm _ _ Γp') //.
       rewrite big_opL_app intuitionistically_and and_sep_intuitionistically.
-      solve_sep_entails.
+      by rewrite assoc.
   - destruct (env_app Γ Γp) eqn:Happ,
       (env_replace i Γ Γs) as [Γs'|] eqn:?; simplify_eq/=.
     apply wand_intro_l, and_intro; [apply pure_intro|].
     + destruct Hwf; constructor; simpl; eauto using env_replace_wf.
       intros j. apply (env_app_disjoint _ _ _ j) in Happ.
       destruct (decide (i = j)); try naive_solver eauto using env_replace_fresh.
-    + rewrite (env_replace_perm _ _ Γs') // big_opL_app. solve_sep_entails.
+    + rewrite (env_replace_perm _ _ Γs') // big_opL_app.
+      by rewrite !assoc (comm _ ([∗] Γ)%I).
 Qed.
 
 Lemma envs_simple_replace_singleton_sound' Δ Δ' i p j Q :
@@ -685,7 +690,7 @@ Proof. intros. by rewrite envs_lookup_sound// envs_replace_singleton_sound'//. Q
 
 Lemma envs_lookup_envs_clear_spatial Δ j :
   envs_lookup j (envs_clear_spatial Δ)
-  = ''(p,P) ← envs_lookup j Δ; if p : bool then Some (p,P) else None.
+  = '(p,P) ← envs_lookup j Δ; if p : bool then Some (p,P) else None.
 Proof.
   rewrite /envs_lookup /envs_clear_spatial.
   destruct Δ as [Γp Γs]; simpl; destruct (Γp !! j) eqn:?; simplify_eq/=; auto.
@@ -762,12 +767,20 @@ Proof.
   destruct (envs_split_go _ _) as [[Δ1' Δ2']|] eqn:HΔ; [|done].
   apply envs_split_go_sound in HΔ as ->; last first.
   { intros j P. by rewrite envs_lookup_envs_clear_spatial=> ->. }
-  destruct d; simplify_eq/=; solve_sep_entails.
+  destruct d; simplify_eq/=; [|done]. by rewrite comm.
 Qed.
 
 Lemma env_to_prop_sound Γ : env_to_prop Γ ⊣⊢ [∗] Γ.
 Proof.
-  destruct Γ as [|Γ ? P]; simpl; first done.
+  destruct Γ as [|Γ i P]; simpl; first done.
+  revert P. induction Γ as [|Γ IH ? Q]=>P; simpl.
+  - by rewrite right_id.
+  - rewrite /= IH (comm _ Q _) assoc. done.
+Qed.
+
+Lemma env_to_prop_and_sound Γ : env_to_prop_and Γ ⊣⊢ [∧] Γ.
+Proof.
+  destruct Γ as [|Γ i P]; simpl; first done.
   revert P. induction Γ as [|Γ IH ? Q]=>P; simpl.
   - by rewrite right_id.
   - rewrite /= IH (comm _ Q _) assoc. done.

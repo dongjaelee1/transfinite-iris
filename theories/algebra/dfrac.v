@@ -18,9 +18,10 @@
     discarded. Conversely, knowing that a fraction has been discarded implies
     that no one can own 1. And, since discarding is an irreversible operation,
     it also implies that no one can own 1 in the future *)
-From Coq.QArith Require Import Qcanon.
+From stdpp Require Import countable.
 From iris.algebra Require Export cmra.
 From iris.algebra Require Import proofmode_classes updates frac.
+From iris.prelude Require Import options.
 
 (** An element of dfrac denotes ownership of a fraction, knowledge that a
     fraction has been discarded, or both. Note that [DfracBoth] can be written
@@ -32,11 +33,29 @@ Inductive dfrac :=
   | DfracBoth : Qp → dfrac.
 
 Section dfrac.
-Context {SI: indexT}.
+  Context {SI: indexT}.
   Canonical Structure dfracO := leibnizO SI dfrac.
 
   Implicit Types p q : Qp.
   Implicit Types dp dq : dfrac.
+
+  Global Instance dfrac_inhabited : Inhabited dfrac := populate DfracDiscarded.
+  Global Instance dfrac_eq_dec : EqDecision dfrac.
+  Proof. solve_decision. Defined.
+  Global Instance dfrac_countable : Countable dfrac.
+  Proof.
+    set (enc dq := match dq with
+      | DfracOwn q => inl q
+      | DfracDiscarded => inr (inl ())
+      | DfracBoth q => inr (inr q)
+      end).
+    set (dec y := Some match y with
+      | inl q => DfracOwn q
+      | inr (inl ()) => DfracDiscarded
+      | inr (inr q) => DfracBoth q
+      end).
+    refine (inj_countable enc dec _). by intros [].
+  Qed.
 
   Global Instance DfracOwn_inj : Inj (=) (=) DfracOwn.
   Proof. by injection 1. Qed.
@@ -44,17 +63,17 @@ Context {SI: indexT}.
   Proof. by injection 1. Qed.
 
   (** An element is valid as long as the sum of its content is less than one. *)
-  Instance dfrac_valid : Valid dfrac := λ dq,
+  Local Instance dfrac_valid_instance : Valid dfrac := λ dq,
     match dq with
     | DfracOwn q => q ≤ 1
     | DfracDiscarded => True
     | DfracBoth q => q < 1
-    end%Qc.
+    end%Qp.
 
   (** As in the fractional camera the core is undefined for elements denoting
      ownership of a fraction. For elements denoting the knowledge that a fraction has
      been discarded the core is the identity function. *)
-  Instance dfrac_pcore : PCore dfrac := λ dq,
+  Local Instance dfrac_pcore_instance : PCore dfrac := λ dq,
     match dq with
     | DfracOwn q => None
     | DfracDiscarded => Some DfracDiscarded
@@ -63,7 +82,7 @@ Context {SI: indexT}.
 
   (** When elements are combined, ownership is added together and knowledge of
      discarded fractions is combined with the max operation. *)
-  Instance dfrac_op : Op dfrac := λ dq dp,
+  Local Instance dfrac_op_instance : Op dfrac := λ dq dp,
     match dq, dp with
     | DfracOwn q, DfracOwn q' => DfracOwn (q + q')
     | DfracOwn q, DfracDiscarded => DfracBoth q
@@ -86,7 +105,7 @@ Context {SI: indexT}.
   Lemma dfrac_own_included q p : DfracOwn q ≼ DfracOwn p ↔ (q < p)%Qp.
   Proof.
     rewrite Qp_lt_sum. split.
-    - rewrite /included /op /dfrac_op. intros [[o| |?] [= ->]]. by exists o.
+    - rewrite /included /op /dfrac_op_instance. intros [[o| |?] [= ->]]. by exists o.
     - intros [o ->]. exists (DfracOwn o). by rewrite dfrac_op_own.
   Qed.
 
@@ -100,26 +119,20 @@ Context {SI: indexT}.
     split; try apply _.
     - intros [?| |?] ? dq <-; intros [= <-]; eexists _; done.
     - intros [?| |?] [?| |?] [?| |?];
-        rewrite /op /dfrac_op 1?assoc_L 1?assoc_L; done.
+        rewrite /op /dfrac_op_instance 1?assoc_L 1?assoc_L; done.
     - intros [?| |?] [?| |?];
-        rewrite /op /dfrac_op 1?(comm_L Qp_plus); done.
-    - intros [?| |?] dq; rewrite /pcore /dfrac_pcore; intros [= <-];
-        rewrite /op /dfrac_op; done.
+        rewrite /op /dfrac_op_instance 1?(comm_L Qp_add); done.
+    - intros [?| |?] dq; rewrite /pcore /dfrac_pcore_instance; intros [= <-];
+        rewrite /op /dfrac_op_instance; done.
     - intros [?| |?] ? [= <-]; done.
     - intros [?| |?] [?| |?] ? [[?| |?] [=]] [= <-]; eexists _; split; try done;
         apply dfrac_discarded_included.
-    - intros [q| |q] [q'| |q']; rewrite /op /dfrac_op /valid /dfrac_valid //.
-      + intros. trans (q + q')%Qp; [|done].
-        apply Qclt_le_weak.
-        apply Qp_lt_sum. eauto.
-      + apply Qclt_le_weak.
-      + intros. trans (q + q')%Qp; [|by apply Qclt_le_weak].
-        apply Qclt_le_weak.
-        apply Qp_lt_sum. eauto.
-      + intros. trans (q + q')%Qp; [|by eauto].
-        apply Qp_lt_sum. eauto.
-      + intros. trans (q + q')%Qp; [|by eauto].
-        apply Qp_lt_sum. eauto.
+    - intros [q| |q] [q'| |q']; rewrite /op /dfrac_op_instance /valid /dfrac_valid_instance //.
+      + intros. trans (q + q')%Qp; [|done]. apply Qp_le_add_l.
+      + apply Qp_lt_le_incl.
+      + intros. trans (q + q')%Qp; [|by apply Qp_lt_le_incl]. apply Qp_le_add_l.
+      + intros. trans (q + q')%Qp; [|done]. apply Qp_lt_add_l.
+      + intros. trans (q + q')%Qp; [|done]. apply Qp_lt_add_l.
   Qed.
   Canonical Structure dfracR := discreteR SI dfrac dfrac_ra_mixin.
 
@@ -130,88 +143,55 @@ Context {SI: indexT}.
   Proof.
     intros [q| |q];
       rewrite /op /cmra_op -cmra_discrete_valid_iff /valid /cmra_valid //=.
-    - intros Hle.
-      assert (Qp_car 1 < (1 + q)%Qp).
-      { rewrite Qp_lt_sum. eexists. eauto. }
-      eapply Qcle_ngt in Hle. eauto.
-    - intros Hlt.
-      assert (Qp_car 1 < (1 + q)%Qp).
-      { rewrite Qp_lt_sum. eexists. eauto. }
-      apply Qclt_le_weak in Hlt.
-      eapply Qcle_ngt in Hlt. eauto.
-  Qed.
-
-  Lemma Qp_plus_id_free q p : q + p ≠ q.
-  Proof.
-    intro Heq.
-      assert (Qp_car q < (q + p)%Qp).
-      { rewrite Qp_lt_sum. eexists. eauto. }
-      assert (q + p <= q)%Qp as Hle.
-      { rewrite Heq. reflexivity. }
-      eapply Qcle_ngt in Hle. eauto.
-  Qed.
-
-  Lemma Qp_to_Qc_inj_iff p q : Qp_car p = Qp_car q ↔ p = q.
-  Proof.
-    split; [|by intros ->].
-    destruct p, q; intros; simplify_eq/=; f_equal; apply (proof_irrel _).
-  Qed.
-  Instance Qp_add_inj_r p : Inj (=) (=) (Qp_plus p).
-  Proof.
-    destruct p as [p ?].
-    intros [q1 ?] [q2 ?]. rewrite <-!Qp_to_Qc_inj_iff; simpl. apply (inj (Qcplus p)).
+    - apply Qp_not_add_le_l.
+    - move=> /Qp_lt_le_incl. apply Qp_not_add_le_l.
   Qed.
 
   Global Instance dfrac_cancelable q : Cancelable (DfracOwn q).
   Proof.
     apply: discrete_cancelable.
-    intros [q1| |q1][q2| |q2] _ [=]; try (simplify_eq/=; done).
-    - f_equal. eapply (Qp_add_inj_r q); eauto.
-      apply Qp_to_Qc_inj_iff => //=.
-      rewrite /Qcplus/Q2Qc.
-      apply Qc_decomp => //=.
-    - destruct (Qp_plus_id_free q q2).
-      transitivity (Qp_plus q q2); eauto.
-      symmetry. apply Qp_to_Qc_inj_iff. apply H0.
-    - destruct (Qp_plus_id_free q q1).
-      transitivity (Qp_plus q q1); eauto.
-      apply Qp_to_Qc_inj_iff. apply H0.
-    - f_equal. eapply (Qp_add_inj_r q); eauto.
-      apply Qp_to_Qc_inj_iff => //=.
-      rewrite /Qcplus/Q2Qc.
-      apply Qc_decomp => //=.
+    intros [q1| |q1][q2| |q2] _ [=]; simplify_eq/=; try done.
+    - by destruct (Qp_add_id_free q q2).
+    - by destruct (Qp_add_id_free q q1).
   Qed.
   Global Instance frac_id_free q : IdFree (DfracOwn q).
-  Proof.
-    intros [q'| |q'] _ [=].
-    apply (Qp_plus_id_free q q').
-    transitivity (Qp_plus q q'); eauto.
-    apply Qp_to_Qc_inj_iff. apply H0.
-  Qed.
+  Proof. intros [q'| |q'] _ [=]. by apply (Qp_add_id_free q q'). Qed.
   Global Instance dfrac_discarded_core_id : CoreId DfracDiscarded.
   Proof. by constructor. Qed.
 
-  Lemma dfrac_valid_own p : ✓ DfracOwn p ↔ (p ≤ 1)%Qc.
+  Lemma dfrac_valid_own p : ✓ DfracOwn p ↔ (p ≤ 1)%Qp.
   Proof. done. Qed.
+
+  Lemma dfrac_valid_own_r dq q : ✓ (dq ⋅ DfracOwn q) → (q < 1)%Qp.
+  Proof.
+    destruct dq as [q'| |q']; [|done|].
+    - apply Qp_lt_le_trans, Qp_lt_add_r.
+    - intro Hlt. etrans; last apply Hlt. apply Qp_lt_add_r.
+  Qed.
+
+  Lemma dfrac_valid_own_l dq q: ✓ (DfracOwn (q : fracO SI) ⋅ dq) → (q < 1)%Qp.
+  Proof. rewrite comm. apply dfrac_valid_own_r. Qed.
 
   Lemma dfrac_valid_discarded p : ✓ DfracDiscarded.
   Proof. done. Qed.
 
   Lemma dfrac_valid_own_discarded q :
-    ✓ (DfracOwn q ⋅ DfracDiscarded) ↔ (q < 1)%Qc.
+    ✓ (DfracOwn q ⋅ DfracDiscarded) ↔ (q < 1)%Qp.
   Proof. done. Qed.
 
+  Global Instance dfrac_is_op q q1 q2 :
+    IsOp (q: fracO SI) q1 q2 →
+    IsOp' (DfracOwn q) (DfracOwn q1) (DfracOwn q2).
+  Proof. rewrite /IsOp' /IsOp dfrac_op_own=>-> //. Qed.
+
   (** Discarding a fraction is a frame preserving update. *)
-  Lemma dfrac_discard_update q : DfracOwn q ~~> DfracDiscarded.
+  Lemma dfrac_discard_update dq : dq ~~> DfracDiscarded.
   Proof.
-    intros n [[q'| |q']|];
-      rewrite /op /cmra_op -!cmra_discrete_valid_iff /valid /cmra_valid //=.
-    - intros.
-      apply Qclt_le_trans with (q + q')%Qp; [| done].
-      apply Qp_lt_sum. eexists. rewrite (comm _ q q'). eauto.
-    - intros.
-      apply Qclt_trans with (q + q')%Qp; [| done].
-      apply Qp_lt_sum. eexists. rewrite (comm _ q q'). eauto.
+    intros n [[q'| |q']|]; rewrite -!cmra_discrete_valid_iff //=.
+    - apply dfrac_valid_own_r.
+    - apply cmra_valid_op_r.
   Qed.
 
 End dfrac.
+Arguments dfracO : clear implicits.
+Arguments dfracR : clear implicits.

@@ -1,41 +1,41 @@
 From iris.bi Require Export bi.
 From iris.proofmode Require Import tactics.
-Set Default Proof Using "Type*".
+From iris.prelude Require Import options.
 Import bi.
 
 (** Least and greatest fixpoint of a monotone function, defined entirely inside
     the logic.  *)
-Class BiMonoPred {SI} {PROP : bi SI} {A : ofeT SI} (F : (A → PROP) → (A → PROP)) := {
-  bi_mono_pred Φ Ψ : bi_emp_valid (<pers> (∀ x, Φ x -∗ Ψ x) → ∀ x, F Φ x -∗ F Ψ x)%I;
+Class BiMonoPred {SI} {PROP : bi SI} {A : ofe SI} (F : (A → PROP) → (A → PROP)) := {
+  bi_mono_pred Φ Ψ : ⊢ <pers> (∀ x, Φ x -∗ Ψ x) → ∀ x, F Φ x -∗ F Ψ x;
   bi_mono_pred_ne Φ : NonExpansive Φ → NonExpansive (F Φ)
 }.
-Arguments bi_mono_pred {_ _ _ _ _} _ _.
+Global Arguments bi_mono_pred {_ _ _ _ _} _ _.
 Local Existing Instance bi_mono_pred_ne.
 
-Definition bi_least_fixpoint {SI} {PROP : bi SI} {A : ofeT SI}
+Definition bi_least_fixpoint {SI} {PROP : bi SI} {A : ofe SI}
     (F : (A → PROP) → (A → PROP)) (x : A) : PROP :=
   tc_opaque (∀ Φ : A -n> PROP, <pers> (∀ x, F Φ x -∗ Φ x) → Φ x)%I.
-Arguments bi_least_fixpoint : simpl never.
+Global Arguments bi_least_fixpoint : simpl never.
 
-Definition bi_greatest_fixpoint {SI} {PROP : bi SI} {A : ofeT SI}
+Definition bi_greatest_fixpoint {SI} {PROP : bi SI} {A : ofe SI}
     (F : (A → PROP) → (A → PROP)) (x : A) : PROP :=
   tc_opaque (∃ Φ : A -n> PROP, <pers> (∀ x, Φ x -∗ F Φ x) ∧ Φ x)%I.
-Arguments bi_greatest_fixpoint : simpl never.
+Global Arguments bi_greatest_fixpoint : simpl never.
 
-Global Instance least_fixpoint_ne {SI} {PROP : bi SI} {A : ofeT SI} n :
+Global Instance least_fixpoint_ne {SI} {PROP : bi SI} {A : ofe SI} n :
   Proper (pointwise_relation (A → PROP) (pointwise_relation A (dist n)) ==>
           dist n ==> dist n) bi_least_fixpoint.
 Proof. solve_proper. Qed.
-Global Instance least_fixpoint_proper {SI} {PROP : bi SI} {A : ofeT SI} :
+Global Instance least_fixpoint_proper {SI} {PROP : bi SI} {A : ofe SI} :
   Proper (pointwise_relation (A → PROP) (pointwise_relation A (≡)) ==>
           (≡) ==> (≡)) bi_least_fixpoint.
 Proof. solve_proper. Qed.
 
 Section least.
-  Context {SI} {PROP : bi SI} {A : ofeT SI} (F : (A → PROP) → (A → PROP)) `{!BiMonoPred F}.
+  Context {SI} {PROP : bi SI} {A : ofe SI} (F : (A → PROP) → (A → PROP)) `{!BiMonoPred F}.
 
   Lemma least_fixpoint_unfold_2 x : F (bi_least_fixpoint F) x ⊢ bi_least_fixpoint F x.
-  Proof.
+  Proof using Type*.
     rewrite /bi_least_fixpoint /=. iIntros "HF" (Φ) "#Hincl".
     iApply "Hincl". iApply (bi_mono_pred _ Φ with "[#]"); last done.
     iIntros "!#" (y) "Hy". iApply ("Hy" with "[# //]").
@@ -43,7 +43,7 @@ Section least.
 
   Lemma least_fixpoint_unfold_1 x :
     bi_least_fixpoint F x ⊢ F (bi_least_fixpoint F) x.
-  Proof.
+  Proof using Type*.
     iIntros "HF". iApply ("HF" $! (OfeMor (F (bi_least_fixpoint F))) with "[#]").
     iIntros "!#" (y) "Hy /=". iApply (bi_mono_pred with "[#]"); last done.
     iIntros "!#" (z) "?". by iApply least_fixpoint_unfold_2.
@@ -51,7 +51,7 @@ Section least.
 
   Corollary least_fixpoint_unfold x :
     bi_least_fixpoint F x ≡ F (bi_least_fixpoint F) x.
-  Proof.
+  Proof using Type*.
     apply (anti_symm _); auto using least_fixpoint_unfold_1, least_fixpoint_unfold_2.
   Qed.
 
@@ -64,7 +64,7 @@ Section least.
   Lemma least_fixpoint_strong_ind (Φ : A → PROP) `{!NonExpansive Φ} :
     □ (∀ y, F (λ x, Φ x ∧ bi_least_fixpoint F x) y -∗ Φ y) -∗
     ∀ x, bi_least_fixpoint F x -∗ Φ x.
-  Proof.
+  Proof using Type*.
     trans (∀ x, bi_least_fixpoint F x -∗ Φ x ∧ bi_least_fixpoint F x)%I.
     { iIntros "#HΦ". iApply (least_fixpoint_ind with "[]"); first solve_proper.
       iIntros "!#" (y) "H". iSplit; first by iApply "HΦ".
@@ -74,7 +74,7 @@ Section least.
   Qed.
 End least.
 
-Lemma greatest_fixpoint_ne_outer {SI} {PROP : bi SI} {A : ofeT SI}
+Lemma greatest_fixpoint_ne_outer {SI} {PROP : bi SI} {A : ofe SI}
     (F1 : (A → PROP) → (A → PROP)) (F2 : (A → PROP) → (A → PROP)):
   (∀ Φ x n, F1 Φ x ≡{n}≡ F2 Φ x) → ∀ x1 x2 n,
   x1 ≡{n}≡ x2 → bi_greatest_fixpoint F1 x1 ≡{n}≡ bi_greatest_fixpoint F2 x2.
@@ -83,21 +83,21 @@ Proof.
   do 3 f_equiv; last solve_proper. repeat f_equiv. apply HF.
 Qed.
 
-Global Instance greatest_fixpoint_ne {SI} {PROP : bi SI} {A : ofeT SI} n :
+Global Instance greatest_fixpoint_ne {SI} {PROP : bi SI} {A : ofe SI} n :
   Proper (pointwise_relation (A → PROP) (pointwise_relation A (dist n)) ==>
           dist n ==> dist n) bi_greatest_fixpoint.
 Proof. solve_proper. Qed.
-Global Instance greatest_fixpoint_proper {SI} {PROP : bi SI} {A : ofeT SI} :
+Global Instance greatest_fixpoint_proper {SI} {PROP : bi SI} {A : ofe SI} :
   Proper (pointwise_relation (A → PROP) (pointwise_relation A (≡)) ==>
           (≡) ==> (≡)) bi_greatest_fixpoint.
 Proof. solve_proper. Qed.
 
 Section greatest.
-  Context {SI} {PROP : bi SI} {A : ofeT SI} (F : (A → PROP) → (A → PROP)) `{!BiMonoPred F}.
+  Context {SI} {PROP : bi SI} {A : ofe SI} (F : (A → PROP) → (A → PROP)) `{!BiMonoPred F}.
 
   Lemma greatest_fixpoint_unfold_1 x :
     bi_greatest_fixpoint F x ⊢ F (bi_greatest_fixpoint F) x.
-  Proof.
+  Proof using Type*.
     iDestruct 1 as (Φ) "[#Hincl HΦ]".
     iApply (bi_mono_pred Φ (bi_greatest_fixpoint F) with "[#]").
     - iIntros "!#" (y) "Hy". iExists Φ. auto.
@@ -106,7 +106,7 @@ Section greatest.
 
   Lemma greatest_fixpoint_unfold_2 x :
     F (bi_greatest_fixpoint F) x ⊢ bi_greatest_fixpoint F x.
-  Proof.
+  Proof using Type*.
     iIntros "HF". iExists (OfeMor (F (bi_greatest_fixpoint F))).
     iSplit; last done. iIntros "!#" (y) "Hy". iApply (bi_mono_pred with "[#] Hy").
     iIntros "!#" (z) "?". by iApply greatest_fixpoint_unfold_1.
@@ -114,7 +114,7 @@ Section greatest.
 
   Corollary greatest_fixpoint_unfold x :
     bi_greatest_fixpoint F x ≡ F (bi_greatest_fixpoint F) x.
-  Proof.
+  Proof using Type*.
     apply (anti_symm _); auto using greatest_fixpoint_unfold_1, greatest_fixpoint_unfold_2.
   Qed.
 

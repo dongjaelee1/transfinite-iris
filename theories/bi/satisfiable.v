@@ -1,99 +1,145 @@
 From iris.bi Require Import
-  derived_connectives derived_laws_bi
-  derived_laws_sbi notation interface
-  plainly updates.
+  derived_connectives derived_laws
+  derived_laws_later notation interface
+  plainly updates big_op.
+From iris.prelude Require Import options.
 
+Import interface.bi.
+Import derived_laws.bi.
+Import derived_laws_later.bi.
 
 Section satisfiable.
-  Context {SI: indexT} {PROP: sbi SI} `{BiPlainly SI PROP} `{BUpd PROP}.
+  Context {SI: indexT} {PROP: bi SI}.
 
-
-  Structure satisfiable_mixin (satisfiable: PROP → Prop) := {
-    satisfiable_mixin_intro P: (True ⊢ P) → satisfiable P;
-    satisfiable_mixin_mono P Q: satisfiable P → (P ⊢ Q) → satisfiable Q;
-    satisfiable_mixin_elim  P: satisfiable P → Plain P → True ⊢ P;
-    satisfiable_mixin_later P: satisfiable (▷ P)%I → satisfiable P;
-    satisfiable_mixin_finite_exists `{FiniteExistential SI} (X: Type) P Q: satisfiable (∃ x: X, P x)%I → pred_finite Q → (∀ x, P x ⊢ ⌜Q x⌝) → ∃ x: X, satisfiable (P x);
-    satisfiable_mixin_exists `{LargeIndex SI} (X: Type) P: satisfiable (∃ x: X, P x)%I → ∃ x: X, satisfiable (P x);
-    satisfiable_mixin_bupd P: satisfiable (|==> P)%I → satisfiable P
+  Class Satisfiable (sat: PROP → Prop) := {
+    sat_mono P Q: (P ⊢ Q) → sat P →  sat Q;
+    sat_elim φ: sat (⌜φ⌝)%I → φ;
   }.
 
-
-  Class Satisfiable := {
-    satisfiable: PROP → Prop;
-    satisfiable_satisfiable_mixin: satisfiable_mixin satisfiable
+  Class SatisfiableBUpd `{!BiBUpd PROP} (sat: PROP → Prop) := {
+    sat_bupd P: sat (|==> P)%I → sat P;
   }.
 
+  Class SatisfiableLater (sat: PROP → Prop) := {
+    sat_later P: sat (▷ P)%I → sat P;
+  }.
 
-  Section satisfiable_lemmas.
-    Context `{Satisfiable}.
+  Class SatisfiableExists (X: Type) (sat: PROP → Prop) := {
+    sat_exists Φ: sat (∃ x: X, Φ x)%I → ∃ x: X, sat (Φ x);
+  }.
 
-    Lemma satisfiable_intro P: (True ⊢ P) → satisfiable P.
-    Proof. apply satisfiable_mixin_intro, satisfiable_satisfiable_mixin. Qed.
+  Notation SatisfiableFiniteExists := (SatisfiableExists bool).
 
-    Lemma satisfiable_mono P Q: satisfiable P → (P ⊢ Q) → satisfiable Q.
-    Proof. apply satisfiable_mixin_mono, satisfiable_satisfiable_mixin. Qed.
+  Section satisfiable.
+    Context {sat: PROP → Prop} `{Sat: Satisfiable sat}.
 
-    Lemma satisfiable_elim  P: satisfiable P → Plain P → True ⊢ P.
-    Proof. apply satisfiable_mixin_elim, satisfiable_satisfiable_mixin. Qed.
+    Global Instance sat_equiv: Proper (equiv ==> iff) sat.
+    Proof using Sat.
+      intros P Q HPQ. split; intros H'; eapply sat_mono, H'; by rewrite HPQ.
+    Qed.
 
-    Lemma satisfiable_later P: satisfiable (▷ P)%I → satisfiable P.
-    Proof. apply satisfiable_mixin_later, satisfiable_satisfiable_mixin. Qed.
+    Lemma sat_or `{SatisfiableFiniteExists sat} P Q:
+      sat (P ∨ Q)%I → sat P ∨ sat Q.
+    Proof using Sat.
+      rewrite bi.or_alt; intros [[] ?] % sat_exists; eauto.
+    Qed.
 
-    Lemma satisfiable_finite_exists `{FiniteExistential SI} (X: Type) P Q: satisfiable (∃ x: X, P x)%I → pred_finite Q → (∀ x, P x ⊢ ⌜Q x⌝) → ∃ x: X, satisfiable (P x).
-    Proof. apply satisfiable_mixin_finite_exists; auto. apply satisfiable_satisfiable_mixin. Qed.
+    Lemma sat_big_or `{SatisfiableFiniteExists sat} {X} P A:
+      sat ([∨ list] x ∈ A, P x)%I → ∃ x: X, x ∈ A ∧ sat (P x).
+    Proof using Sat.
+      induction A as [|a A IH]; simpl.
+      - intros [] % sat_elim.
+      - intros [HP|HP] % sat_or; first by eauto using elem_of_list_here.
+        destruct IH as [? []]; eauto using elem_of_list_further.
+    Qed.
 
-    Lemma satisfiable_exists `{LargeIndex SI} (X: Type) P: satisfiable (∃ x: X, P x)%I → ∃ x: X, satisfiable (P x).
-    Proof. apply satisfiable_mixin_exists; auto. apply satisfiable_satisfiable_mixin. Qed.
+    Lemma sat_sep `{!BiAffine PROP} P Q:
+      sat (P ∗ Q)%I → sat P ∧ sat Q.
+    Proof using Sat.
+      intros Hsat; split; eapply sat_mono, Hsat.
+      - eapply bi.sep_elim_l, _.
+      - eapply bi.sep_elim_r, _.
+    Qed.
 
-    Lemma satisfiable_bupd P: satisfiable (|==> P)%I → satisfiable P.
-    Proof. apply satisfiable_mixin_bupd; auto. apply satisfiable_satisfiable_mixin. Qed.
+    Lemma sat_forall {X} (x: X) P: sat (∀ x, P x)%I → sat (P x).
+    Proof using Sat. intros Hs; eapply sat_mono, Hs. apply forall_elim. Qed.
 
-    Lemma satisfiable_forall {X} (x: X) P: satisfiable (∀ x, P x)%I → satisfiable (P x).
-    Proof. intros Hs; eapply (satisfiable_mono _ _ Hs), bi.forall_elim. Qed.
-
-    Lemma satisfiable_impl P Q: satisfiable (P → Q)%I → (True ⊢ P) → satisfiable Q.
-    Proof.
-      intros Hs Hent; apply (satisfiable_mono _ _ Hs).
-      etrans; last apply derived_laws_bi.bi.impl_elim_r.
+    Lemma sat_impl P Q: sat (P → Q)%I → (True ⊢ P) → sat Q.
+    Proof using Sat.
+      intros Hs Hent; eapply sat_mono, Hs.
+      etrans; last apply impl_elim_r.
       apply bi.and_intro; last reflexivity.
-      etrans; last apply Hent. by eapply bi.pure_intro.
+      etrans; last apply Hent. by eapply pure_intro.
     Qed.
 
-    Lemma satisfiable_wand P Q: satisfiable (P -∗ Q)%I → (True ⊢ P) → satisfiable Q.
-    Proof.
-      intros Hs Hent; apply (satisfiable_mono _ _ Hs).
-      erewrite derived_laws_bi.bi.True_sep_2.
-      rewrite Hent. apply derived_laws_bi.bi.wand_elim_r.
+    Lemma sat_wand P Q: sat (P -∗ Q)%I → (True ⊢ P) → sat Q.
+    Proof using Sat.
+      intros Hs Hent; eapply sat_mono, Hs.
+      erewrite True_sep_2.
+      rewrite Hent. apply wand_elim_r.
     Qed.
 
-    Lemma satisfiable_pers `{BiAffine SI PROP} P: satisfiable (<pers> P)%I → satisfiable P.
-    Proof.
-      intros Hs; apply (satisfiable_mono _ _ Hs).
-      apply bi.persistently_elim. apply _.
+    Lemma sat_pers `{!BiAffine PROP} P: sat (<pers> P)%I → sat P.
+    Proof using Sat.
+      intros Hs; eapply sat_mono, Hs.
+      apply persistently_elim. apply _.
     Qed.
 
-    Lemma satisfiable_intuitionistically P: satisfiable (□ P)%I → satisfiable P.
-    Proof.
-      intros Hs; apply (satisfiable_mono _ _ Hs).
-      apply bi.intuitionistically_elim.
+    Lemma sat_intuitionistically P: sat (□ P)%I → sat P.
+    Proof using Sat.
+      intros Hs; eapply sat_mono, Hs.
+      apply intuitionistically_elim.
     Qed.
 
-    Lemma satisfiable_or `{FiniteExistential SI} P Q: satisfiable (P ∨ Q)%I → satisfiable P ∨ satisfiable Q.
-    Proof.
-      intros Hs. assert (satisfiable (∃ b: bool, if b then P else Q)%I) as Hex.
-      - apply (satisfiable_mono _ _ Hs). by rewrite bi.or_alt.
-      - apply satisfiable_finite_exists with (Q := λ b, True) in Hex as [[] Hex]; auto.
-        + exists [true;false]; intros [] _; rewrite !elem_of_cons; eauto.
-        + intros x. eapply bi.True_intro.
+  End satisfiable.
+
+
+  Section satisfiable_frame.
+    Context {sat: PROP → Prop} `{Sat: Satisfiable sat}.
+
+    Definition sat_frame (F P: PROP) := sat (F ∗ P)%I.
+
+    Global Instance sat_frame_satisifable `{Aff: !BiAffine PROP} F: Satisfiable (sat_frame F).
+    Proof using Sat.
+      split.
+      - intros P Q HPQ; rewrite /sat_frame; eapply sat_mono.
+        by rewrite HPQ.
+      - by intros φ [_ Hφ % sat_elim] % sat_sep.
     Qed.
 
-    Global Instance satisfiable_equiv: Proper (equiv ==> iff) satisfiable.
-    Proof.
-      intros P Q HPQ. split; intros H'; eapply satisfiable_mono; eauto; by rewrite HPQ.
+    Global Instance sat_frame_satisfiable_bupd `{!BiBUpd PROP} `{!SatisfiableBUpd sat} F:
+      SatisfiableBUpd (sat_frame F).
+    Proof using Sat.
+      split. intros P Hsat; rewrite /sat_frame; eapply sat_bupd, sat_mono, Hsat.
+      apply bupd_frame_l.
     Qed.
-  End satisfiable_lemmas.
 
+    Global Instance sat_frame_satisfiable_later `{!SatisfiableLater sat} F:
+      SatisfiableLater (sat_frame F).
+    Proof using Sat.
+      split. intros P Hsat; rewrite /sat_frame; eapply sat_later, sat_mono, Hsat.
+      by rewrite -bi.later_sep_2 -(bi.later_intro F).
+    Qed.
+
+    Global Instance sat_frame_satisfiable_exists X `{!SatisfiableExists X sat} F:
+    SatisfiableExists X (sat_frame F).
+    Proof using Sat.
+      split. intros P Hsat; rewrite /sat_frame; eapply sat_exists, sat_mono, Hsat.
+      by rewrite bi.sep_exist_l.
+    Qed.
+
+    Lemma sat_frame_move F P:
+      sat_frame F P ↔ sat_frame emp%I (F ∗ P)%I.
+    Proof using Sat.
+      by rewrite /sat_frame bi.emp_sep.
+    Qed.
+
+    Lemma sat_sat_frame P:
+      sat_frame emp%I P ↔ sat P.
+    Proof using Sat.
+      by rewrite /sat_frame bi.emp_sep.
+    Qed.
+
+    End satisfiable_frame.
 End satisfiable.
-Arguments Satisfiable {_} _ {_} {_}.
 

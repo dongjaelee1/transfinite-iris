@@ -1,7 +1,7 @@
+From stdpp Require Export sets coPset.
 From iris.algebra Require Export cmra.
 From iris.algebra Require Import updates local_updates.
-From stdpp Require Export sets coPset.
-Set Default Proof Using "Type".
+From iris.prelude Require Import options.
 (** This is pretty much the same as algebra/gset, but I was not able to
 generalize the construction without breaking canonical structures. *)
 
@@ -12,10 +12,10 @@ Section coPset.
 
   Canonical Structure coPsetO := discreteO SI coPset.
 
-  Instance coPset_valid : Valid coPset := λ _, True.
-  Instance coPset_unit : Unit coPset := (∅ : coPset).
-  Instance coPset_op : Op coPset := union.
-  Instance coPset_pcore : PCore coPset := Some.
+  Local Instance coPset_valid_instance : Valid coPset := λ _, True.
+  Local Instance coPset_unit_instance : Unit coPset := (∅ : coPset).
+  Local Instance coPset_op_instance : Op coPset := union.
+  Local Instance coPset_pcore_instance : PCore coPset := Some.
 
   Lemma coPset_op_union X Y : X ⋅ Y = X ∪ Y.
   Proof. done. Qed.
@@ -44,8 +44,8 @@ Section coPset.
   Proof. apply discrete_cmra_discrete. Qed.
 
   Lemma coPset_ucmra_mixin : UcmraMixin SI coPset.
-  Proof. split. done. intros X. by rewrite coPset_op_union left_id_L. done. Qed.
-  Canonical Structure coPsetUR := UcmraT SI coPset coPset_ucmra_mixin.
+  Proof. split; [done | | done]. intros X. by rewrite coPset_op_union left_id_L. Qed.
+  Canonical Structure coPsetUR := Ucmra SI coPset coPset_ucmra_mixin.
 
   Lemma coPset_opM X mY : X ⋅? mY = X ∪ default ∅ mY.
   Proof. destruct mY; by rewrite /= ?right_id_L. Qed.
@@ -57,14 +57,12 @@ Section coPset.
   Proof.
     intros (Z&->&?)%subseteq_disjoint_union_L.
     rewrite local_update_unital_discrete=> Z' _ /leibniz_equiv_iff->.
-    split. done. rewrite coPset_op_union. set_solver.
+    split; first done. rewrite coPset_op_union. set_solver.
   Qed.
 End coPset.
-
 Arguments coPsetO : clear implicits.
 Arguments coPsetR : clear implicits.
 Arguments coPsetUR : clear implicits.
-
 
 (* The disjoiny union CMRA *)
 Inductive coPset_disj :=
@@ -74,20 +72,19 @@ Global Instance inhabited_coPset_disj: Inhabited (coPset_disj).
 Proof. split; by constructor 2. Qed.
 
 Section coPset_disj.
-  Arguments op _ _ !_ !_ /.
   Context {SI: indexT}.
-
+  Local Arguments op _ _ !_ !_ /.
   Canonical Structure coPset_disjO := leibnizO SI coPset_disj.
 
-  Instance coPset_disj_valid : Valid coPset_disj := λ X,
+  Local Instance coPset_disj_valid_instance : Valid coPset_disj := λ X,
     match X with CoPset _ => True | CoPsetBot => False end.
-  Instance coPset_disj_unit : Unit coPset_disj := CoPset ∅.
-  Instance coPset_disj_op : Op coPset_disj := λ X Y,
+  Local Instance coPset_disj_unit_instance : Unit coPset_disj := CoPset ∅.
+  Local Instance coPset_disj_op_instance : Op coPset_disj := λ X Y,
     match X, Y with
     | CoPset X, CoPset Y => if decide (X ## Y) then CoPset (X ∪ Y) else CoPsetBot
     | _, _ => CoPsetBot
     end.
-  Instance coPset_disj_pcore : PCore coPset_disj := λ _, Some ε.
+  Local Instance coPset_disj_pcore_instance : PCore coPset_disj := λ _, Some ε.
 
   Ltac coPset_disj_solve :=
     repeat (simpl || case_decide);
@@ -127,7 +124,7 @@ Section coPset_disj.
 
   Lemma coPset_disj_ucmra_mixin : UcmraMixin SI coPset_disj.
   Proof. split; try apply _ || done. intros [X|]; coPset_disj_solve. Qed.
-  Canonical Structure coPset_disjUR := UcmraT SI coPset_disj coPset_disj_ucmra_mixin.
+  Canonical Structure coPset_disjUR := Ucmra SI coPset_disj coPset_disj_ucmra_mixin.
 End coPset_disj.
 
 Arguments coPset_disjO : clear implicits.

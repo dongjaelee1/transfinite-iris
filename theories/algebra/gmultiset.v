@@ -1,24 +1,20 @@
-From iris.algebra Require Export cmra.
-From iris.algebra Require Import updates local_updates.
 From stdpp Require Export sets gmultiset countable.
-Set Default Proof Using "Type".
+From iris.algebra Require Export cmra.
+From iris.algebra Require Import updates local_updates big_op.
+From iris.prelude Require Import options.
 
 (* The multiset union CMRA *)
 Section gmultiset.
-  Context `{SI : indexT} `{Countable K}.
+  Context {SI : indexT} `{Countable K}.
   Implicit Types X Y : gmultiset K.
 
   Canonical Structure gmultisetO := discreteO SI (gmultiset K).
 
-  Instance gmultiset_valid : Valid (gmultiset K) := λ _, True.
-  Instance gmultiset_validN : ValidN SI (gmultiset K) := λ _ _, True.
-  Instance gmultiset_unit : Unit (gmultiset K) := (∅ : gmultiset K).
-  Instance gmultiset_op : Op (gmultiset K) := disj_union.
-  Instance gmultiset_pcore : PCore (gmultiset K) := λ X, Some ∅.
-
-  (* TODO: seems like these were in stdpp at some point, but they are not anymore *)
-  Notation "⊎ Y" := (λ x, disj_union x Y) (at level 50).
-  Notation "X ⊎" := (disj_union X) (at level 50).
+  Local Instance gmultiset_valid_instance : Valid (gmultiset K) := λ _, True.
+  Local Instance gmultiset_validN_instance : ValidN SI (gmultiset K) := λ _ _, True.
+  Local Instance gmultiset_unit_instance : Unit (gmultiset K) := (∅ : gmultiset K).
+  Local Instance gmultiset_op_instance : Op (gmultiset K) := disj_union.
+  Local Instance gmultiset_pcore_instance : PCore (gmultiset K) := λ X, Some ∅.
 
   Lemma gmultiset_op_disj_union X Y : X ⋅ Y = X ⊎ Y.
   Proof. done. Qed.
@@ -51,12 +47,15 @@ Section gmultiset.
   Proof. apply discrete_cmra_discrete. Qed.
 
   Lemma gmultiset_ucmra_mixin : UcmraMixin SI (gmultiset K).
-  Proof. split. done. intros X. by rewrite gmultiset_op_disj_union left_id_L. done. Qed.
-  Canonical Structure gmultisetUR := UcmraT SI (gmultiset K) gmultiset_ucmra_mixin.
+  Proof.
+    split; [done | | done]. intros X.
+    by rewrite gmultiset_op_disj_union left_id_L.
+  Qed.
+  Canonical Structure gmultisetUR := Ucmra SI (gmultiset K) gmultiset_ucmra_mixin.
 
   Global Instance gmultiset_cancelable X : Cancelable X.
   Proof.
-    apply: discrete_cancelable=> Y Z _ ?. fold_leibniz. by apply (inj (X ⊎)).
+    apply: discrete_cancelable=> Y Z _ ?. fold_leibniz. by apply (inj (X ⊎.)).
   Qed.
 
   Lemma gmultiset_opM X mY : X ⋅? mY = X ⊎ default ∅ mY.
@@ -68,7 +67,7 @@ Section gmultiset.
   Lemma gmultiset_local_update X Y X' Y' : X ⊎ Y' = X' ⊎ Y → (X,Y) ~l~> (X', Y').
   Proof.
     intros HXY. rewrite local_update_unital_discrete=> Z' _. intros ->%leibniz_equiv.
-    split; first done. apply leibniz_equiv_iff, (inj (⊎ Y)).
+    split; first done. apply leibniz_equiv_iff, (inj (.⊎ Y)).
     rewrite -HXY !gmultiset_op_disj_union.
     by rewrite -(comm_L _ Y) (comm_L _ Y') assoc_L.
   Qed.
@@ -85,8 +84,17 @@ Section gmultiset.
     repeat (rewrite multiplicity_difference || rewrite multiplicity_disj_union).
     lia.
   Qed.
+
+  Lemma big_opMS_singletons X :
+    ([^op mset] x ∈ X, {[ x ]}) = X.
+  Proof.
+    induction X as [|x X IH] using gmultiset_ind.
+    - rewrite big_opMS_empty. done.
+    - unfold_leibniz. rewrite big_opMS_disj_union // big_opMS_singleton IH //.
+  Qed.
+
 End gmultiset.
 
-Arguments gmultisetO _ {_ _}.
-Arguments gmultisetR _ {_ _}.
-Arguments gmultisetUR _ {_ _}.
+Global Arguments gmultisetO _ _ {_ _}.
+Global Arguments gmultisetR _ _ {_ _}.
+Global Arguments gmultisetUR _ _ {_ _}.

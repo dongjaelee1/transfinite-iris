@@ -1,9 +1,8 @@
-(** This file provides a "bounded" version of the fractional camera whose
+(** This file provides an "unbounded" version of the fractional camera whose
 elements are in the interval (0,..) instead of (0,1]. *)
-From Coq.QArith Require Import Qcanon.
 From iris.algebra Require Export cmra.
 From iris.algebra Require Import proofmode_classes.
-Set Default Proof Using "Type".
+From iris.prelude Require Import options.
 
 (** Since the standard (0,1] fractional camera [frac] is used more often, we
 define [ufrac] through a [Definition] instead of a [Notation]. That way, Coq
@@ -11,41 +10,37 @@ infers the [frac] camera by default when using the [Qp] type. *)
 Definition ufrac := Qp.
 
 Section ufrac.
-Context {SI : indexT}.
-Canonical Structure ufracO := leibnizO SI ufrac.
+  Context {SI : indexT}.
+  Implicit Types p q : ufrac.
 
-Instance ufrac_valid : Valid ufrac := λ x, True.
-Instance ufrac_pcore : PCore ufrac := λ _, None.
-Instance ufrac_op : Op ufrac := λ x y, (x + y)%Qp.
+  Canonical Structure ufracO := leibnizO SI ufrac.
 
-Lemma ufrac_included (x y : ufrac) : x ≼ y ↔ (x < y)%Qc.
-Proof. by rewrite Qp_lt_sum. Qed.
+  Local Instance ufrac_valid_instance : Valid ufrac := λ x, True.
+  Local Instance ufrac_pcore_instance : PCore ufrac := λ _, None.
+  Local Instance ufrac_op_instance : Op ufrac := λ x y, (x + y)%Qp.
 
-Corollary ufrac_included_weak (x y : ufrac) : x ≼ y → (x ≤ y)%Qc.
-Proof. intros ?%ufrac_included. auto using Qclt_le_weak. Qed.
-
-Definition ufrac_ra_mixin : RAMixin ufrac.
-Proof. split; try apply _; try done. Qed.
-Canonical Structure ufracR := discreteR SI ufrac ufrac_ra_mixin.
-
-Global Instance ufrac_cmra_discrete : CmraDiscrete ufracR.
-Proof. apply discrete_cmra_discrete. Qed.
-End ufrac.
-
-Section fix_index. 
-  Context {SI : indexT}. 
-  Global Instance ufrac_cancelable (q : ufrac) : Cancelable (I := SI) q.
-  Proof. intros ?????. by apply Qp_eq, (inj (Qcplus q)), (Qp_eq (q+y) (q+z))%Qp. Qed.
-
-  Global Instance ufrac_id_free (q : ufrac) : IdFree (I := SI) q.
-  Proof.
-    intros [q0 Hq0] ? EQ%Qp_eq. rewrite -{1}(Qcplus_0_r q) in EQ.
-    eapply Qclt_not_eq; first done. by apply (inj (Qcplus q)).
-  Qed.
-
-  Lemma ufrac_op' (q p : ufrac) : cmra_op (I := SI) _ p q = (p + q)%Qp.
+  Lemma ufrac_op' p q : p ⋅ q = (p + q)%Qp.
   Proof. done. Qed.
+  Lemma ufrac_included p q : p ≼ q ↔ (p < q)%Qp.
+  Proof. by rewrite Qp_lt_sum. Qed.
 
-  Global Instance is_op_ufrac (q : ufrac) : IsOp' (SI := SI) q (q/2)%Qp (q/2)%Qp.
-  Proof. by rewrite /IsOp' /IsOp /op ufrac_op' Qp_div_2. Qed.
-End fix_index.
+  Corollary ufrac_included_weak p q : p ≼ q → (p ≤ q)%Qp.
+  Proof. rewrite ufrac_included. apply Qp_lt_le_incl. Qed.
+
+  Definition ufrac_ra_mixin : RAMixin ufrac.
+  Proof. split; try apply _; try done. Qed.
+  Canonical Structure ufracR := discreteR SI ufrac ufrac_ra_mixin.
+
+  Global Instance ufrac_cmra_discrete : CmraDiscrete ufracR.
+  Proof. apply discrete_cmra_discrete. Qed.
+
+  Global Instance ufrac_cancelable q : Cancelable q.
+  Proof. intros n p1 p2 _. apply (inj (Qp_add q)). Qed.
+  Global Instance ufrac_id_free q : IdFree q.
+  Proof. intros p _. apply Qp_add_id_free. Qed.
+
+  Global Instance is_op_ufrac q : IsOp' q (q/2)%Qp (q/2)%Qp.
+  Proof. by rewrite /IsOp' /IsOp ufrac_op' Qp_div_2. Qed.
+End ufrac.
+Arguments ufracO : clear implicits.
+Arguments ufracR : clear implicits.

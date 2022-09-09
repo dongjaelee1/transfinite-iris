@@ -1,18 +1,37 @@
+From iris.prelude Require Import options.
 (** Just reserve the notation. *)
 
-(** Turnstiles *)
+(** * Turnstiles *)
 Reserved Notation "P ⊢ Q" (at level 99, Q at level 200, right associativity).
 Reserved Notation "P '⊢@{' PROP } Q" (at level 99, Q at level 200, right associativity).
-Reserved Notation "('⊢@{' PROP } )" (at level 99).
+Reserved Notation "(⊢)".
+Reserved Notation "'(⊢@{' PROP } )".
+Reserved Notation "( P ⊣⊢.)".
+Reserved Notation "(.⊣⊢ Q )".
+
 Reserved Notation "P ⊣⊢ Q" (at level 95, no associativity).
 Reserved Notation "P '⊣⊢@{' PROP } Q" (at level 95, no associativity).
-Reserved Notation "('⊣⊢@{' PROP } )" (at level 95).
+Reserved Notation "(⊣⊢)".
+Reserved Notation "'(⊣⊢@{' PROP } )".
+Reserved Notation "(.⊢ Q )".
+Reserved Notation "( P ⊢.)".
 
-(*NOTE: backported from current iris *)
 Reserved Notation "⊢ Q" (at level 20, Q at level 200).
 Reserved Notation "'⊢@{' PROP } Q" (at level 20, Q at level 200).
+(** The definition must coincide with "'⊢@{' PROP } Q". *)
+Reserved Notation "'(⊢@{' PROP } Q )".
+(**
+Rationale:
+Notation [( '⊢@{' PROP } )] prevents parsing [(⊢@{PROP} Q)] using the
+[⊢@{PROP} Q] notation; since the latter parse arises from composing two
+notations, it is missed by the automatic left-factorization.
 
-(** BI connectives *)
+To fix that, we force left-factorization by explicitly composing parentheses with
+['⊢@{' PROP } Q] into the new notation [( '⊢@{' PROP } Q )],
+which successfully undergoes automatic left-factoring. *)
+
+
+(** * BI connectives *)
 Reserved Notation "'emp'".
 Reserved Notation "'⌜' φ '⌝'" (at level 1, φ at level 200, format "⌜ φ ⌝").
 Reserved Notation "P ∗ Q" (at level 80, right associativity).
@@ -32,10 +51,6 @@ Reserved Notation "▷? p P" (at level 20, p at level 9, P at level 20,
    format "▷? p  P").
 Reserved Notation "▷^ n P" (at level 20, n at level 9, P at level 20,
    format "▷^ n  P").
-Reserved Notation "⧍ P" (at level 20, right associativity).
-Reserved Notation "⧍^ n P" (at level 20, n at level 9, P at level 20,
-   format "⧍^ n  P").
-
 
 Reserved Infix "∗-∗" (at level 95, no associativity).
 
@@ -60,7 +75,7 @@ Reserved Notation "■? p P" (at level 20, p at level 9, P at level 20,
 Reserved Notation "'<obj>' P" (at level 20, right associativity).
 Reserved Notation "'<subj>' P" (at level 20, right associativity).
 
-(** Update modalities *)
+(** * Update modalities *)
 Reserved Notation "|==> Q" (at level 99, Q at level 200, format "|==>  Q").
 Reserved Notation "P ==∗ Q"
   (at level 99, Q at level 200, format "'[' P  '/' ==∗  Q ']'").
@@ -79,32 +94,35 @@ Reserved Notation "P ={ E }=∗ Q"
   (at level 99, E at level 50, Q at level 200,
    format "'[' P  '/' ={ E }=∗  Q ']'").
 
-Reserved Notation "|={ E1 , E2 , E3 }▷=> Q"
+(** Step-taking fancy updates *)
+Reserved Notation "|={ E1 } [ E2 ]▷=> Q"
   (at level 99, E1, E2 at level 50, Q at level 200,
-   format "|={ E1 , E2 , E3 }▷=>  Q").
-Reserved Notation "P ={ E1 , E2 , E3 }▷=∗ Q"
+   format "|={ E1 } [ E2 ]▷=>  Q").
+Reserved Notation "P ={ E1 } [ E2 ]▷=∗ Q"
   (at level 99, E1, E2 at level 50, Q at level 200,
-   format "'[' P  '/' ={ E1 , E2 , E3 }▷=∗  Q ']'").
-Reserved Notation "|={ E1 , E2 }▷=> Q"
-  (at level 99, E1, E2 at level 50, Q at level 200,
-   format "|={ E1 , E2 }▷=>  Q").
-Reserved Notation "P ={ E1 , E2 }▷=∗ Q"
-  (at level 99, E1, E2 at level 50, Q at level 200,
-   format "'[' P  '/' ={ E1 , E2 }▷=∗  Q ']'").
+   format "'[' P  '/' ={ E1 } [ E2 ]▷=∗  Q ']'").
 Reserved Notation "|={ E }▷=> Q"
   (at level 99, E at level 50, Q at level 200,
    format "|={ E }▷=>  Q").
 Reserved Notation "P ={ E }▷=∗ Q"
   (at level 99, E at level 50, Q at level 200,
    format "'[' P  '/' ={ E }▷=∗  Q ']'").
-Reserved Notation "|={ E1 , E2 }▷=>^ n Q"
-  (at level 99, E1, E2 at level 50, n at level 9, Q at level 200,
-   format "|={ E1 , E2 }▷=>^ n  Q").
-Reserved Notation "P ={ E1 , E2 }▷=∗^ n Q"
-  (at level 99, E1, E2 at level 50, n at level 9, Q at level 200,
-   format "P  ={ E1 , E2 }▷=∗^ n  Q").
 
-(** Big Ops *)
+(** Multi-step-taking fancy updates *)
+Reserved Notation "|={ E1 } [ E2 ]▷=>^ n Q"
+  (at level 99, E1, E2 at level 50, n at level 9, Q at level 200,
+   format "|={ E1 } [ E2 ]▷=>^ n  Q").
+Reserved Notation "P ={ E1 } [ E2 ]▷=∗^ n Q"
+  (at level 99, E1, E2 at level 50, n at level 9, Q at level 200,
+   format "P  ={ E1 } [ E2 ]▷=∗^ n  Q").
+Reserved Notation "|={ E }▷=>^ n Q"
+  (at level 99, E at level 50, n at level 9, Q at level 200,
+   format "|={ E }▷=>^ n  Q").
+Reserved Notation "P ={ E }▷=∗^ n Q"
+  (at level 99, E at level 50, n at level 9, Q at level 200,
+   format "P  ={ E }▷=∗^ n  Q").
+
+(** * Big Ops *)
 Reserved Notation "'[∗' 'list]' k ↦ x ∈ l , P"
   (at level 200, l at level 10, k, x at level 1, right associativity,
    format "[∗  list]  k ↦ x  ∈  l ,  P").
@@ -162,4 +180,5 @@ Reserved Notation "'[∗' 'mset]' x ∈ X , P"
    format "[∗  mset]  x  ∈  X ,  P").
 
 (** Define the scope *)
+Declare Scope bi_scope.
 Delimit Scope bi_scope with I.

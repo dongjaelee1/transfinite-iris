@@ -1,19 +1,19 @@
+From stdpp Require Import finite.
 From iris.algebra Require Export cmra.
 From iris.algebra Require Import updates.
-From stdpp Require Import finite.
-Set Default Proof Using "Type".
+From iris.prelude Require Import options.
 
-Definition discrete_fun_insert `{EqDecision A} {SI} {B : A → ofeT SI}
+Definition discrete_fun_insert `{EqDecision A} {SI} {B : A → ofe SI}
     (x : A) (y : B x) (f : discrete_fun B) : discrete_fun B := λ x',
   match decide (x = x') with left H => eq_rect _ B y _ H | right _ => f x' end.
-Instance: Params (@discrete_fun_insert) 5 := {}.
+Global Instance: Params (@discrete_fun_insert) 6 := {}.
 
-Definition discrete_fun_singleton `{EqDecision A} {SI} {B : A → ucmraT SI}
+Definition discrete_fun_singleton `{EqDecision A} {SI} {B : A → ucmra SI}
   (x : A) (y : B x) : discrete_fun B := discrete_fun_insert x y ε.
-Instance: Params (@discrete_fun_singleton) 5 := {}.
+Global Instance: Params (@discrete_fun_singleton) 6 := {}.
 
 Section ofe.
-  Context `{Heqdec : EqDecision A} {SI} {B : A → ofeT SI}.
+  Context `{Heqdec : EqDecision A} {SI} {B : A → ofe SI}.
   Implicit Types x : A.
   Implicit Types f g : discrete_fun B.
 
@@ -52,7 +52,7 @@ Section ofe.
 End ofe.
 
 Section cmra.
-  Context `{EqDecision A} {SI} {B : A → ucmraT SI}.
+  Context `{EqDecision A} {SI} {B : A → ucmra SI}.
   Implicit Types x : A.
   Implicit Types f g : discrete_fun B.
 
@@ -62,7 +62,10 @@ Section cmra.
 
   Global Instance discrete_fun_singleton_ne x :
     NonExpansive (discrete_fun_singleton x : B x → _).
-  Proof. intros n y1 y2 ?; apply discrete_fun_insert_ne. done. by apply equiv_dist. Qed.
+  Proof.
+    intros n y1 y2 ?; apply discrete_fun_insert_ne; [done|].
+    by apply equiv_dist.
+  Qed.
   Global Instance discrete_fun_singleton_proper x :
     Proper ((≡) ==> (≡)) (discrete_fun_singleton x) := ne_proper _.
 
@@ -84,7 +87,7 @@ Section cmra.
     by apply ucmra_unit_validN.
   Qed.
 
-  Lemma discrete_fun_core_singleton x (y : B x) :
+  Lemma discrete_fun_singleton_core x (y : B x) :
     core (discrete_fun_singleton x y) ≡ discrete_fun_singleton x (core y).
   Proof.
     move=>x'; destruct (decide (x = x')) as [->|];
@@ -94,9 +97,9 @@ Section cmra.
 
   Global Instance discrete_fun_singleton_core_id x (y : B x) :
     CoreId y → CoreId (discrete_fun_singleton x y).
-  Proof. by rewrite !core_id_total discrete_fun_core_singleton=> ->. Qed.
+  Proof. by rewrite !core_id_total discrete_fun_singleton_core=> ->. Qed.
 
-  Lemma discrete_fun_op_singleton (x : A) (y1 y2 : B x) :
+  Lemma discrete_fun_singleton_op (x : A) (y1 y2 : B x) :
     discrete_fun_singleton x y1 ⋅ discrete_fun_singleton x y2 ≡ discrete_fun_singleton x (y1 ⋅ y2).
   Proof.
     intros x'; destruct (decide (x' = x)) as [->|].

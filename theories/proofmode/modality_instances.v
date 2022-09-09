@@ -1,9 +1,9 @@
 From iris.bi Require Import bi.
 From iris.proofmode Require Export classes.
-Set Default Proof Using "Type".
+From iris.prelude Require Import options.
 Import bi.
 
-Section bi_modalities.
+Section modalities.
   Context {SI} {PROP : bi SI}.
 
   Lemma modality_persistently_mixin :
@@ -34,7 +34,7 @@ Section bi_modalities.
   Definition modality_intuitionistically :=
     Modality _ modality_intuitionistically_mixin.
 
-  Lemma modality_embed_mixin `{BiEmbed SI PROP PROP'} :
+  Lemma modality_embed_mixin `{!BiEmbed PROP PROP'} :
     modality_mixin (@embed PROP PROP' _)
       (MIEnvTransform IntoEmbed) (MIEnvTransform IntoEmbed).
   Proof.
@@ -43,24 +43,20 @@ Section bi_modalities.
     - intros P Q. rewrite /IntoEmbed=> ->. by rewrite embed_intuitionistically_2.
     - by intros P Q ->.
   Qed.
-  Definition modality_embed `{BiEmbed SI PROP PROP'} :=
+  Definition modality_embed `{!BiEmbed PROP PROP'} :=
     Modality _ modality_embed_mixin.
-End bi_modalities.
 
-Section sbi_modalities.
-  Context {SI} {PROP : sbi SI}.
-
-  Lemma modality_plainly_mixin `{BiPlainly SI PROP} :
+  Lemma modality_plainly_mixin `{!BiPlainly PROP} :
     modality_mixin (@plainly PROP _) (MIEnvForall Plain) MIEnvClear.
   Proof.
     split; simpl; split_and?; eauto using equiv_entails_sym, plainly_intro,
       plainly_mono, plainly_and, plainly_sep_2 with typeclass_instances.
   Qed.
-  Definition modality_plainly `{BiPlainly SI PROP} :=
+  Definition modality_plainly `{!BiPlainly PROP} :=
     Modality _ modality_plainly_mixin.
 
   Lemma modality_laterN_mixin n :
-    modality_mixin (Nat.iter n (@sbi_later SI PROP))
+    modality_mixin (@bi_laterN SI PROP n)
       (MIEnvTransform (MaybeIntoLaterN false n)) (MIEnvTransform (MaybeIntoLaterN false n)).
   Proof.
     split; simpl; split_and?; eauto using equiv_entails_sym, laterN_intro,
@@ -69,4 +65,4 @@ Section sbi_modalities.
   Qed.
   Definition modality_laterN n :=
     Modality _ (modality_laterN_mixin n).
-End sbi_modalities.
+End modalities.

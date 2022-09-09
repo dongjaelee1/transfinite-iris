@@ -1,6 +1,6 @@
-From iris.bi Require Export bi.
 From stdpp Require Import namespaces.
-Set Default Proof Using "Type".
+From iris.bi Require Export bi.
+From iris.prelude Require Import options.
 Import bi.
 
 (** The `iModIntro` tactic is not tied the Iris modalities, but can be
@@ -55,11 +55,11 @@ Inductive modality_action {SI: indexT} (PROP1 : bi SI) : bi SI → Type :=
   | MIEnvTransform {PROP2 : bi SI} (C : PROP2 → PROP1 → Prop) : modality_action PROP1 PROP2
   | MIEnvClear {PROP2} : modality_action PROP1 PROP2
   | MIEnvId : modality_action PROP1 PROP1.
-Arguments MIEnvIsEmpty {_ _ _}.
-Arguments MIEnvForall {_ _} _.
-Arguments MIEnvTransform {_ _ _} _.
-Arguments MIEnvClear {_ _ _}.
-Arguments MIEnvId {_ _}.
+Global Arguments MIEnvIsEmpty {_ _ _}.
+Global Arguments MIEnvForall {_ _} _.
+Global Arguments MIEnvTransform {_ _ _} _.
+Global Arguments MIEnvClear {_ _ _}.
+Global Arguments MIEnvId {_ _}.
 
 Notation MIEnvFilter C := (MIEnvTransform (TCDiag C)).
 
@@ -105,9 +105,9 @@ Record modality {SI} (PROP1 PROP2 : bi SI) := Modality {
   modality_mixin_of :
     modality_mixin modality_car modality_intuitionistic_action modality_spatial_action
 }.
-Arguments Modality {_ _ _} _ {_ _} _.
-Arguments modality_intuitionistic_action {_ _ _} _.
-Arguments modality_spatial_action {_ _ _} _.
+Global Arguments Modality {_ _ _} _ {_ _} _.
+Global Arguments modality_intuitionistic_action {_ _ _} _.
+Global Arguments modality_spatial_action {_ _ _} _.
 
 Section modality.
   Context {SI: indexT} {PROP1 PROP2: bi SI} (M : modality PROP1 PROP2).
@@ -183,6 +183,6 @@ End modality1.
 which will instruct [iModIntro] to introduce the modality without modifying the
 proof mode context. Examples of such modalities are [bupd], [fupd], [except_0],
 [monPred_subjectively] and [bi_absorbingly]. *)
-Lemma modality_id_mixin `{PROP : bi SI} : modality_mixin (@id PROP) MIEnvId MIEnvId.
+Lemma modality_id_mixin {SI} {PROP : bi SI} : modality_mixin (@id PROP) MIEnvId MIEnvId.
 Proof. split; simpl; eauto. Qed.
-Definition modality_id `{PROP : bi SI} := Modality (@id PROP) modality_id_mixin.
+Definition modality_id {SI} {PROP : bi SI} := Modality (@id PROP) modality_id_mixin.

@@ -1,41 +1,42 @@
-From iris.algebra Require Export frac auth.
-From iris.algebra Require Export updates local_updates.
+From iris.algebra Require Export frac auth updates local_updates.
 From iris.algebra Require Import proofmode_classes.
+From iris.prelude Require Import options.
 
 (** Authoritative CMRA where the NON-authoritative parts can be fractional.
-  This CMRA allows the original non-authoritative element `◯ a` to be split into
-  fractional parts `◯!{q} a`. Using `◯! a ≡ ◯!{1} a` is in effect the same as
-  using the original `◯ a`. Currently, however, this CMRA hides the ability to
+  This CMRA allows the original non-authoritative element [◯ a] to be split into
+  fractional parts [◯F{q} a]. Using [◯F a ≡ ◯F{1} a] is in effect the same as
+  using the original [◯ a]. Currently, however, this CMRA hides the ability to
   split the authoritative part into fractions.
 *)
 
-Definition frac_authR {SI} (A : cmraT SI) : cmraT SI :=
+Definition frac_authR {SI} (A : cmra SI) : cmra SI :=
   authR (optionUR (prodR (fracR SI) A)).
-Definition frac_authUR {SI} (A : cmraT SI) : ucmraT SI :=
+Definition frac_authUR {SI} (A : cmra SI) : ucmra SI :=
   authUR (optionUR (prodR (fracR SI) A)).
 
-Definition frac_auth_auth {SI} {A : cmraT SI} (x : A) : frac_authR A :=
+Definition frac_auth_auth {SI} {A : cmra SI} (x : A) : frac_authR A :=
   ● (Some (1%Qp,x)).
-Definition frac_auth_frag {SI} {A : cmraT SI} (q : frac) (x : A) : frac_authR A :=
+Definition frac_auth_frag {SI} {A : cmra SI} (q : frac) (x : A) : frac_authR A :=
   ◯ (Some (q,x)).
 
 Typeclasses Opaque frac_auth_auth frac_auth_frag.
 
-Instance: Params (@frac_auth_auth) 1 := {}.
-Instance: Params (@frac_auth_frag) 2 := {}.
+Global Instance: Params (@frac_auth_auth) 2 := {}.
+Global Instance: Params (@frac_auth_frag) 3 := {}.
 
 Notation "●F a" := (frac_auth_auth a) (at level 10).
 Notation "◯F{ q } a" := (frac_auth_frag q a) (at level 10, format "◯F{ q }  a").
 Notation "◯F a" := (frac_auth_frag 1 a) (at level 10).
 
 Section frac_auth.
-  Context {SI} {A : cmraT SI}.
+  Context {SI} {A : cmra SI}.
   Implicit Types a b : A.
 
   Global Instance frac_auth_auth_ne : NonExpansive (@frac_auth_auth SI A).
   Proof. solve_proper. Qed.
   Global Instance frac_auth_auth_proper : Proper ((≡) ==> (≡)) (@frac_auth_auth SI A).
-  Proof. intros ?? H. split; simpl; by rewrite ?H.  Qed.
+  Proof. solve_proper.  Qed.
+
   Global Instance frac_auth_frag_ne q : NonExpansive (@frac_auth_frag SI A q).
   Proof. solve_proper. Qed.
   Global Instance frac_auth_frag_proper q : Proper ((≡) ==> (≡)) (@frac_auth_frag SI A q).
@@ -60,14 +61,14 @@ Section frac_auth.
   Proof.
     intros. apply equiv_dist=> n. by apply frac_auth_agreeN, cmra_valid_validN.
   Qed.
-  Lemma frac_auth_agreeL `{!LeibnizEquiv A} a b : ✓ (●F a ⋅ ◯F b) → a = b.
+  Lemma frac_auth_agree_L `{!LeibnizEquiv A} a b : ✓ (●F a ⋅ ◯F b) → a = b.
   Proof. intros. by apply leibniz_equiv, frac_auth_agree. Qed.
 
   Lemma frac_auth_includedN n q a b : ✓{n} (●F a ⋅ ◯F{q} b) → Some b ≼{n} Some a.
   Proof. by rewrite auth_both_validN /= => -[/Some_pair_includedN [_ ?] _]. Qed.
   Lemma frac_auth_included `{CmraDiscrete SI A} q a b :
     ✓ (●F a ⋅ ◯F{q} b) → Some b ≼ Some a.
-  Proof. by rewrite auth_both_valid /= => -[/Some_pair_included [_ ?] _]. Qed.
+  Proof. by rewrite auth_both_valid_discrete /= => -[/Some_pair_included [_ ?] _]. Qed.
   Lemma frac_auth_includedN_total `{CmraTotal SI A} n q a b :
     ✓{n} (●F a ⋅ ◯F{q} b) → b ≼{n} a.
   Proof. intros. by eapply Some_includedN_total, frac_auth_includedN. Qed.
@@ -78,30 +79,31 @@ Section frac_auth.
   Lemma frac_auth_auth_validN n a : ✓{n} (●F a) ↔ ✓{n} a.
   Proof.
     rewrite auth_auth_frac_validN Some_validN. split.
-    by intros [?[]]. intros. by split.
+    - by intros [?[]].
+    - intros. by split.
   Qed.
   Lemma frac_auth_auth_valid a : ✓ (●F a) ↔ ✓ a.
   Proof. rewrite !cmra_valid_validN. by setoid_rewrite frac_auth_auth_validN. Qed.
 
   Lemma frac_auth_frag_validN n q a : ✓{n} (◯F{q} a) ↔ ✓{n} q ∧ ✓{n} a.
-  Proof. done. Qed.
-  Lemma frac_auth_frag_valid q (a: A) (n: SI) : ✓ (◯F{q} a) ↔ ✓ (q: fracR SI) ∧ ✓ a.
-  Proof. done. Qed.
+  Proof. by rewrite /frac_auth_frag auth_frag_validN. Qed.
+  Lemma frac_auth_frag_valid q (a: A) : ✓ (◯F{q} a) ↔ ✓ (q: fracR SI) ∧ ✓ a.
+  Proof. by rewrite /frac_auth_frag auth_frag_valid. Qed.
 
   Lemma frac_auth_frag_op q1 q2 a1 a2 : ◯F{q1+q2} (a1 ⋅ a2) ≡ ◯F{q1} a1 ⋅ ◯F{q2} a2.
   Proof. done. Qed.
 
   Lemma frac_auth_frag_validN_op_1_l n q a b : ✓{n} (◯F{1} a ⋅ ◯F{q} b) → False.
-  Proof. rewrite -frac_auth_frag_op frac_auth_frag_validN=> -[/exclusiveN_l []]. Qed.
+  Proof. rewrite -frac_auth_frag_op frac_auth_frag_validN=> -[/Qp_not_add_le_l []]. Qed.
   Lemma frac_auth_frag_valid_op_1_l q a b : ✓ (◯F{1} a ⋅ ◯F{q} b) → False.
-  Proof. rewrite -frac_auth_frag_op frac_auth_frag_valid; eauto using zero=> -[/exclusive_l []]. Qed.
+  Proof. rewrite -frac_auth_frag_op frac_auth_frag_valid=> -[/Qp_not_add_le_l []]. Qed.
 
-  Global Instance is_op_frac_auth (q q1 q2 : frac) (a a1 a2 : A) :
-    IsOp (q: fracR SI) q1 q2 → IsOp a a1 a2 → IsOp' (◯F{q} a) (◯F{q1} a1) (◯F{q2} a2).
+  Global Instance frac_auth_is_op (q q1 q2 : frac) (a a1 a2 : A) :
+    IsOp (q: fracO SI) q1 q2 → IsOp a a1 a2 → IsOp' (◯F{q} a) (◯F{q1} a1) (◯F{q2} a2).
   Proof. by rewrite /IsOp' /IsOp=> /leibniz_equiv_iff -> ->. Qed.
 
-  Global Instance is_op_frac_auth_core_id (q q1 q2 : frac) (a  : A) :
-    CoreId a → IsOp (q: fracR SI) q1 q2 → IsOp' (◯F{q} a) (◯F{q1} a) (◯F{q2} a).
+  Global Instance frac_auth_is_op_core_id (q q1 q2 : frac) (a  : A) :
+    CoreId a → IsOp (q: fracO SI) q1 q2 → IsOp' (◯F{q} a) (◯F{q1} a) (◯F{q2} a).
   Proof.
     rewrite /IsOp' /IsOp=> ? /leibniz_equiv_iff ->.
     by rewrite -frac_auth_frag_op -core_id_dup.

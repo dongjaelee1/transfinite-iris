@@ -1,23 +1,38 @@
-From iris.bi Require Export bi.
-From iris.bi Require Import tactics.
+From iris.bi Require Export bi telescopes.
 From iris.proofmode Require Export base environments classes modality_instances.
-Set Default Proof Using "Type".
+From iris.prelude Require Import options.
 Import bi.
 Import env_notations.
 
+Local Open Scope lazy_bool_scope.
+
 (* Coq versions of the tactics *)
-Section bi_tactics.
+Section tactics.
 Context {SI} {PROP : bi SI}.
 Implicit Types Γ : env PROP.
 Implicit Types Δ : envs PROP.
 Implicit Types P Q : PROP.
 
-(** * Adequacy *)
-Lemma tac_adequate P : envs_entails (Envs Enil Enil 1) P → emp ⊢ P.
+(** * Starting and stopping the proof mode *)
+Lemma tac_start P : envs_entails (Envs Enil Enil 1) P → ⊢ P.
 Proof.
   rewrite envs_entails_eq !of_envs_eq /=.
   rewrite intuitionistically_True_emp left_id=><-.
   apply and_intro=> //. apply pure_intro; repeat constructor.
+Qed.
+
+Lemma tac_stop Δ P :
+  (match env_intuitionistic Δ, env_spatial Δ with
+   | Enil, Γs => env_to_prop Γs
+   | Γp, Enil => □ env_to_prop_and Γp
+   | Γp, Γs => □ env_to_prop_and Γp ∗ env_to_prop Γs
+   end%I ⊢ P) →
+  envs_entails Δ P.
+Proof.
+  rewrite envs_entails_eq !of_envs_eq. intros <-.
+  rewrite and_elim_r -env_to_prop_and_sound -env_to_prop_sound.
+  destruct (env_intuitionistic Δ), (env_spatial Δ);
+    by rewrite /= ?intuitionistically_True_emp ?left_id ?right_id.
 Qed.
 
 (** * Basic rules *)
@@ -51,10 +66,10 @@ Global Instance affine_env_snoc Γ i P :
 Proof. by constructor. Qed.
 
 (* If the BI is affine, no need to walk on the whole environment. *)
-Global Instance affine_env_bi `(BiAffine SI PROP) Γ : AffineEnv Γ | 0.
+Global Instance affine_env_bi `(!BiAffine PROP) Γ : AffineEnv Γ | 0.
 Proof. induction Γ; apply _. Qed.
 
-Instance affine_env_spatial Δ :
+Local Instance affine_env_spatial Δ :
   AffineEnv (env_spatial Δ) → Affine ([∗] env_spatial Δ).
 Proof. intros H. induction H; simpl; apply _. Qed.
 
@@ -73,6 +88,21 @@ Proof.
   simpl in *. destruct (env_spatial_is_nil _) eqn:?.
   - by rewrite (env_spatial_is_nil_intuitionistically _) // sep_elim_l.
   - rewrite from_assumption. destruct H; by rewrite sep_elim_l.
+Qed.
+
+Lemma tac_assumption_coq Δ P Q :
+  (⊢ P) →
+  FromAssumption true P Q →
+  (if env_spatial_is_nil Δ then TCTrue
+   else TCOr (Absorbing Q) (AffineEnv (env_spatial Δ))) →
+  envs_entails Δ Q.
+Proof.
+  rewrite /FromAssumption /bi_emp_valid /= => HP HPQ H.
+  rewrite envs_entails_eq -(left_id emp%I bi_sep (of_envs Δ)).
+  rewrite -bi.intuitionistically_emp HP HPQ.
+  destruct (env_spatial_is_nil _) eqn:?.
+  - by rewrite (env_spatial_is_nil_intuitionistically _) // sep_elim_l.
+  - destruct H; by rewrite sep_elim_l.
 Qed.
 
 Lemma tac_rename Δ i j p P Q :
@@ -166,6 +196,22 @@ Proof.
         absorbingly_sep_l wand_elim_r HQ.
 Qed.
 
+Lemma tac_spatial Δ i p P P' Q :
+  envs_lookup i Δ = Some (p, P) →
+  (if p then FromAffinely P' P else TCEq P' P) →
+  match envs_replace i p false (Esnoc Enil i P') Δ with
+  | None => False
+  | Some Δ' => envs_entails Δ' Q
+  end →
+  envs_entails Δ Q.
+Proof.
+  intros ? HP. destruct (envs_replace _ _ _ _ _) as [Δ'|] eqn:Hrep; last done.
+  rewrite envs_entails_eq=> <-. rewrite envs_replace_singleton_sound //; simpl.
+  destruct p; simpl; last destruct HP.
+  - by rewrite intuitionistically_affinely (from_affinely P' P) wand_elim_r.
+  - by rewrite wand_elim_r.
+Qed.
+
 (** * Implication and wand *)
 Lemma tac_impl_intro Δ i P P' Q R :
   FromImpl R P Q →
@@ -255,7 +301,7 @@ Lemma tac_specialize remove_intuitionistic Δ i p j q P1 P2 R Q :
   let Δ' := envs_delete remove_intuitionistic i p Δ in
   envs_lookup j Δ' = Some (q, R) →
   IntoWand q p R P1 P2 →
-  match envs_replace j q (p && q) (Esnoc Enil j P2) Δ' with
+  match envs_replace j q (p &&& q) (Esnoc Enil j P2) Δ' with
   | Some Δ'' => envs_entails Δ'' Q
   | None => False
   end → envs_entails Δ Q.
@@ -270,13 +316,14 @@ Proof.
   - by rewrite HR assoc !wand_elim_r.
 Qed.
 
-Lemma tac_specialize_assert Δ j q neg js R P1 P2 P1' Q :
+Lemma tac_specialize_assert Δ j (q am neg : bool) js R P1 P2 P1' Q :
   envs_lookup j Δ = Some (q, R) →
-  IntoWand q false R P1 P2 → AddModal P1' P1 Q →
+  IntoWand q false R P1 P2 →
+  (if am then AddModal P1' P1 Q else TCEq P1' P1) →
   match
-    ''(Δ1,Δ2) ← envs_split (if neg is true then Right else Left)
-    js (envs_delete true j q Δ);
-    Δ2' ← envs_app false (Esnoc Enil j P2) Δ2;
+    '(Δ1,Δ2) ← envs_split (if neg is true then Right else Left)
+                          js (envs_delete true j q Δ);
+    Δ2' ← envs_app (negb am &&& q &&& env_spatial_is_nil Δ1) (Esnoc Enil j P2) Δ2;
     Some (Δ1,Δ2') (* does not preserve position of [j] *)
   with
   | Some (Δ1,Δ2') =>
@@ -285,15 +332,21 @@ Lemma tac_specialize_assert Δ j q neg js R P1 P2 P1' Q :
   | None => False
   end → envs_entails Δ Q.
 Proof.
-  rewrite envs_entails_eq. intros ??? HQ.
+  rewrite envs_entails_eq. intros ?? Hmod HQ.
   destruct (_ ≫= _) as [[Δ1 Δ2']|] eqn:?; last done.
   destruct HQ as [HP1 HQ].
   destruct (envs_split _ _ _) as [[? Δ2]|] eqn:?; simplify_eq/=;
     destruct (envs_app _ _ _) eqn:?; simplify_eq/=.
   rewrite envs_lookup_sound // envs_split_sound //.
   rewrite (envs_app_singleton_sound Δ2) //; simpl.
-  rewrite HP1 (into_wand q false) /= -(add_modal P1' P1 Q). cancel [P1'].
-  apply wand_intro_l. by rewrite assoc !wand_elim_r.
+  rewrite -intuitionistically_if_idemp (into_wand q false) /=.
+  destruct (negb am &&& q &&& env_spatial_is_nil Δ1) eqn:Hp; simpl.
+  - move: Hp. rewrite !lazy_andb_true negb_true. intros [[-> ->] ?]; simpl.
+    destruct Hmod. rewrite env_spatial_is_nil_intuitionistically // HP1.
+    by rewrite assoc intuitionistically_sep_2 wand_elim_l wand_elim_r HQ.
+  - rewrite intuitionistically_if_elim HP1. destruct am; last destruct Hmod.
+    + by rewrite assoc -(comm _ P1') -assoc wand_trans HQ.
+    + by rewrite assoc wand_elim_l wand_elim_r HQ.
 Qed.
 
 Lemma tac_unlock_emp Δ Q : envs_entails Δ Q → envs_entails Δ (emp ∗ locked Q).
@@ -303,18 +356,18 @@ Proof. rewrite envs_entails_eq=> ->. by rewrite -lock -True_sep_2. Qed.
 Lemma tac_unlock Δ Q : envs_entails Δ Q → envs_entails Δ (locked Q).
 Proof. by unlock. Qed.
 
-Lemma tac_specialize_frame Δ j q R P1 P2 P1' Q Q' :
+Lemma tac_specialize_frame Δ j (q am : bool) R P1 P2 P1' Q Q' :
   envs_lookup j Δ = Some (q, R) →
   IntoWand q false R P1 P2 →
-  AddModal P1' P1 Q →
+  (if am then AddModal P1' P1 Q else TCEq P1' P1) →
   envs_entails (envs_delete true j q Δ) (P1' ∗ locked Q') →
   Q' = (P2 -∗ Q)%I →
   envs_entails Δ Q.
 Proof.
-  rewrite envs_entails_eq. intros ??? HPQ ->.
+  rewrite envs_entails_eq. intros ?? Hmod HPQ ->.
   rewrite envs_lookup_sound //. rewrite HPQ -lock.
-  rewrite (into_wand q false) -{2}(add_modal P1' P1 Q). cancel [P1'].
-  apply wand_intro_l. by rewrite assoc !wand_elim_r.
+  rewrite (into_wand q false) /= assoc -(comm _ P1') -assoc wand_trans.
+  destruct am; [done|destruct Hmod]. by rewrite wand_elim_r.
 Qed.
 
 Lemma tac_specialize_assert_pure Δ j q a R P1 P2 φ Q :
@@ -438,8 +491,30 @@ Proof.
   by rewrite -(entails_wand P) // intuitionistically_emp emp_wand.
 Qed.
 
+Definition IntoEmpValid (φ : Type) (P : PROP) := φ → ⊢ P.
+(** These lemmas are [Defined] because the guardedness checker must see
+through them. See https://gitlab.mpi-sws.org/iris/iris/issues/274. For the
+same reason, their bodies use as little automation as possible. *)
+Lemma into_emp_valid_here φ P : AsEmpValid φ P → IntoEmpValid φ P.
+Proof. by intros [??]. Defined.
+Lemma into_emp_valid_impl (φ ψ : Type) P :
+  φ → IntoEmpValid ψ P → IntoEmpValid (φ → ψ) P.
+Proof. rewrite /IntoEmpValid => Hφ Hi1 Hi2. apply Hi1, Hi2, Hφ. Defined.
+Lemma into_emp_valid_forall {A} (φ : A → Type) P x :
+  IntoEmpValid (φ x) P → IntoEmpValid (∀ x : A, φ x) P.
+Proof. rewrite /IntoEmpValid => Hi1 Hi2. apply Hi1, Hi2. Defined.
+Lemma into_emp_valid_tforall {TT : tele} (φ : TT → Prop) P x :
+  IntoEmpValid (φ x) P → IntoEmpValid (∀.. x : TT, φ x) P.
+Proof. rewrite /IntoEmpValid tforall_forall=> Hi1 Hi2. apply Hi1, Hi2. Defined.
+Lemma into_emp_valid_proj φ P : IntoEmpValid φ P → φ → ⊢ P.
+Proof. intros HP. apply HP. Defined.
+
+(** When called by the proof mode, the proof of [P] is produced by calling
+[into_emp_valid_proj]. That call must be transparent to the guardedness
+checker, per https://gitlab.mpi-sws.org/iris/iris/issues/274; hence, it must
+be done _outside_ [tac_pose_proof], so the latter can remain opaque. *)
 Lemma tac_pose_proof Δ j P Q :
-  (emp ⊢ P) →
+  (⊢ P) →
   match envs_app true (Esnoc Enil j P) Δ with
   | None => False
   | Some Δ' => envs_entails Δ' Q
@@ -447,7 +522,7 @@ Lemma tac_pose_proof Δ j P Q :
   envs_entails Δ Q.
 Proof.
   destruct (envs_app _ _ _) as [Δ'|] eqn:?; last done.
-  rewrite envs_entails_eq => HP ?. rewrite envs_app_singleton_sound //=.
+  rewrite envs_entails_eq => HP <-. rewrite envs_app_singleton_sound //=.
   by rewrite -HP /= intuitionistically_emp emp_wand.
 Qed.
 
@@ -500,8 +575,8 @@ Qed.
 (** * Combining *)
 Class FromSeps {SI} {PROP : bi SI} (P : PROP) (Qs : list PROP) :=
   from_seps : [∗] Qs ⊢ P.
-Arguments FromSeps {_ _} _%I _%I.
-Arguments from_seps {_ _} _%I _%I {_}.
+Local Arguments FromSeps {_ _} _%I _%I.
+Local Arguments from_seps {_ _} _%I _%I {_}.
 
 Global Instance from_seps_nil : @FromSeps SI PROP emp [].
 Proof. by rewrite /FromSeps. Qed.
@@ -617,9 +692,11 @@ Proof.
 Qed.
 
 (** * Forall *)
-Lemma tac_forall_intro {A} Δ (Φ : A → PROP) Q :
-  FromForall Q Φ →
-  (∀ a, envs_entails Δ (Φ a)) →
+Lemma tac_forall_intro {A} Δ (Φ : A → PROP) Q name :
+  FromForall Q Φ name →
+  ( (* see [tac_exist_destruct] for an explanation of this let binding *)
+   let _ := name in
+   ∀ a, envs_entails Δ (Φ a)) →
   envs_entails Δ Q.
 Proof. rewrite envs_entails_eq /FromForall=> <-. apply forall_intro. Qed.
 
@@ -650,13 +727,17 @@ Proof.
   rewrite -(from_exist P). eauto using exist_intro'.
 Qed.
 
-Lemma tac_exist_destruct {A} Δ i p j P (Φ : A → PROP) Q :
-  envs_lookup i Δ = Some (p, P) → IntoExist P Φ →
-  (∀ a,
-    match envs_simple_replace i p (Esnoc Enil j (Φ a)) Δ with
-    | Some Δ' => envs_entails Δ' Q
-    | None => False
-    end) →
+Lemma tac_exist_destruct {A} Δ i p j P (Φ : A → PROP) (name: ident_name) Q :
+  envs_lookup i Δ = Some (p, P) → IntoExist P Φ name →
+  ( (* this let binding makes it easy for the tactic [iExistDestruct] to use
+       [name] (from resolving [IntoExist] in an earlier subgoal) within this
+       goal *)
+    let _ := name in
+    ∀ a,
+     match envs_simple_replace i p (Esnoc Enil j (Φ a)) Δ with
+     | Some Δ' => envs_entails Δ' Q
+     | None => False
+     end) →
   envs_entails Δ Q.
 Proof.
   rewrite envs_entails_eq => ?? HΦ. rewrite envs_lookup_sound //.
@@ -715,8 +796,65 @@ Proof.
   - setoid_rewrite <-(right_id emp%I _ (Pout _)). auto.
 Qed.
 
-End bi_tactics.
+(** * Rewriting *)
+Lemma tac_rewrite `{!BiInternalEq PROP} Δ i p Pxy d Q :
+  envs_lookup i Δ = Some (p, Pxy) →
+  ∀ {A : ofe SI} (x y : A) (Φ : A → PROP),
+    IntoInternalEq Pxy x y →
+    (Q ⊣⊢ Φ (if d is Left then y else x)) →
+    NonExpansive Φ →
+    envs_entails Δ (Φ (if d is Left then x else y)) → envs_entails Δ Q.
+Proof.
+  intros ? A x y ? HPxy -> ?. rewrite envs_entails_eq.
+  apply internal_eq_rewrite'; auto. rewrite {1}envs_lookup_sound //.
+  rewrite (into_internal_eq Pxy x y) intuitionistically_if_elim sep_elim_l.
+  destruct d; auto using internal_eq_sym.
+Qed.
 
+Lemma tac_rewrite_in `{!BiInternalEq PROP} Δ i p Pxy j q P d Q :
+  envs_lookup i Δ = Some (p, Pxy) →
+  envs_lookup j Δ = Some (q, P) →
+  ∀ {A : ofe SI} (x y : A) (Φ : A → PROP),
+    IntoInternalEq Pxy x y →
+    (P ⊣⊢ Φ (if d is Left then y else x)) →
+    NonExpansive Φ →
+    match envs_simple_replace j q (Esnoc Enil j (Φ (if d is Left then x else y))) Δ with
+    | None => False
+    | Some Δ' => envs_entails Δ' Q
+    end →
+    envs_entails Δ Q.
+Proof.
+  rewrite envs_entails_eq /IntoInternalEq => ?? A x y Φ HPxy HP ? Hentails.
+  destruct (envs_simple_replace _ _ _ _) as [Δ'|] eqn:?; last done. rewrite -Hentails.
+  rewrite -(idemp bi_and (of_envs Δ)) {2}(envs_lookup_sound _ i) //.
+  rewrite (envs_simple_replace_singleton_sound _ _ j) //=.
+  rewrite HP HPxy (intuitionistically_if_elim _ (_ ≡ _)%I) sep_elim_l.
+  rewrite persistent_and_affinely_sep_r -assoc. apply wand_elim_r'.
+  rewrite -persistent_and_affinely_sep_r. apply impl_elim_r'. destruct d.
+  - apply (internal_eq_rewrite x y (λ y, □?q Φ y -∗ of_envs Δ')%I). solve_proper.
+  - rewrite internal_eq_sym.
+    eapply (internal_eq_rewrite y x (λ y, □?q Φ y -∗ of_envs Δ')%I). solve_proper.
+Qed.
+
+(** * Löb *)
+Lemma tac_löb Δ i Q :
+  BiLöb PROP →
+  env_spatial_is_nil Δ = true →
+  match envs_app true (Esnoc Enil i (▷ Q)%I) Δ with
+  | None => False
+  | Some Δ' => envs_entails Δ' Q
+  end →
+  envs_entails Δ Q.
+Proof.
+  destruct (envs_app _ _ _) as [Δ'|] eqn:?; last done.
+  rewrite envs_entails_eq => ?? HQ.
+  rewrite (env_spatial_is_nil_intuitionistically Δ) //.
+  rewrite envs_app_singleton_sound //; simpl. rewrite HQ.
+  apply löb_wand_intuitionistically.
+Qed.
+End tactics.
+
+(** * Introduction of modalities *)
 (** The following _private_ classes are used internally by [tac_modal_intro] /
 [iModIntro] to transform the proofmode environments when introducing a modality.
 
@@ -742,8 +880,8 @@ Class TransformIntuitionisticEnv {SI} {PROP1 PROP2: bi SI} (M : modality PROP1 P
   transform_intuitionistic_env_dom i : Γin !! i = None → Γout !! i = None;
 }.
 
-(* The class [TransformIntuitionisticEnv M C Γin Γout filtered] is used to transform
-the intuitionistic environment using a type class [C].
+(* The class [TransformSpatialEnv M C Γin Γout filtered] is used to transform
+the spatial environment using a type class [C].
 
 Inputs:
 - [Γin] : the original environment.
@@ -788,7 +926,7 @@ Inductive IntoModalIntuitionisticEnv {SI} {PROP2: bi SI} : ∀ {PROP1} (M : moda
        (M : modality PROP1 PROP2) (C : PROP2 → PROP1 → Prop) Γin Γout :
      TransformIntuitionisticEnv M C Γin Γout →
      IntoModalIntuitionisticEnv M Γin Γout (MIEnvTransform C)
-  | MIEnvClear_intuitionistic {PROP1: bi SI} (M : modality PROP1 PROP2) Γ :
+  | MIEnvClear_intuitionistic {PROP1 : bi SI} (M : modality PROP1 PROP2) Γ :
      IntoModalIntuitionisticEnv M Γ Enil MIEnvClear
   | MIEnvId_intuitionistic (M : modality PROP2 PROP2) Γ :
      IntoModalIntuitionisticEnv M Γ Γ MIEnvId.
@@ -939,56 +1077,9 @@ Section tac_modal_intro.
   Qed.
 End tac_modal_intro.
 
-Section sbi_tactics.
-Context {SI} {PROP : sbi SI}.
-Implicit Types Γ : env PROP.
-Implicit Types Δ : envs PROP.
-Implicit Types P Q : PROP.
-
-(** * Rewriting *)
-Lemma tac_rewrite Δ i p Pxy d Q :
-  envs_lookup i Δ = Some (p, Pxy) →
-  ∀ {A : ofeT SI} (x y : A) (Φ : A → PROP),
-    IntoInternalEq Pxy x y →
-    (Q ⊣⊢ Φ (if d is Left then y else x)) →
-    NonExpansive Φ →
-    envs_entails Δ (Φ (if d is Left then x else y)) → envs_entails Δ Q.
-Proof.
-  intros ? A x y ? HPxy -> ?. rewrite envs_entails_eq.
-  apply internal_eq_rewrite'; auto. rewrite {1}envs_lookup_sound //.
-  rewrite (into_internal_eq Pxy x y) intuitionistically_if_elim sep_elim_l.
-  destruct d; auto using internal_eq_sym.
-Qed.
-
-Lemma tac_rewrite_in Δ i p Pxy j q P d Q :
-  envs_lookup i Δ = Some (p, Pxy) →
-  envs_lookup j Δ = Some (q, P) →
-  ∀ {A : ofeT SI} (x y : A) (Φ : A → PROP),
-    IntoInternalEq Pxy x y →
-    (P ⊣⊢ Φ (if d is Left then y else x)) →
-    NonExpansive Φ →
-    match envs_simple_replace j q (Esnoc Enil j (Φ (if d is Left then x else y))) Δ with
-    | None => False
-    | Some Δ' => envs_entails Δ' Q
-    end →
-    envs_entails Δ Q.
-Proof.
-  rewrite envs_entails_eq /IntoInternalEq => ?? A x y Φ HPxy HP ? Hentails.
-  destruct (envs_simple_replace _ _ _ _) as [Δ'|] eqn:?; last done. rewrite -Hentails.
-  rewrite -(idemp bi_and (of_envs Δ)) {2}(envs_lookup_sound _ i) //.
-  rewrite (envs_simple_replace_singleton_sound _ _ j) //=.
-  rewrite HP HPxy (intuitionistically_if_elim _ (_ ≡ _)%I) sep_elim_l.
-  rewrite persistent_and_affinely_sep_r -assoc. apply wand_elim_r'.
-  rewrite -persistent_and_affinely_sep_r. apply impl_elim_r'. destruct d.
-  - apply (internal_eq_rewrite x y (λ y, □?q Φ y -∗ of_envs Δ')%I). solve_proper.
-  - rewrite internal_eq_sym.
-    eapply (internal_eq_rewrite y x (λ y, □?q Φ y -∗ of_envs Δ')%I). solve_proper.
-Qed.
-
-(** * Later *)
 (** The class [MaybeIntoLaterNEnvs] is used by tactics that need to introduce
-laters, e.g. the symbolic execution tactics. *)
-Class MaybeIntoLaterNEnvs (n : nat) (Δ1 Δ2 : envs PROP) := {
+laters, e.g., the symbolic execution tactics. *)
+Class MaybeIntoLaterNEnvs {SI} {PROP: bi SI} (n : nat) (Δ1 Δ2 : envs PROP) := {
   into_later_intuitionistic :
     TransformIntuitionisticEnv (modality_laterN n) (MaybeIntoLaterN false n)
       (env_intuitionistic Δ1) (env_intuitionistic Δ2);
@@ -997,13 +1088,13 @@ Class MaybeIntoLaterNEnvs (n : nat) (Δ1 Δ2 : envs PROP) := {
       (MaybeIntoLaterN false n) (env_spatial Δ1) (env_spatial Δ2) false
 }.
 
-Global Instance into_laterN_envs n Γp1 Γp2 Γs1 Γs2 m :
+Global Instance into_laterN_envs {SI} {PROP: bi SI} n (Γp1 Γp2 Γs1 Γs2 : env PROP) m :
   TransformIntuitionisticEnv (modality_laterN n) (MaybeIntoLaterN false n) Γp1 Γp2 →
   TransformSpatialEnv (modality_laterN n) (MaybeIntoLaterN false n) Γs1 Γs2 false →
   MaybeIntoLaterNEnvs n (Envs Γp1 Γs1 m) (Envs Γp2 Γs2 m).
 Proof. by split. Qed.
 
-Lemma into_laterN_env_sound n Δ1 Δ2 :
+Lemma into_laterN_env_sound {SI} {PROP : bi SI} n (Δ1 Δ2 : envs PROP) :
   MaybeIntoLaterNEnvs n Δ1 Δ2 → of_envs Δ1 ⊢ ▷^n (of_envs Δ2).
 Proof.
   intros [[Hp ??] [Hs ??]]; rewrite !of_envs_eq /= !laterN_and -laterN_sep_2.
@@ -1014,22 +1105,3 @@ Proof.
     + intros P Q. by rewrite laterN_and.
   - by rewrite Hs //= right_id.
 Qed.
-
-Lemma tac_löb Δ i Q :
-  env_spatial_is_nil Δ = true →
-  match envs_app true (Esnoc Enil i (▷ Q)%I) Δ with
-  | None => False
-  | Some Δ' => envs_entails Δ' Q
-  end →
-  envs_entails Δ Q.
-Proof.
-  destruct (envs_app _ _ _) eqn:?; last done.
-  rewrite envs_entails_eq => ? HQ.
-  rewrite (env_spatial_is_nil_intuitionistically Δ) //.
-  rewrite -(persistently_and_emp_elim Q). apply and_intro; first apply: affine.
-  rewrite -(löb (<pers> Q)%I) later_persistently. apply impl_intro_l.
-  rewrite envs_app_singleton_sound //; simpl; rewrite HQ.
-  rewrite persistently_and_intuitionistically_sep_l -{1}intuitionistically_idemp.
-  rewrite intuitionistically_sep_2 wand_elim_r intuitionistically_into_persistently_1 //.
-Qed.
-End sbi_tactics.

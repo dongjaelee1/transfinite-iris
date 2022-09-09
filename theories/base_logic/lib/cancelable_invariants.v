@@ -1,14 +1,14 @@
-From iris.base_logic.lib Require Export invariants.
-From iris.bi.lib Require Import fractional.
 From iris.algebra Require Export frac.
+From iris.bi.lib Require Import fractional.
 From iris.proofmode Require Import tactics.
-Set Default Proof Using "Type".
+From iris.base_logic.lib Require Export invariants.
+From iris.prelude Require Import options.
 Import uPred.
 
 Class cinvG {SI} Σ := cinv_inG :> inG Σ (fracR SI).
 Definition cinvΣ SI : gFunctors SI := #[GFunctor (fracR SI)].
 
-Instance subG_cinvΣ {SI} {Σ} : subG (cinvΣ SI) Σ → cinvG Σ.
+Global Instance subG_cinvΣ {SI} {Σ} : subG (cinvΣ SI) Σ → cinvG Σ.
 Proof. solve_inG. Qed.
 
 Section defs.
@@ -17,10 +17,10 @@ Section defs.
   Definition cinv_own (γ : gname) (p : frac) : iProp Σ := own γ p.
 
   Definition cinv (N : namespace) (γ : gname) (P : iProp Σ) : iProp Σ :=
-    (∃ P', □ ▷ (P ↔ P') ∗ inv N (P' ∨ cinv_own γ 1%Qp))%I.
+    inv N (P ∨ cinv_own γ 1).
 End defs.
 
-Instance: Params (@cinv) 6 := {}.
+Global Instance: Params (@cinv) 6 := {}.
 
 Section proofs.
   Context {SI} {Σ : gFunctors SI} `{!invG Σ, !cinvG Σ}.
@@ -42,56 +42,55 @@ Section proofs.
   Proof. intros ??. by rewrite /cinv_own -own_op. Qed.
   Global Instance cinv_own_as_fractional γ q :
     AsFractional (cinv_own γ q) (cinv_own γ) q.
-  Proof. split. done. apply _. Qed.
+  Proof. split; [done|]. apply _. Qed.
 
-  Lemma cinv_own_valid γ q1 q2 : cinv_own γ q1 -∗ cinv_own γ q2 -∗ ✓ (q1 + q2)%Qp.
-  Proof. apply (own_valid_2 γ q1 q2). Qed.
+  Lemma cinv_own_valid γ q1 q2 : cinv_own γ q1 -∗ cinv_own γ q2 -∗ ⌜q1 + q2 ≤ 1⌝%Qp.
+  Proof. rewrite -frac_validI. apply (own_valid_2 γ q1 q2). Qed.
 
   Lemma cinv_own_1_l γ q : cinv_own γ 1 -∗ cinv_own γ q -∗ False.
   Proof.
     iIntros "H1 H2".
-    iDestruct (cinv_own_valid with "H1 H2") as %[]%(exclusive_l 1%Qp).
+    iDestruct (cinv_own_valid with "H1 H2") as %[]%(@exclusive_l SI _ 1%Qp).
   Qed.
 
-  Lemma cinv_iff N γ P P' :
-    ▷ □ (P ↔ P') -∗ cinv N γ P -∗ cinv N γ P'.
+  Lemma cinv_iff N γ P Q : cinv N γ P -∗ ▷ □ (P ↔ Q) -∗ cinv N γ Q.
   Proof.
-    iIntros "#HP' Hinv". iDestruct "Hinv" as (P'') "[#HP'' Hinv]".
-    iExists _. iFrame "Hinv". iAlways. iNext. iSplit.
-    - iIntros "?". iApply "HP''". iApply "HP'". done.
-    - iIntros "?". iApply "HP'". iApply "HP''". done.
+    iIntros "HI #HPQ". iApply (inv_iff with "HI"). iIntros "!> !>".
+    iSplit; iIntros "[?|$]"; iLeft; by iApply "HPQ".
   Qed.
 
+  (*** Allocation rules. *)
+  (** The "strong" variants permit any infinite [I], and choosing [P] is delayed
+  until after [γ] was chosen.*)
   Lemma cinv_alloc_strong (I : gname → Prop) E N :
     pred_infinite I →
-    ⊢ (|={E}=> ∃ γ, ⌜ I γ ⌝ ∧ cinv_own γ 1 ∗ ∀ P, ▷ P ={E}=∗ cinv N γ P)%I.
+    ⊢ |={E}=> ∃ γ, ⌜ I γ ⌝ ∗ cinv_own γ 1 ∗ ∀ P, ▷ P ={E}=∗ cinv N γ P.
   Proof.
     iIntros (?). iMod (own_alloc_strong 1%Qp I) as (γ) "[Hfresh Hγ]"; [done|done|].
-    iExists γ; iIntros "!> {$Hγ $Hfresh}" (P) "HP".
-    iMod (inv_alloc N _ (P ∨ own γ 1%Qp)%I with "[HP]"); first by eauto.
-    iIntros "!>". iExists P. iSplit; last done. iIntros "!# !>"; iSplit; auto.
+    iExists γ. iIntros "!> {$Hγ $Hfresh}" (P) "HP".
+    iMod (inv_alloc N _ (P ∨ cinv_own γ 1) with "[HP]"); eauto.
+  Qed.
+
+  (** The "open" variants create the invariant in the open state, and delay
+  having to prove [P].
+  These do not imply the other variants because of the extra assumption [↑N ⊆ E]. *)
+  Lemma cinv_alloc_strong_open (I : gname → Prop) E N :
+    pred_infinite I →
+    ↑N ⊆ E →
+    ⊢ |={E}=> ∃ γ, ⌜ I γ ⌝ ∗ cinv_own γ 1 ∗ ∀ P,
+      |={E,E∖↑N}=> cinv N γ P ∗ (▷ P ={E∖↑N,E}=∗ True).
+  Proof.
+    iIntros (??). iMod (own_alloc_strong 1%Qp I) as (γ) "[Hfresh Hγ]"; [done|done|].
+    iExists γ. iIntros "!> {$Hγ $Hfresh}" (P).
+    iMod (inv_alloc_open N _ (P ∨ cinv_own γ 1)) as "[Hinv Hclose]"; first by eauto.
+    iIntros "!>". iFrame. iIntros "HP". iApply "Hclose". iNext; by iLeft.
   Qed.
 
   Lemma cinv_alloc_cofinite (G : gset gname) E N :
-    ⊢ (|={E}=> ∃ γ, ⌜ γ ∉ G ⌝ ∧ cinv_own γ 1 ∗ ∀ P, ▷ P ={E}=∗ cinv N γ P)%I.
+    ⊢ |={E}=> ∃ γ, ⌜ γ ∉ G ⌝ ∗ cinv_own γ 1 ∗ ∀ P, ▷ P ={E}=∗ cinv N γ P.
   Proof.
     apply cinv_alloc_strong. apply (pred_infinite_set (C:=gset gname))=> E'.
     exists (fresh (G ∪ E')). apply not_elem_of_union, is_fresh.
-  Qed.
-
-  Lemma cinv_open_strong `{FiniteBoundedExistential SI}  E N γ p P :
-    ↑N ⊆ E →
-    cinv N γ P -∗ cinv_own γ p ={E,E∖↑N}=∗
-    ▷ P ∗ cinv_own γ p ∗ (▷ P ∨ cinv_own γ 1 ={E∖↑N,E}=∗ True).
-  Proof.
-    iIntros (?) "#Hinv Hγ". iDestruct "Hinv" as (P') "[#HP' Hinv]".
-    iInv N as "[HP | >Hγ']" "Hclose".
-    - iIntros "!> {$Hγ}". iSplitL "HP".
-      + iNext. iApply "HP'". done.
-      + iIntros "[HP|Hγ]".
-        * iApply "Hclose". iLeft. iNext. by iApply "HP'".
-        * iApply "Hclose". iRight. by iNext.
-    - iDestruct (cinv_own_1_l with "Hγ' Hγ") as %[].
   Qed.
 
   Lemma cinv_alloc E N P : ▷ P ={E}=∗ ∃ γ, cinv N γ P ∗ cinv_own γ 1.
@@ -100,20 +99,50 @@ Section proofs.
     iExists γ. iFrame "Hγ". by iApply "Halloc".
   Qed.
 
-  Lemma cinv_cancel `{FiniteBoundedExistential SI} E N γ P : ↑N ⊆ E → cinv N γ P -∗ cinv_own γ 1 ={E}=∗ ▷ P.
+  Lemma cinv_alloc_open E N P :
+    ↑N ⊆ E → ⊢ |={E,E∖↑N}=> ∃ γ, cinv N γ P ∗ cinv_own γ 1 ∗ (▷ P ={E∖↑N,E}=∗ True).
   Proof.
-    iIntros (?) "#Hinv Hγ".
-    iMod (cinv_open_strong with "Hinv Hγ") as "($ & Hγ & H)"; first done.
-    iApply "H". by iRight.
+    iIntros (?). iMod (cinv_alloc_strong_open (λ _, True)) as (γ) "(_ & Htok & Hmake)"; [|done|].
+    { apply pred_infinite_True. }
+    iMod ("Hmake" $! P) as "[Hinv Hclose]". iIntros "!>". iExists γ. iFrame.
   Qed.
 
-  Lemma cinv_open `{FiniteBoundedExistential SI} E N γ p P :
+  (*** Accessors *)
+  Lemma cinv_acc_strong `{FiniteBoundedExistential SI}  E N γ p P :
+    ↑N ⊆ E →
+    cinv N γ P -∗ (cinv_own γ p ={E,E∖↑N}=∗
+    ▷ P ∗ cinv_own γ p ∗ (∀ E' : coPset, ▷ P ∨ cinv_own γ 1 ={E',↑N ∪ E'}=∗ True)).
+  Proof.
+    iIntros (?) "Hinv Hown".
+    iPoseProof (inv_acc (↑ N) N with "Hinv") as "H"; first done.
+    rewrite difference_diag_L.
+    iPoseProof (fupd_mask_frame_r _ _ (E ∖ ↑ N) with "H") as "H"; first set_solver.
+    rewrite left_id_L -union_difference_L //. iMod "H" as "[[$ | >Hown'] H]".
+    - iIntros "{$Hown} !>" (E') "HP".
+      iPoseProof (fupd_mask_frame_r _ _ E' with "(H [HP])") as "H"; first set_solver.
+      { iDestruct "HP" as "[?|?]"; eauto. }
+      by rewrite left_id_L.
+    - iDestruct (cinv_own_1_l with "Hown' Hown") as %[].
+  Qed.
+
+  Lemma cinv_acc `{FiniteBoundedExistential SI} E N γ p P :
     ↑N ⊆ E →
     cinv N γ P -∗ cinv_own γ p ={E,E∖↑N}=∗ ▷ P ∗ cinv_own γ p ∗ (▷ P ={E∖↑N,E}=∗ True).
   Proof.
     iIntros (?) "#Hinv Hγ".
-    iMod (cinv_open_strong with "Hinv Hγ") as "($ & $ & H)"; first done.
-    iIntros "!> HP". iApply "H"; auto.
+    iMod (cinv_acc_strong with "Hinv Hγ") as "($ & $ & H)"; first done.
+    iIntros "!> HP".
+    rewrite {2}(union_difference_L (↑N) E)=> //.
+    iApply "H". by iLeft.
+  Qed.
+
+  (*** Other *)
+  Lemma cinv_cancel `{FiniteBoundedExistential SI} E N γ P : ↑N ⊆ E → cinv N γ P -∗ cinv_own γ 1 ={E}=∗ ▷ P.
+  Proof.
+    iIntros (?) "#Hinv Hγ".
+    iMod (cinv_acc_strong with "Hinv Hγ") as "($ & Hγ & H)"; first done.
+    rewrite {2}(union_difference_L (↑N) E)=> //.
+    iApply "H". by iRight.
   Qed.
 
   Global Instance into_inv_cinv N γ P : IntoInv (cinv N γ P) N := {}.
@@ -125,7 +154,7 @@ Section proofs.
   Proof.
     rewrite /IntoAcc /accessor. iIntros (?) "#Hinv Hown".
     rewrite exist_unit -assoc.
-    iApply (cinv_open with "Hinv"); done.
+    iApply (cinv_acc with "Hinv"); done.
   Qed.
 End proofs.
 

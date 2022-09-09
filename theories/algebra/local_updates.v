@@ -1,14 +1,14 @@
 From iris.algebra Require Export cmra.
-Set Default Proof Using "Type".
+From iris.prelude Require Import options.
 
 (** * Local updates *)
-Definition local_update `{A : cmraT SI} (x y : A * A) := ∀ n mz,
+Definition local_update {SI} {A : cmra SI} (x y : A * A) := ∀ n mz,
   ✓{n} x.1 → x.1 ≡{n}≡ x.2 ⋅? mz → ✓{n} y.1 ∧ y.1 ≡{n}≡ y.2 ⋅? mz.
-Instance: Params (@local_update) 2 := {}.
+Global Instance: Params (@local_update) 2 := {}.
 Infix "~l~>" := local_update (at level 70).
 
 Section updates.
-  Context `{A : cmraT SI}.
+  Context {SI} {A : cmra SI}.
   Implicit Types x y : A.
 
   Global Instance local_update_proper :
@@ -110,7 +110,7 @@ Section updates.
 End updates.
 
 Section updates_unital.
-  Context `{A : ucmraT SI}.
+  Context {SI} {A : ucmra SI}.
   Implicit Types x y : A.
 
   Lemma local_update_unital x y x' y' :
@@ -139,9 +139,9 @@ End updates_unital.
 
 Section local_update_instances.
   Context {SI: indexT}.
-  
+
   (** * Product *)
-  Lemma prod_local_update {A B : cmraT SI} (x y x' y' : A * B) :
+  Lemma prod_local_update {A B : cmra SI} (x y x' y' : A * B) :
     (x.1,y.1) ~l~> (x'.1,y'.1) → (x.2,y.2) ~l~> (x'.2,y'.2) →
     (x,y) ~l~> (x',y').
   Proof.
@@ -151,21 +151,21 @@ Section local_update_instances.
       by destruct mz.
   Qed.
 
-  Lemma prod_local_update' {A B : cmraT SI} (x1 y1 x1' y1' : A) (x2 y2 x2' y2' : B) :
+  Lemma prod_local_update' {A B : cmra SI} (x1 y1 x1' y1' : A) (x2 y2 x2' y2' : B) :
     (x1,y1) ~l~> (x1',y1') → (x2,y2) ~l~> (x2',y2') →
     ((x1,x2),(y1,y2)) ~l~> ((x1',x2'),(y1',y2')).
   Proof. intros. by apply prod_local_update. Qed.
-  Lemma prod_local_update_1 {A B : cmraT SI} (x1 y1 x1' y1' : A) (x2 y2 : B) :
+  Lemma prod_local_update_1 {A B : cmra SI} (x1 y1 x1' y1' : A) (x2 y2 : B) :
     (x1,y1) ~l~> (x1',y1') → ((x1,x2),(y1,y2)) ~l~> ((x1',x2),(y1',y2)).
   Proof. intros. by apply prod_local_update. Qed.
-  Lemma prod_local_update_2 {A B : cmraT SI} (x1 y1 : A) (x2 y2 x2' y2' : B) :
+  Lemma prod_local_update_2 {A B : cmra SI} (x1 y1 : A) (x2 y2 x2' y2' : B) :
     (x2,y2) ~l~> (x2',y2') → ((x1,x2),(y1,y2)) ~l~> ((x1,x2'),(y1,y2')).
   Proof. intros. by apply prod_local_update. Qed.
 
   (** * Option *)
   (* TODO: Investigate whether we can use these in proving the very similar local
    updates on finmaps. *)
-  Lemma option_local_update {A : cmraT SI} (x y x' y' : A) :
+  Lemma option_local_update {A : cmra SI} (x y x' y' : A) :
     (x, y) ~l~> (x',y') →
     (Some x, Some y) ~l~> (Some x', Some y').
   Proof.
@@ -175,7 +175,7 @@ Section local_update_instances.
     split; first done. destruct mz as [?|]; constructor; auto.
   Qed.
 
-  Lemma alloc_option_local_update {A : cmraT SI} (x : A) y :
+  Lemma alloc_option_local_update {A : cmra SI} (x : A) y :
     ✓ x →
     (None, y) ~l~> (Some x, Some x).
   Proof.
@@ -184,27 +184,12 @@ Section local_update_instances.
     destruct z as [z|]; last done. destruct y; inversion Heq.
   Qed.
 
-  Lemma delete_option_local_update {A : cmraT SI} (x : option A) (y : A) :
+  Lemma delete_option_local_update {A : cmra SI} (x : option A) (y : A) :
     Exclusive y → (x, Some y) ~l~> (None, None).
   Proof.
     move=>Hex. apply local_update_unital=>n z /= Hy Heq. split; first done.
     destruct z as [z|]; last done. exfalso.
     move: Hy. rewrite Heq /= -Some_op=>Hy. eapply Hex.
-    eapply cmra_validN_le. eapply Hy. auto.
-  Qed.
-
-  (** * Natural numbers  *)
-  Lemma nat_local_update (x y x' y' : nat) :
-    x + y' = x' + y → (x: natO SI,y) ~l~> (x',y').
-  Proof.
-    intros ??; apply local_update_unital_discrete=> z _.
-    compute -[minus plus]; lia.
-  Qed.
-
-  Lemma mnat_local_update (x y x' : mnatUR SI) :
-    x ≤ x' → (x,y) ~l~> (x',x').
-  Proof.
-    intros ??; apply local_update_unital_discrete=> z _.
-    compute -[max]; lia.
+    eapply cmra_validN_le; first eapply Hy. auto.
   Qed.
 End local_update_instances.
