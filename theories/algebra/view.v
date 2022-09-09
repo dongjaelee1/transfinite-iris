@@ -386,9 +386,9 @@ Section cmra.
     split.
     - intros [[[[qf agf]|] bf]
         [[?%(discrete_iff _ _) ?]%(inj Some) _]]; simplify_eq/=.
-      + split; [apply Qp_le_add_l|]. apply to_agree_includedN. by exists agf.
+      + split; [apply Qp.le_add_l|]. apply to_agree_includedN. by exists agf.
       + split; [done|]. by apply (inj to_agree).
-    - intros [[Hfr| ->]%Qp_le_lteq ->].
+    - intros [[Hfr| ->]%Qp.le_lteq ->].
       + eapply (@frac_included SI) in Hfr as[q ->]. rewrite view_auth_frac_op -assoc. apply cmra_includedN_l.
       + apply cmra_includedN_l.
   Qed.
@@ -400,7 +400,7 @@ Section cmra.
       + by eapply (view_auth_frac_includedN zero), cmra_included_includedN.
       + apply equiv_dist=> n.
         by eapply view_auth_frac_includedN, cmra_included_includedN.
-    - intros [[Hfr| ->]%Qp_le_lteq ->].
+    - intros [[Hfr| ->]%Qp.le_lteq ->].
       + eapply (@frac_included SI) in Hfr as [q ->]. rewrite view_auth_frac_op -assoc. apply cmra_included_l.
       + apply cmra_included_l.
   Qed.
@@ -519,7 +519,7 @@ Section cmra.
     rewrite !local_update_unital.
     move=> Hup Hrel n [[[q ag]|] bf] /view_both_validN Hrel' [/=].
     - rewrite right_id -Some_op -pair_op frac_op'=> /Some_dist_inj [/= H1q _].
-      by destruct (Qp_add_id_free 1 q).
+      by destruct (Qp.add_id_free 1 q).
     - rewrite !left_id=> _ Hb0.
       destruct (Hup n bf) as [? Hb0']; [by eauto using view_rel_validN..|].
       split; [apply view_both_validN; by auto|]. by rewrite -assoc Hb0'.

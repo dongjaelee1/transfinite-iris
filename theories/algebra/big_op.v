@@ -371,14 +371,14 @@ Section gmap.
   Lemma big_opM_insert_delete `{Countable K} {B} (f : K → B → M) (m : gmap K B) i x :
     ([^o map] k↦y ∈ <[i:=x]> m, f k y) ≡ f i x `o` [^o map] k↦y ∈ delete i m, f k y.
   Proof.
-    rewrite -insert_delete big_opM_insert; first done. by rewrite lookup_delete.
+    rewrite -insert_delete_insert big_opM_insert; first done. by rewrite lookup_delete.
   Qed.
 
   Lemma big_opM_insert_override (f : K → A → M) m i x x' :
     m !! i = Some x → f i x ≡ f i x' →
     ([^o map] k↦y ∈ <[i:=x']> m, f k y) ≡ ([^o map] k↦y ∈ m, f k y).
   Proof.
-    intros ? Hx. rewrite -insert_delete big_opM_insert ?lookup_delete //.
+    intros ? Hx. rewrite -insert_delete_insert big_opM_insert ?lookup_delete //.
     by rewrite -Hx -big_opM_delete.
   Qed.
 
@@ -403,7 +403,7 @@ Section gmap.
     induction m as [|k v m ? IH] using map_ind.
     { by rewrite map_filter_empty !big_opM_empty. }
     destruct (decide (φ (k, v))).
-    - rewrite map_filter_insert //.
+    - rewrite map_filter_insert_True //.
       assert (filter φ m !! k = None) by (apply map_filter_lookup_None; eauto).
       by rewrite !big_opM_insert // decide_True // IH.
     - rewrite map_filter_insert_not' //; last by congruence.
@@ -578,7 +578,7 @@ Proof.
 Qed.
 
 Lemma big_opM_dom `{Countable K} {A} (f : K → M) (m : gmap K A) :
-  ([^o map] k↦_ ∈ m, f k) ≡ ([^o set] k ∈ dom _ m, f k).
+  ([^o map] k↦_ ∈ m, f k) ≡ ([^o set] k ∈ dom m, f k).
 Proof.
   induction m as [|i x ?? IH] using map_ind.
   { by rewrite big_opM_eq big_opS_eq dom_empty_L. }
@@ -630,13 +630,13 @@ Section gmultiset.
     ([^o mset] y ∈ X ⊎ Y, f y) ≡ ([^o mset] y ∈ X, f y) `o` [^o mset] y ∈ Y, f y.
   Proof. by rewrite big_opMS_eq /big_opMS_def gmultiset_elements_disj_union big_opL_app. Qed.
 
-  Lemma big_opMS_singleton f x : ([^o mset] y ∈ {[ x ]}, f y) ≡ f x.
+  Lemma big_opMS_singleton f x : ([^o mset] y ∈ {[+ x +]}, f y) ≡ f x.
   Proof.
     intros. by rewrite big_opMS_eq /big_opMS_def gmultiset_elements_singleton /= right_id.
   Qed.
 
   Lemma big_opMS_delete f X x :
-    x ∈ X → ([^o mset] y ∈ X, f y) ≡ f x `o` [^o mset] y ∈ X ∖ {[ x ]}, f y.
+    x ∈ X → ([^o mset] y ∈ X, f y) ≡ f x `o` [^o mset] y ∈ X ∖ {[+ x +]}, f y.
   Proof.
     intros. rewrite -big_opMS_singleton -big_opMS_disj_union.
     by rewrite -gmultiset_disj_union_difference'.

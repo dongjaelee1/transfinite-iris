@@ -792,7 +792,7 @@ Section succ_case_X.
   Fact succ_le_gt_eq γ : γ ⪯ succ β → β ≺ γ → γ = succ β.
   Proof. intros [-> | Hlt] ?; [reflexivity | index_contra_solve]. Qed.
 
-  Definition β_refl : β ≺ succ β. 
+  Definition β_refl : β ≺ succ β.
   Proof. eauto with index. Qed.
   Definition sX' : COFE SI := cofe _ ([G (X β β_refl)]_{succ β}).
   Lemma sX'_id Hβ : projCOFE _ sX' = [G (X β Hβ)]_{succ β}.
@@ -2053,7 +2053,9 @@ Section final_limit.
     - setoid_rewrite (Fep_lim_unfold _ _ _ _ _).
       cbn. f_equiv.
       setoid_rewrite <- (p_funct (succ γ0) γ (succ γ1) _ _ _ _).
-      cbn. f_equiv. by setoid_rewrite (p_e_id _ _ _ _ ).
+      cbn. f_equiv.
+      + done.
+      + by setoid_rewrite (p_e_id _ _ _ _ ).
       Unshelve. by eapply index_lt_succ_mono.
     - destruct Heq0. cbn -[Fep].
       setoid_rewrite (Fep_lim_unfold _ _ _ _  _ ). cbn. f_equiv.
@@ -2261,7 +2263,7 @@ Section merge_extension.
   Let ψ : ∀ γ Hγ, [G (X γ Hγ)]_{succ γ} -n> X γ Hγ := bounded_approx_ψ A.
 
   Let X_eq γ Hγ Hsγ: projCOFE _ (X (succ γ) Hsγ) = [G (X γ Hγ)]_{succ γ}. apply A. Defined.
-  Instance X_truncated γ Hγ : OfeTruncated (X γ Hγ) γ. 
+  Instance X_truncated γ Hγ : OfeTruncated (X γ Hγ) γ.
   Proof. apply A. Qed.
 
   Let p_e_id γ0 γ1 Hγ0 Hγ1 Hlt : p γ0 γ1 Hγ0 Hγ1 Hlt ◎ e γ0 γ1 Hγ0 Hγ1 Hlt ≡ cid.

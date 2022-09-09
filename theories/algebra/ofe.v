@@ -1315,8 +1315,8 @@ Section option.
 
   Global Instance is_Some_ne n : Proper (dist n ==> iff) (@is_Some A).
   Proof. destruct 1; split; eauto. Qed.
-  Global Instance from_option_ne {B} (R : relation B) (f : A → B) n :
-    Proper (dist n ==> R) f → Proper (R ==> dist n ==> R) (from_option f).
+  Global Instance from_option_ne {B} (R : relation B) n :
+    Proper ((dist (A:=A) n ==> R) ==> R ==> dist n ==> R) from_option.
   Proof. destruct 3; simpl; auto. Qed.
 
   Global Instance None_discrete : Discrete (@None A).

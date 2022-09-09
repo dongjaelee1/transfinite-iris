@@ -121,11 +121,13 @@ End ofe.
 Global Arguments gmapO _ {_ _ _} _.
 
 (** Non-expansiveness of higher-order map functions and big-ops *)
-Lemma merge_ne `{Countable K} {SI} {A B C : ofe SI} (f g : option A → option B → option C)
-    `{!DiagNone f, !DiagNone g} n :
-  ((dist n) ==> (dist n) ==> (dist n))%signature f g →
-  ((dist n) ==> (dist n) ==> (dist n))%signature (merge (M:=gmap K) f) (merge g).
-Proof. by intros Hf ?? Hm1 ?? Hm2 i; rewrite !lookup_merge //; apply Hf. Qed.
+Global Instance merge_ne {SI} `{Countable K} {A B C : ofe SI} n :
+  Proper (((dist (A:=option A) n) ==> (dist (A:=option B) n) ==> (dist (A:=option C) n)) ==>
+   (dist n) ==> (dist n) ==> (dist n)) (merge (M:=gmap K)).
+Proof.
+  intros ?? Hf ?? Hm1 ?? Hm2 i. rewrite !lookup_merge.
+  destruct (Hm1 i), (Hm2 i); try apply Hf; by constructor.
+Qed.
 Global Instance union_with_proper {SI} `{Countable K} {A : ofe SI} n :
   Proper (((dist n) ==> (dist n) ==> (dist n)) ==>
           (dist n) ==> (dist n) ==>(dist n)) (union_with (M:=gmap K A)).
@@ -169,7 +171,7 @@ Local Instance gmap_valid_instance : Valid (gmap K A) := λ m, ∀ i, ✓ (m !! 
 Local Instance gmap_validN_instance : ValidN SI (gmap K A) := λ n m, ∀ i, ✓{n} (m !! i).
 
 Lemma lookup_op m1 m2 i : (m1 ⋅ m2) !! i = m1 !! i ⋅ m2 !! i.
-Proof. by apply lookup_merge. Qed.
+Proof. rewrite lookup_merge. by destruct (m1 !! i), (m2 !! i).  Qed.
 Lemma lookup_core m i : core m !! i = core (m !! i).
 Proof. by apply lookup_omap. Qed.
 
@@ -309,7 +311,7 @@ Proof. apply omap_singleton_Some. Qed.
 Lemma singleton_core' (i : K) (x : A) cx :
   pcore x ≡ Some cx → core {[ i := x ]} ≡@{gmap K A} {[ i := cx ]}.
 Proof.
-  intros (cx'&?&->)%equiv_Some_inv_r'. by rewrite (singleton_core _ _ cx').
+  intros (cx'&?&<-)%Some_equiv_eq. by rewrite (singleton_core _ _ cx').
 Qed.
 Lemma singleton_core_total `{!CmraTotal A} (i : K) (x : A) :
   core {[ i := x ]} =@{gmap K A} {[ i := core x ]}.
@@ -428,13 +430,13 @@ Proof.
   - move: (Hm j). by rewrite !lookup_op lookup_delete_ne.
 Qed.
 
-Lemma dom_op m1 m2 : dom (gset K) (m1 ⋅ m2) = dom _ m1 ∪ dom _ m2.
+Lemma dom_op m1 m2 : dom (m1 ⋅ m2) = dom m1 ∪ dom m2.
 Proof.
   apply set_eq=> i; rewrite elem_of_union !elem_of_dom.
   unfold is_Some; setoid_rewrite lookup_op.
   destruct (m1 !! i), (m2 !! i); naive_solver.
 Qed.
-Lemma dom_included m1 m2 : m1 ≼ m2 → dom (gset K) m1 ⊆ dom _ m2.
+Lemma dom_included m1 m2 : m1 ≼ m2 → dom m1 ⊆ dom m2.
 Proof.
   rewrite lookup_included=>? i; rewrite !elem_of_dom. by apply is_Some_included.
 Qed.
@@ -449,7 +451,7 @@ Section freshness.
   Proof.
     move=> /(pred_infinite_set I (C:=gset K)) HP ? HQ.
     apply cmra_total_updateP. intros n mf Hm.
-    destruct (HP (dom (gset K) (m ⋅ mf))) as [i [Hi1 Hi2]].
+    destruct (HP (dom (m ⋅ mf))) as [i [Hi1 Hi2]].
     assert (m !! i = None).
     { eapply (not_elem_of_dom (D:=gset K)). revert Hi2.
       rewrite dom_op not_elem_of_union. naive_solver. }
