@@ -47,7 +47,7 @@ theories/algebra/gmultiset.v
 theories/algebra/coPset.v
 theories/algebra/proofmode_classes.v
 theories/algebra/ufrac.v
-theories/algebra/namespace_map.v
+theories/algebra/reservation_map.v
 theories/algebra/dfrac.v
 theories/algebra/lib/excl_auth.v
 theories/algebra/lib/frac_agree.v

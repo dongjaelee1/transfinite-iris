@@ -180,7 +180,6 @@ Lemma discrete_fun_equivI {A} {B : A → ofe SI} (f g : discrete_fun B) : f ≡ 
 Proof.
   apply (anti_symm _); auto using fun_extI.
   apply (internal_eq_rewrite' f g (λ g, ∀ x : A, f x ≡ g x)%I); auto.
-  intros n h h' Hh; apply forall_ne=> x; apply internal_eq_ne; auto.
 Qed.
 Lemma ofe_morO_equivI {A B : ofe SI} (f g : A -n> B) : f ≡ g ⊣⊢ ∀ x, f x ≡ g x.
 Proof.

@@ -43,7 +43,7 @@ End iProp_sat.
 (* We develop a validity judgement where we can explicitly control
    the ghost names that are allocated *)
 Definition alloc_names_def {SI} {Σ: gFunctors SI} (G: gset gname) (P: iProp Σ): Prop :=
-  (∃ m: iResUR Σ, ✓ m ∧ (∀ i, dom _ (m i) ⊆ G) ∧ (uPred_ownM m ⊢ P)).
+  (∃ m: iResUR Σ, ✓ m ∧ (∀ i, dom (m i) ⊆ G) ∧ (uPred_ownM m ⊢ P)).
 Definition alloc_names_aux : seal (@alloc_names_def). by eexists. Qed.
 Definition alloc_names := alloc_names_aux.(unseal).
 Arguments alloc_names {SI Σ} _ _.
@@ -90,9 +90,9 @@ Section alloc.
     - intros i γ. rewrite lookup_op.
       specialize (H1 i). specialize (H2 i).
       destruct (m1 i !! γ) as [r|] eqn: EQ1; first destruct (m2 i !! γ) as [r'|] eqn: EQ2.
-      + assert (γ ∈ dom (gset gname) (m1 i))
+      + assert (γ ∈ dom (m1 i))
           by by apply (elem_of_dom_2 (m1 i) γ r (D := (gset gname))).
-        assert (γ ∈ dom (gset gname) (m2 i))
+        assert (γ ∈ dom (m2 i))
           by by apply (elem_of_dom_2 (m2 i) γ r' (D := (gset gname))).
         set_solver.
       + rewrite EQ2 right_id. apply V1.

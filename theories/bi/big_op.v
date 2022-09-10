@@ -1080,7 +1080,7 @@ Section map.
     { destruct Ha; try apply _. }
     rewrite big_sepM_delete // assoc.
     rewrite (sep_elim_l (Φ i x)) -big_sepM_insert ?lookup_delete //.
-    by rewrite insert_delete.
+    by rewrite insert_delete_insert.
   Qed.
 
   Lemma big_sepM_lookup_acc Φ m i x :
@@ -1120,7 +1120,7 @@ Section map.
       (Φ i x' -∗ Φ i x) -∗ ([∗ map] k↦y ∈ m, Φ k y).
   Proof.
     intros ?. apply wand_intro_l.
-    rewrite -insert_delete big_sepM_insert ?lookup_delete //.
+    rewrite -insert_delete_insert big_sepM_insert ?lookup_delete //.
     by rewrite assoc wand_elim_l -big_sepM_delete.
   Qed.
 
@@ -1131,7 +1131,7 @@ Section map.
   Proof.
     intros ?. apply wand_intro_l.
     rewrite {1}big_sepM_delete //; rewrite assoc wand_elim_l.
-    rewrite -insert_delete big_sepM_insert ?lookup_delete //.
+    rewrite -insert_delete_insert big_sepM_insert ?lookup_delete //.
   Qed.
 
   Lemma big_sepM_insert_acc Φ m i x :
@@ -1141,7 +1141,7 @@ Section map.
   Proof.
     intros ?. rewrite {1}big_sepM_delete //. apply sep_mono; [done|].
     apply forall_intro=> x'.
-    rewrite -insert_delete big_sepM_insert ?lookup_delete //.
+    rewrite -insert_delete_insert big_sepM_insert ?lookup_delete //.
     by apply wand_intro_l.
   Qed.
 
@@ -1331,7 +1331,7 @@ Section map2.
 
   Lemma big_sepM2_dom Φ m1 m2 :
     ([∗ map] k↦y1;y2 ∈ m1; m2, Φ k y1 y2) ⊢
-    ⌜ dom (gset K) m1 = dom (gset K) m2 ⌝.
+    ⌜ dom m1 = dom m2 ⌝.
   Proof.
     rewrite big_sepM2_lookup_iff. apply pure_mono=>Hm.
     apply set_eq=> k. by rewrite !elem_of_dom.
@@ -1477,7 +1477,7 @@ Section map2.
     ([∗ map] k↦y1;y2 ∈ <[i:=x1]>m1; <[i:=x2]>m2, Φ k y1 y2)
     ⊣⊢ Φ i x1 x2 ∗ [∗ map] k↦y1;y2 ∈ delete i m1;delete i m2, Φ k y1 y2.
   Proof.
-    rewrite -(insert_delete m1) -(insert_delete m2).
+    rewrite -(insert_delete_insert m1) -(insert_delete_insert m2).
     apply big_sepM2_insert; by rewrite lookup_delete.
   Qed.
 
@@ -1489,7 +1489,7 @@ Section map2.
   Proof.
     intros ??. rewrite {1}big_sepM2_delete //. apply sep_mono; [done|].
     apply forall_intro=> x1'. apply forall_intro=> x2'.
-    rewrite -(insert_delete m1) -(insert_delete m2) big_sepM2_insert ?lookup_delete //.
+    rewrite -(insert_delete_insert m1) -(insert_delete_insert m2) big_sepM2_insert ?lookup_delete //.
     by apply wand_intro_l.
   Qed.
 
@@ -2007,7 +2007,7 @@ Section gset.
 End gset.
 
 Lemma big_sepM_dom `{Countable K} {A} (Φ : K → PROP) (m : gmap K A) :
-  ([∗ map] k↦_ ∈ m, Φ k) ⊣⊢ ([∗ set] k ∈ dom _ m, Φ k).
+  ([∗ map] k↦_ ∈ m, Φ k) ⊣⊢ ([∗ set] k ∈ dom m, Φ k).
 Proof. apply big_opM_dom. Qed.
 
 (** ** Big ops over finite multisets *)
@@ -2054,7 +2054,7 @@ Section gmultiset.
   Proof. apply big_opMS_disj_union. Qed.
 
   Lemma big_sepMS_delete Φ X x :
-    x ∈ X → ([∗ mset] y ∈ X, Φ y) ⊣⊢ Φ x ∗ [∗ mset] y ∈ X ∖ {[ x ]}, Φ y.
+    x ∈ X → ([∗ mset] y ∈ X, Φ y) ⊣⊢ Φ x ∗ [∗ mset] y ∈ X ∖ {[+ x +]}, Φ y.
   Proof. apply big_opMS_delete. Qed.
 
   Lemma big_sepMS_elem_of Φ X x `{!Absorbing (Φ x)} :
@@ -2068,7 +2068,7 @@ Section gmultiset.
     intros. rewrite big_sepMS_delete //. by apply sep_mono_r, wand_intro_l.
   Qed.
 
-  Lemma big_sepMS_singleton Φ x : ([∗ mset] y ∈ {[ x ]}, Φ y) ⊣⊢ Φ x.
+  Lemma big_sepMS_singleton Φ x : ([∗ mset] y ∈ {[+ x +]}, Φ y) ⊣⊢ Φ x.
   Proof. apply big_opMS_singleton. Qed.
 
   Lemma big_sepMS_sep Φ Ψ X :
@@ -2156,7 +2156,7 @@ Section gmultiset.
     Φ x ∗
     (* we reobtain the bigop for a predicate [Ψ] selected by the user *)
     ∀ Ψ,
-      □ (∀ y, ⌜ y ∈ X ∖ {[ x ]} ⌝ → Φ y -∗ Ψ y) -∗
+      □ (∀ y, ⌜ y ∈ X ∖ {[+ x +]} ⌝ → Φ y -∗ Ψ y) -∗
       Ψ x -∗
       [∗ mset] y ∈ X, Ψ y.
   Proof.

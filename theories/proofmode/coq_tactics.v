@@ -539,8 +539,8 @@ Lemma tac_pose_proof_hyp Δ i j Q :
 Proof.
   destruct (envs_lookup_delete _ _ _) as [((p&P)&Δ')|] eqn:Hlookup; last done.
   destruct (envs_app _ _ _) as [Δ''|] eqn:?; last done.
-  rewrite envs_entails_eq. rewrite envs_lookup_delete_Some in Hlookup *.
-  intros [? ->] <-.
+  rewrite envs_entails_eq. rewrite envs_lookup_delete_Some in Hlookup.
+  destruct Hlookup as [? ->]; intros <-.
   rewrite envs_lookup_sound' // envs_app_singleton_sound //=.
   by rewrite wand_elim_r.
 Qed.

@@ -44,7 +44,7 @@ Section definitions.
 
   Definition proph_map_interp pvs (ps : gset P) : iProp Σ :=
     (∃ R, ⌜proph_resolves_in_list R pvs ∧
-          dom (gset _) R ⊆ ps⌝ ∗
+          dom R ⊆ ps⌝ ∗
           own (proph_map_name pG) (gmap_view_auth (V:=listO $ leibnizO SI V) 1 R))%I.
 
   Definition proph_def (p : P) (vs : list V) : iProp Σ :=
@@ -63,7 +63,7 @@ Section list_resolves.
 
   Lemma resolves_insert pvs p R :
     proph_resolves_in_list R pvs →
-    p ∉ dom (gset _) R →
+    p ∉ dom R →
     proph_resolves_in_list (<[p := proph_list_resolves pvs p]> R) pvs.
   Proof.
     intros Hinlist Hp q vs HEq.
@@ -150,7 +150,7 @@ Section proph_map.
         * rewrite lookup_insert_ne in HEq; last done.
           rewrite (Hres q ws HEq).
           simpl. rewrite decide_False; done.
-      + assert (p ∈ dom (gset P) R) by exact: elem_of_dom_2.
+      + assert (p ∈ dom R) by exact: elem_of_dom_2.
         rewrite dom_insert. set_solver.
   Qed.
 End proph_map.

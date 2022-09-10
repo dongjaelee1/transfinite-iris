@@ -462,7 +462,7 @@ Qed.
 Next Obligation.
   intros SI K ?? F A1 A2 B1 B2 fg; simpl.
   (* [apply] does not work, probably the usual unification probem (Coq #6294) *)
-  apply: view_map_cmra_morphism; [apply _..|]=> n m f.
+  eapply (@view_map_cmra_morphism SI); [apply _..|]=> n m f.
   intros Hrel k [df va] Hf. move: Hf.
   rewrite !lookup_fmap.
   destruct (f !! k) as [[df' va']|] eqn:Hfk; rewrite Hfk; last done.

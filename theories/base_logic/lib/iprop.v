@@ -61,7 +61,7 @@ Module gFunctors.
     existT 1 (fin_S_inv (λ _, gFunctor SI) F (fin_0_inv _)).
 
   Definition app {SI} (Σ1 Σ2 : gFunctors SI) : gFunctors SI :=
-    existT (projT1 Σ1 + projT1 Σ2) (fin_plus_inv _ (projT2 Σ1) (projT2 Σ2)).
+    existT (projT1 Σ1 + projT1 Σ2) (fin_add_inv _ (projT2 Σ1) (projT2 Σ2)).
 End gFunctors.
 
 Coercion gFunctors.singleton : gFunctor >-> gFunctors.
@@ -93,8 +93,8 @@ Global Hint Mode subG - ! + : typeclass_instances.
 Lemma subG_inv {SI} (Σ1 Σ2 Σ: gFunctors SI) : subG (gFunctors.app Σ1 Σ2) Σ → subG Σ1 Σ * subG Σ2 Σ.
 Proof.
   move=> H; split.
-  - move=> i; move: H=> /(_ (Fin.L _ i)) [j] /=. rewrite fin_plus_inv_L; eauto.
-  - move=> i; move: H=> /(_ (Fin.R _ i)) [j] /=. rewrite fin_plus_inv_R; eauto.
+  - move=> i; move: H=> /(_ (Fin.L _ i)) [j] /=. rewrite fin_add_inv_l; eauto.
+  - move=> i; move: H=> /(_ (Fin.R _ i)) [j] /=. rewrite fin_add_inv_r; eauto.
 Qed.
 
 Global Instance subG_refl {SI} (Σ: gFunctors SI) : subG Σ Σ.
@@ -102,12 +102,12 @@ Proof. move=> i; by exists i. Qed.
 Global Instance subG_app_l {SI} (Σ Σ1 Σ2: gFunctors SI) : subG Σ Σ1 → subG Σ (gFunctors.app Σ1 Σ2).
 Proof.
   move=> H i; move: H=> /(_ i) [j ?].
-  exists (Fin.L _ j). by rewrite /= fin_plus_inv_L.
+  exists (Fin.L _ j). by rewrite /= fin_add_inv_l.
 Qed.
 Global Instance subG_app_r {SI} (Σ Σ1 Σ2 : gFunctors SI): subG Σ Σ2 → subG Σ (gFunctors.app Σ1 Σ2).
 Proof.
   move=> H i; move: H=> /(_ i) [j ?].
-  exists (Fin.R _ j). by rewrite /= fin_plus_inv_R.
+  exists (Fin.R _ j). by rewrite /= fin_add_inv_r.
 Qed.
 
 
@@ -162,5 +162,6 @@ End iProp_solution.
 Lemma iProp_unfold_equivI {SI} {Σ: gFunctors SI} (P Q : iProp Σ) :
   iProp_unfold P ≡ iProp_unfold Q ⊢@{iPropI Σ} P ≡ Q.
 Proof.
-  rewrite -{2}(iProp_fold_unfold P) -{2}(iProp_fold_unfold Q). apply: f_equivI.
+  rewrite -{2}(iProp_fold_unfold P) -{2}(iProp_fold_unfold Q).
+  eapply f_equivI; apply _.
 Qed.
