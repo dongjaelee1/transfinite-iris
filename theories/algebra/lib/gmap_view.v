@@ -20,17 +20,17 @@ NOTE: The API surface for [gmap_view] is experimental and subject to change.  We
 plan to add notations for authoritative elements and fragments, and hope to
 support arbitrary maps as fragments. *)
 
-Local Definition gmap_view_fragUR {SI} (K : Type) `{Countable K} (V : ofe SI) : ucmra SI :=
-  gmapUR K (prodR (dfracR SI) (agreeR V)).
+Local Definition gmap_view_fragUR `{SI: indexT} (K : Type) `{Countable K} (V : ofe) : ucmra :=
+  gmapUR K (prodR dfracR (agreeR V)).
 
 (** View relation. *)
 Section rel.
-  Context {SI} (K : Type) `{Countable K} (V : ofe SI).
-  Implicit Types (m : gmap K V) (k : K) (v : V) (n : SI).
+  Context `{SI: indexT} (K : Type) `{Countable K} (V : ofe).
+  Implicit Types (m : gmap K V) (k : K) (v : V) (n : index).
   Implicit Types (f : gmap K (dfrac * agree V)).
 
   Local Definition gmap_view_rel_raw n m f : Prop :=
-    map_Forall (λ k dv, ∃ v: V, dv.2 ≡{n}≡ to_agree v ∧ ✓ (dv.1: dfracR SI) ∧ m !! k = Some v) f.
+    map_Forall (λ k dv, ∃ v: V, dv.2 ≡{n}≡ to_agree v ∧ ✓ dv.1 ∧ m !! k = Some v) f.
 
   Local Lemma gmap_view_rel_raw_mono n1 n2 m1 m2 f1 f2 :
     gmap_view_rel_raw n1 m1 f1 →
@@ -126,16 +126,16 @@ Local Existing Instance gmap_view_rel_discrete.
 
 (** [gmap_view] is a notation to give canonical structure search the chance
 to infer the right instances (see [auth]). *)
-Notation gmap_view K V := (view (@gmap_view_rel_raw K _ _ V)).
-Definition gmap_viewO {SI} (K : Type) `{Countable K} (V : ofe SI) : ofe SI :=
+Notation gmap_view K V := (view (@gmap_view_rel_raw _ K _ V)).
+Definition gmap_viewO `{SI: indexT} (K : Type) `{Countable K} (V : ofe) : ofe :=
   viewO (gmap_view_rel K V).
-Definition gmap_viewR {SI} (K : Type) `{Countable K} (V : ofe SI) : cmra SI :=
+Definition gmap_viewR `{SI: indexT} (K : Type) `{Countable K} (V : ofe) : cmra :=
   viewR (gmap_view_rel K V).
-Definition gmap_viewUR {SI} (K : Type) `{Countable K} (V : ofe SI) : ucmra SI :=
+Definition gmap_viewUR `{SI: indexT} (K : Type) `{Countable K} (V : ofe) : ucmra :=
   viewUR (gmap_view_rel K V).
 
 Section definitions.
-  Context {SI} {K : Type} `{Countable K} {V : ofe SI}.
+  Context `{SI: indexT} {K : Type} `{Countable K} {V : ofe}.
 
   Definition gmap_view_auth (q : frac) (m : gmap K V) : gmap_viewR K V :=
     ●V{q} m.
@@ -144,7 +144,7 @@ Section definitions.
 End definitions.
 
 Section lemmas.
-  Context {SI} {K : Type} `{Countable K} {V : ofe SI}.
+  Context `{SI: indexT} {K : Type} `{Countable K} {V : ofe}.
   Implicit Types (m : gmap K V) (k : K) (q : Qp) (dq : dfrac) (v : V).
 
   Global Instance : Params (@gmap_view_auth) 5 := {}.
@@ -161,7 +161,7 @@ Section lemmas.
 
   (* Helper lemmas *)
   Local Lemma gmap_view_rel_lookup n m k dq v :
-    gmap_view_rel K V n m {[k := (dq, to_agree v)]} ↔ ✓ (dq: dfracR SI) ∧ m !! k ≡{n}≡ Some v.
+    gmap_view_rel K V n m {[k := (dq, to_agree v)]} ↔ ✓ dq ∧ m !! k ≡{n}≡ Some v.
   Proof.
     split.
     - intros Hrel.
@@ -180,7 +180,7 @@ Section lemmas.
     gmap_view_auth (p + q) m ≡ gmap_view_auth p m ⋅ gmap_view_auth q m.
   Proof. apply view_auth_frac_op. Qed.
   Global Instance gmap_view_auth_frac_is_op q q1 q2 m :
-    IsOp (q: fracO SI) q1 q2 → IsOp' (gmap_view_auth q m) (gmap_view_auth q1 m) (gmap_view_auth q2 m).
+    IsOp q q1 q2 → IsOp' (gmap_view_auth q m) (gmap_view_auth q1 m) (gmap_view_auth q2 m).
   Proof. rewrite /gmap_view_auth. apply _. Qed.
 
   Lemma gmap_view_auth_frac_op_invN n p m1 q m2 :
@@ -201,7 +201,7 @@ Section lemmas.
   Proof. rewrite gmap_view_auth_frac_valid. done. Qed.
 
   Lemma gmap_view_auth_frac_op_validN n q1 q2 m1 m2 :
-    ✓{n} (gmap_view_auth q1 m1 ⋅ gmap_view_auth q2 m2) ↔ ✓ (q1 + q2: fracR SI)%Qp ∧ m1 ≡{n}≡ m2.
+    ✓{n} (gmap_view_auth q1 m1 ⋅ gmap_view_auth q2 m2) ↔ ✓ (q1 + q2)%Qp ∧ m1 ≡{n}≡ m2.
   Proof.
     rewrite view_auth_frac_op_validN. intuition eauto using gmap_view_rel_unit.
   Qed.
@@ -211,7 +211,7 @@ Section lemmas.
     rewrite view_auth_frac_op_valid. intuition eauto using gmap_view_rel_unit.
   Qed.
   Lemma gmap_view_auth_frac_op_valid_L `{!LeibnizEquiv V} q1 q2 m1 m2 :
-    ✓ (gmap_view_auth q1 m1 ⋅ gmap_view_auth q2 m2) ↔ ✓ (q1 + q2: fracR SI)%Qp ∧ m1 = m2.
+    ✓ (gmap_view_auth q1 m1 ⋅ gmap_view_auth q2 m2) ↔ ✓ (q1 + q2)%Qp ∧ m1 = m2.
   Proof. unfold_leibniz. apply gmap_view_auth_frac_op_valid. Qed.
 
   Lemma gmap_view_auth_op_validN n m1 m2 :
@@ -221,19 +221,19 @@ Section lemmas.
     ✓ (gmap_view_auth 1 m1 ⋅ gmap_view_auth 1 m2) ↔ False.
   Proof. apply view_auth_op_valid. Qed.
 
-  Lemma gmap_view_frag_validN n k dq v : ✓{n} gmap_view_frag k dq v ↔ ✓ (dq: dfracR SI).
+  Lemma gmap_view_frag_validN n k dq v : ✓{n} gmap_view_frag k dq v ↔ ✓ dq.
   Proof.
     rewrite view_frag_validN gmap_view_rel_exists singleton_validN pair_validN.
     naive_solver.
   Qed.
-  Lemma gmap_view_frag_valid k dq v : ✓ gmap_view_frag k dq v ↔ ✓ (dq: dfracR SI).
+  Lemma gmap_view_frag_valid k dq v : ✓ gmap_view_frag k dq v ↔ ✓ dq.
   Proof.
     rewrite cmra_valid_validN. setoid_rewrite gmap_view_frag_validN.
     naive_solver eauto using zero.
   Qed.
 
   Definition gmap_view_frag_op k dq1 dq2 v :
-    gmap_view_frag k ((dq1: dfracR SI) ⋅ dq2) v ≡ (gmap_view_frag k dq1 v ⋅ gmap_view_frag k dq2 v).
+    gmap_view_frag k (dq1 ⋅ dq2) v ≡ (gmap_view_frag k dq1 v ⋅ gmap_view_frag k dq2 v).
   Proof. rewrite -view_frag_op singleton_op -pair_op agree_idemp //. Qed.
   Lemma gmap_view_frag_add k q1 q2 v :
     gmap_view_frag k (DfracOwn (q1 + q2)) v ≡
@@ -242,13 +242,13 @@ Section lemmas.
 
   Lemma gmap_view_frag_op_validN n k dq1 dq2 v1 v2 :
     ✓{n} (gmap_view_frag k dq1 v1 ⋅ gmap_view_frag k dq2 v2) ↔
-      ✓ ((dq1: dfracR SI) ⋅ dq2) ∧ v1 ≡{n}≡ v2.
+      ✓ (dq1 ⋅ dq2) ∧ v1 ≡{n}≡ v2.
   Proof.
     rewrite view_frag_validN gmap_view_rel_exists singleton_op singleton_validN.
     by rewrite -pair_op pair_validN to_agree_op_validN.
   Qed.
   Lemma gmap_view_frag_op_valid k dq1 dq2 v1 v2 :
-    ✓ (gmap_view_frag k dq1 v1 ⋅ gmap_view_frag k dq2 v2) ↔ ✓ ((dq1: dfracR SI) ⋅ dq2) ∧ v1 ≡ v2.
+    ✓ (gmap_view_frag k dq1 v1 ⋅ gmap_view_frag k dq2 v2) ↔ ✓ (dq1 ⋅ dq2) ∧ v1 ≡ v2.
   Proof.
     rewrite view_frag_valid. setoid_rewrite gmap_view_rel_exists.
     rewrite -cmra_valid_validN singleton_op singleton_valid.
@@ -257,12 +257,12 @@ Section lemmas.
   (* FIXME: Having a [valid_L] lemma is not consistent with [auth] and [view]; they
      have [inv_L] lemmas instead that just have an equality on the RHS. *)
   Lemma gmap_view_frag_op_valid_L `{!LeibnizEquiv V} k dq1 dq2 v1 v2 :
-    ✓ (gmap_view_frag k dq1 v1 ⋅ gmap_view_frag k dq2 v2) ↔ ✓ ((dq1: dfracR SI) ⋅ dq2) ∧ v1 = v2.
+    ✓ (gmap_view_frag k dq1 v1 ⋅ gmap_view_frag k dq2 v2) ↔ ✓ (dq1 ⋅ dq2) ∧ v1 = v2.
   Proof. unfold_leibniz. apply gmap_view_frag_op_valid. Qed.
 
   Lemma gmap_view_both_frac_validN n q m k dq v :
     ✓{n} (gmap_view_auth q m ⋅ gmap_view_frag k dq v) ↔
-      (q ≤ 1)%Qp ∧ ✓ (dq: dfracR SI) ∧ m !! k ≡{n}≡ Some v.
+      (q ≤ 1)%Qp ∧ ✓ dq ∧ m !! k ≡{n}≡ Some v.
   Proof.
     rewrite /gmap_view_auth /gmap_view_frag.
     rewrite view_both_frac_validN gmap_view_rel_lookup.
@@ -270,11 +270,11 @@ Section lemmas.
   Qed.
   Lemma gmap_view_both_validN n m k dq v :
     ✓{n} (gmap_view_auth 1 m ⋅ gmap_view_frag k dq v) ↔
-      ✓ (dq: dfracR SI) ∧ m !! k ≡{n}≡ Some v.
+      ✓ dq ∧ m !! k ≡{n}≡ Some v.
   Proof. rewrite gmap_view_both_frac_validN. naive_solver done. Qed.
   Lemma gmap_view_both_frac_valid q m k dq v :
     ✓ (gmap_view_auth q m ⋅ gmap_view_frag k dq v) ↔
-    (q ≤ 1)%Qp ∧ ✓ (dq: dfracR SI) ∧ m !! k ≡ Some v.
+    (q ≤ 1)%Qp ∧ ✓ dq ∧ m !! k ≡ Some v.
   Proof.
     rewrite /gmap_view_auth /gmap_view_frag.
     rewrite view_both_frac_valid. setoid_rewrite gmap_view_rel_lookup.
@@ -288,23 +288,23 @@ Section lemmas.
   Qed.
   Lemma gmap_view_both_frac_valid_L `{!LeibnizEquiv V} q m k dq v :
     ✓ (gmap_view_auth q m ⋅ gmap_view_frag k dq v) ↔
-    ✓ (q: fracR SI) ∧ ✓ (dq: dfracR SI) ∧ m !! k = Some v.
+    ✓ q ∧ ✓ dq ∧ m !! k = Some v.
   Proof. unfold_leibniz. apply gmap_view_both_frac_valid. Qed.
   Lemma gmap_view_both_valid m k dq v :
     ✓ (gmap_view_auth 1 m ⋅ gmap_view_frag k dq v) ↔
-    ✓ (dq: dfracR SI) ∧ m !! k ≡ Some v.
+    ✓ dq ∧ m !! k ≡ Some v.
   Proof. rewrite gmap_view_both_frac_valid. naive_solver done. Qed.
   (* FIXME: Having a [valid_L] lemma is not consistent with [auth] and [view]; they
      have [inv_L] lemmas instead that just have an equality on the RHS. *)
   Lemma gmap_view_both_valid_L `{!LeibnizEquiv V} m k dq v :
     ✓ (gmap_view_auth 1 m ⋅ gmap_view_frag k dq v) ↔
-    ✓ (dq: dfracR SI) ∧ m !! k = Some v.
+    ✓ dq ∧ m !! k = Some v.
   Proof. unfold_leibniz. apply gmap_view_both_valid. Qed.
 
   (** Frame-preserving updates *)
   Lemma gmap_view_alloc m k dq v :
     m !! k = None →
-    ✓ (dq: dfracR SI) →
+    ✓ dq →
     gmap_view_auth 1 m ~~> gmap_view_auth 1 (<[k := v]> m) ⋅ gmap_view_frag k dq v.
   Proof.
     intros Hfresh Hdq. apply view_update_alloc=>n bf Hrel j [df va] /=.
@@ -325,7 +325,7 @@ Section lemmas.
 
   Lemma gmap_view_alloc_big m m' dq :
     m' ##ₘ m →
-    ✓ (dq: dfracR SI) →
+    ✓ dq →
     gmap_view_auth 1 m ~~>
       gmap_view_auth 1 (m' ∪ m) ⋅ ([^op map] k↦v ∈ m', gmap_view_frag k dq v).
   Proof.
@@ -404,20 +404,20 @@ Section lemmas.
   Qed.
 
   (** Typeclass instances *)
-  Global Instance gmap_view_frag_core_id k dq v : CoreId (dq: dfracR SI) → CoreId (gmap_view_frag k dq v).
+  Global Instance gmap_view_frag_core_id k dq v : CoreId dq → CoreId (gmap_view_frag k dq v).
   Proof. apply _. Qed.
 
   Global Instance gmap_view_cmra_discrete : OfeDiscrete V → CmraDiscrete (gmap_viewR K V).
   Proof. apply _. Qed.
 
   Global Instance gmap_view_frag_mut_is_op dq dq1 dq2 k v :
-    IsOp (dq: dfracR SI) dq1 dq2 →
+    IsOp dq dq1 dq2 →
     IsOp' (gmap_view_frag k dq v) (gmap_view_frag k dq1 v) (gmap_view_frag k dq2 v).
   Proof. rewrite /IsOp' /IsOp => ->. apply gmap_view_frag_op. Qed.
 End lemmas.
 
 (** Functor *)
-Program Definition gmap_viewURF {SI} (K : Type) `{Countable K} (F : oFunctor SI) : urFunctor SI := {|
+Program Definition gmap_viewURF `{SI: indexT} (K : Type) `{Countable K} (F : oFunctor) : urFunctor := {|
   urFunctor_car A B := gmap_viewUR K (oFunctor_car F A B);
   urFunctor_map A1 A2 B1 B2 fg :=
     viewO_map (rel:=gmap_view_rel K (oFunctor_car F A1 B1))
@@ -473,7 +473,7 @@ Next Obligation.
   rewrite Hagree. rewrite agree_map_to_agree. done.
 Qed.
 
-Global Instance gmap_viewURF_contractive {SI} (K : Type) `{Countable K} (F: oFunctor SI) :
+Global Instance gmap_viewURF_contractive `{SI: indexT} (K : Type) `{Countable K} (F: oFunctor) :
   oFunctorContractive F → urFunctorContractive (gmap_viewURF K F).
 Proof.
   intros ? A1 A2 B1 B2 n f g Hfg.
@@ -483,7 +483,7 @@ Proof.
     apply agreeO_map_ne, oFunctor_map_contractive. done.
 Qed.
 
-Program Definition gmap_viewRF {SI} (K : Type) `{Countable K} (F : oFunctor SI) : rFunctor SI := {|
+Program Definition gmap_viewRF `{SI: indexT} (K : Type) `{Countable K} (F : oFunctor) : rFunctor := {|
   rFunctor_car A B := gmap_viewR K (oFunctor_car F A B);
   rFunctor_map A1 A2 B1 B2 fg :=
     viewO_map (rel:=gmap_view_rel K (oFunctor_car F A1 B1))
@@ -509,8 +509,8 @@ Next Obligation.
 Qed.
 Next Obligation. intros; apply gmap_viewURF. Qed.
 
-Global Instance gmap_viewRF_contractive {SI} (K : Type) `{Countable K} (F: oFunctor SI) :
+Global Instance gmap_viewRF_contractive `{SI: indexT} (K : Type) `{Countable K} (F: oFunctor) :
   oFunctorContractive F → rFunctorContractive (gmap_viewRF K F).
 Proof. apply gmap_viewURF_contractive. Qed.
 
-Typeclasses Opaque gmap_view_auth gmap_view_frag.
+Global Typeclasses Opaque gmap_view_auth gmap_view_frag.

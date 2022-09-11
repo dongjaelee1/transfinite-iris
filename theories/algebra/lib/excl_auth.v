@@ -6,17 +6,17 @@ From iris.prelude Require Import options.
 This is effectively a single "ghost variable" with two views, the frament [◯E a]
 and the authority [●E a]. *)
 
-Definition excl_authR {SI} (A : ofe SI) : cmra SI :=
+Definition excl_authR `{SI: indexT} (A : ofe) : cmra :=
   authR (optionUR (exclR A)).
-Definition excl_authUR {SI} (A : ofe SI) : ucmra SI :=
+Definition excl_authUR `{SI: indexT} (A : ofe) : ucmra :=
   authUR (optionUR (exclR A)).
 
-Definition excl_auth_auth {SI} {A : ofe SI} (a : A) : excl_authR A :=
+Definition excl_auth_auth `{SI: indexT} {A : ofe} (a : A) : excl_authR A :=
   ● (Some (Excl a)).
-Definition excl_auth_frag {SI} {A : ofe SI} (a : A) : excl_authR A :=
+Definition excl_auth_frag `{SI: indexT} {A : ofe} (a : A) : excl_authR A :=
   ◯ (Some (Excl a)).
 
-Typeclasses Opaque excl_auth_auth excl_auth_frag.
+Global Typeclasses Opaque excl_auth_auth excl_auth_frag.
 
 Global Instance: Params (@excl_auth_auth) 2 := {}.
 Global Instance: Params (@excl_auth_frag) 3 := {}.
@@ -25,7 +25,7 @@ Notation "●E a" := (excl_auth_auth a) (at level 10).
 Notation "◯E a" := (excl_auth_frag a) (at level 10).
 
 Section excl_auth.
-  Context {SI} {A : ofe SI}.
+  Context `{SI: indexT} {A : ofe}.
   Implicit Types a b : A.
 
   Global Instance excl_auth_auth_ne : NonExpansive (@excl_auth_auth SI A).

@@ -40,8 +40,8 @@ not use type classes for this purpose because cameras themselves are represented
 using canonical structures. It has proven fragile for a canonical structure
 instance to take a type class as a parameter (in this case, [viewR] would need
 to take a class with the view relation laws). *)
-Structure view_rel {SI} (A : ofe SI) (B : ucmra SI) := ViewRel {
-  view_rel_holds :> SI → A → B → Prop;
+Structure view_rel `{SI: indexT} (A : ofe) (B : ucmra) := ViewRel {
+  view_rel_holds :> index → A → B → Prop;
   view_rel_mono n1 n2 a1 a2 b1 b2 :
     view_rel_holds n1 a1 b1 →
     a1 ≡{n2}≡ a2 →
@@ -57,24 +57,24 @@ Global Arguments ViewRel {_ _ _} _ _.
 Global Arguments view_rel_holds {_ _ _} _ _ _ _.
 Global Instance: Params (@view_rel_holds) 5 := {}.
 
-Global Instance view_rel_ne {SI} {A: ofe SI} {B: ucmra SI} (rel : view_rel A B) n :
+Global Instance view_rel_ne `{SI: indexT} {A: ofe} {B: ucmra} (rel : view_rel A B) n :
   Proper (dist n ==> dist n ==> iff) (rel n).
 Proof.
   intros a1 a2 Ha b1 b2 Hb.
   split=> ?; (eapply view_rel_mono; [done|done|by rewrite Hb|done]).
 Qed.
-Global Instance view_rel_proper {SI} {A: ofe SI} {B: ucmra SI} (rel : view_rel A B) n :
+Global Instance view_rel_proper `{SI: indexT} {A: ofe} {B: ucmra} (rel : view_rel A B) n :
   Proper ((≡) ==> (≡) ==> iff) (rel n).
 Proof. intros a1 a2 Ha b1 b2 Hb. apply view_rel_ne; by apply equiv_dist. Qed.
 
-Class ViewRelDiscrete {SI} {A: ofe SI} {B: ucmra SI} (rel : view_rel A B) :=
+Class ViewRelDiscrete `{SI: indexT} {A: ofe} {B: ucmra} (rel : view_rel A B) :=
   view_rel_discrete n a b : rel zero a b → rel n a b.
 
 (** * Definition of the view camera *)
 (** To make use of the lemmas provided in this file, elements of [view] should
 always be constructed using [●V] and [◯V], and never using the constructor
 [View]. *)
-Record view {SI} {A B: ofe SI} (rel : SI → A → B → Prop) :=
+Record view `{SI: indexT} {A B: ofe} (rel : index → A → B → Prop) :=
   View { view_auth_proj : option (frac * agree A) ; view_frag_proj : B }.
 Add Printing Constructor view.
 Global Arguments View {_ _ _ _} _ _.
@@ -84,10 +84,10 @@ Global Instance: Params (@View) 4 := {}.
 Global Instance: Params (@view_auth_proj) 4 := {}.
 Global Instance: Params (@view_frag_proj) 4 := {}.
 
-Definition view_auth {SI} {A: ofe SI} {B: ucmra SI} {rel : view_rel A B} (q : Qp) (a : A) : view rel :=
+Definition view_auth `{SI: indexT} {A: ofe} {B: ucmra} {rel : view_rel A B} (q : Qp) (a : A) : view rel :=
   View (Some (q, to_agree a)) ε.
-Definition view_frag {SI} {A: ofe SI} {B: ucmra SI} {rel : view_rel A B} (b : B) : view rel := View None b.
-Typeclasses Opaque view_auth view_frag.
+Definition view_frag `{SI: indexT} {A: ofe} {B: ucmra} {rel : view_rel A B} (b : B) : view rel := View None b.
+Global Typeclasses Opaque view_auth view_frag.
 
 Global Instance: Params (@view_auth) 4 := {}.
 Global Instance: Params (@view_frag) 4 := {}.
@@ -101,7 +101,7 @@ Notation "◯V a" := (view_frag a) (at level 20).
 general version in terms of [●V] and [◯V], and because such a lemma has never
 been needed in practice. *)
 Section ofe.
-  Context {SI} {A B : ofe SI} (rel : SI → A → B → Prop).
+  Context `{SI: indexT} {A B : ofe} (rel : index → A → B → Prop).
   Implicit Types a : A.
   Implicit Types ag : option (frac * agree A).
   Implicit Types b : B.
@@ -109,7 +109,7 @@ Section ofe.
 
   Local Instance view_equiv : Equiv (view rel) := λ x y,
     view_auth_proj x ≡ view_auth_proj y ∧ view_frag_proj x ≡ view_frag_proj y.
-  Local Instance view_dist : Dist SI (view rel) := λ n x y,
+  Local Instance view_dist : Dist (view rel) := λ n x y,
     view_auth_proj x ≡{n}≡ view_auth_proj y ∧
     view_frag_proj x ≡{n}≡ view_frag_proj y.
 
@@ -128,7 +128,7 @@ Section ofe.
     Proper ((≡) ==> (≡)) (@view_frag_proj SI A B rel).
   Proof. by destruct 1. Qed.
 
-  Definition view_ofe_mixin : OfeMixin SI (view rel).
+  Definition view_ofe_mixin : OfeMixin (view rel).
   Proof. by apply (iso_ofe_mixin (λ x, (view_auth_proj x, view_frag_proj x))). Qed.
   Canonical Structure viewO := Ofe (view rel) view_ofe_mixin.
 
@@ -142,7 +142,7 @@ End ofe.
 
 (** * The camera structure *)
 Section cmra.
-  Context {SI} {A: ofe SI} {B: ucmra SI} (rel : view_rel A B).
+  Context `{SI: indexT} {A: ofe} {B: ucmra} (rel : view_rel A B).
   Implicit Types a : A.
   Implicit Types ag : option (frac * agree A).
   Implicit Types b : B.
@@ -175,14 +175,14 @@ Section cmra.
 
   Local Instance view_valid_instance : Valid (view rel) := λ x,
     match view_auth_proj x with
-    | Some (q, ag) =>
-      ✓ (q: fracR SI) ∧ (∀ n: SI, ∃ a: A, @dist SI _ _ n ag (@to_agree A a) ∧ @rel n a (view_frag_proj x))
-    | None => ∀ n: SI, ∃ a: A, @rel n a (view_frag_proj x)
+    | Some (dq, ag) =>
+      ✓ dq ∧ (∀ n, ∃ a, ag ≡{n}≡ to_agree a ∧ rel n a (view_frag_proj x))
+    | None => ∀ n, ∃ a, rel n a (view_frag_proj x)
     end.
-  Local Instance view_validN_instance : ValidN SI (view rel) := λ n x,
+  Local Instance view_validN_instance : ValidN (view rel) := λ n x,
     match view_auth_proj x with
-    | Some (q, ag) =>
-       ✓{n} q ∧ ∃ a, ag ≡{n}≡ to_agree a ∧ rel n a (view_frag_proj x)
+    | Some (dq, ag) =>
+      ✓{n} dq ∧ ∃ a, ag ≡{n}≡ to_agree a ∧ rel n a (view_frag_proj x)
     | None => ∃ a, rel n a (view_frag_proj x)
     end.
   Local Instance view_pcore_instance : PCore (view rel) := λ x,
@@ -204,7 +204,7 @@ Section cmra.
       | None => ∃ a, rel n a (view_frag_proj x)
       end := eq_refl _.
 
-  Lemma view_cmra_mixin : CmraMixin SI (view rel).
+  Lemma view_cmra_mixin : CmraMixin (view rel).
   Proof.
     apply (iso_cmra_mixin_restrict
       (λ x : option (frac * agree A) * B, View x.1 x.2)
@@ -235,7 +235,7 @@ Section cmra.
       + intros [a ?]. exists a.
         apply view_rel_mono with n a (b1 ⋅ b2); eauto using cmra_includedN_l.
   Qed.
-  Canonical Structure viewR := Cmra SI (view rel) view_cmra_mixin.
+  Canonical Structure viewR := Cmra (view rel) view_cmra_mixin.
 
   Global Instance view_auth_discrete q a :
     Discrete a → Discrete (ε : B) → Discrete (●V{q} a : view rel).
@@ -254,14 +254,14 @@ Section cmra.
   Qed.
 
   Local Instance view_empty_instance : Unit (view rel) := View ε ε.
-  Lemma view_ucmra_mixin : UcmraMixin SI (view rel).
+  Lemma view_ucmra_mixin : UcmraMixin (view rel).
   Proof.
     split; simpl.
     - rewrite view_valid_eq /=. apply view_rel_unit.
     - by intros x; constructor; rewrite /= left_id.
     - do 2 constructor; [done| apply (core_id_core _)].
   Qed.
-  Canonical Structure viewUR := Ucmra SI (view rel) view_ucmra_mixin.
+  Canonical Structure viewUR := Ucmra (view rel) view_ucmra_mixin.
 
   (** Operation *)
   Lemma view_auth_frac_op p1 p2 a : ●V{p1 + p2} a ≡ ●V{p1} a ⋅ ●V{p2} a.
@@ -270,7 +270,7 @@ Section cmra.
     by rewrite -Some_op -pair_op agree_idemp.
   Qed.
   Global Instance view_auth_frac_is_op q q1 q2 a :
-    IsOp (q: fracR SI) q1 q2 → IsOp' (●V{q} a) (●V{q1} a) (●V{q2} a).
+    IsOp q q1 q2 → IsOp' (●V{q} a) (●V{q1} a) (●V{q2} a).
   Proof. rewrite /IsOp' /IsOp => ->. by rewrite -view_auth_frac_op. Qed.
 
   Lemma view_frag_op b1 b2 : ◯V (b1 ⋅ b2) = ◯V b1 ⋅ ◯V b2.
@@ -532,22 +532,22 @@ instances of the functor structures [rFunctor] and [urFunctor]. Functors can
 only be defined for instances of [view], like [auth]. To make it more convenient
 to define functors for instances of [view], we define the map operation
 [view_map] and a bunch of lemmas about it. *)
-Definition view_map {SI} {A A' B B': ofe SI}
-    {rel : SI → A → B → Prop} {rel' : SI → A' → B' → Prop}
+Definition view_map `{SI: indexT} {A A' B B': ofe}
+    {rel : index → A → B → Prop} {rel' : index → A' → B' → Prop}
     (f : A → A') (g : B → B') (x : view rel) : view rel' :=
   View (prod_map id (agree_map f) <$> view_auth_proj x) (g (view_frag_proj x)).
-Lemma view_map_id {SI} {A B: ofe SI} {rel : SI → A → B → Prop} (x : view rel) :
+Lemma view_map_id `{SI: indexT} {A B: ofe} {rel : index → A → B → Prop} (x : view rel) :
   view_map id id x = x.
 Proof. destruct x as [[[]|] ]; by rewrite // /view_map /= agree_map_id. Qed.
-Lemma view_map_compose {SI} {A A' A'' B B' B'': ofe SI}
-    {rel : SI → A → B → Prop} {rel' : SI → A' → B' → Prop}
-    {rel'' : SI → A'' → B'' → Prop}
+Lemma view_map_compose `{SI: indexT} {A A' A'' B B' B'': ofe}
+    {rel : index → A → B → Prop} {rel' : index → A' → B' → Prop}
+    {rel'' : index → A'' → B'' → Prop}
     (f1 : A → A') (f2 : A' → A'') (g1 : B → B') (g2 : B' → B'') (x : view rel) :
   view_map (f2 ∘ f1) (g2 ∘ g1) x
   =@{view rel''} view_map f2 g2 (view_map (rel':=rel') f1 g1 x).
 Proof. destruct x as [[[]|] ];  by rewrite // /view_map /= agree_map_compose. Qed.
-Lemma view_map_ext {SI} {A A' B B' : ofe SI}
-    {rel : SI → A → B → Prop} {rel' : SI → A' → B' → Prop}
+Lemma view_map_ext `{SI: indexT} {A A' B B' : ofe}
+    {rel : index → A → B → Prop} {rel' : index → A' → B' → Prop}
     (f1 f2 : A → A') (g1 g2 : B → B')
     `{!NonExpansive f1, !NonExpansive g1} (x : view rel) :
   (∀ a, f1 a ≡ f2 a) → (∀ b, g1 b ≡ g2 b) →
@@ -556,8 +556,8 @@ Proof.
   intros. constructor; simpl; [|by auto].
   apply option_fmap_equiv_ext=> a; by rewrite /prod_map /= agree_map_ext.
 Qed.
-Global Instance view_map_ne {SI} {A A' B B' : ofe SI}
-    {rel : SI → A → B → Prop} {rel' : SI → A' → B' → Prop}
+Global Instance view_map_ne `{SI: indexT} {A A' B B' : ofe}
+    {rel : index → A → B → Prop} {rel' : index → A' → B' → Prop}
     (f : A → A') (g : B → B') `{Hf : !NonExpansive f, Hg : !NonExpansive g} :
   NonExpansive (view_map (rel':=rel') (rel:=rel) f g).
 Proof.
@@ -566,19 +566,19 @@ Proof.
   apply prod_map_ne; [done| |done]. by apply agree_map_ne.
 Qed.
 
-Definition viewO_map {SI} {A A' B B' : ofe SI}
-    {rel : SI → A → B → Prop} {rel' : SI → A' → B' → Prop}
+Definition viewO_map `{SI: indexT} {A A' B B' : ofe}
+    {rel : index → A → B → Prop} {rel' : index → A' → B' → Prop}
     (f : A -n> A') (g : B -n> B') : viewO rel -n> viewO rel' :=
   OfeMor (view_map f g).
-Lemma viewO_map_ne {SI} {A A' B B' : ofe SI}
-    {rel : SI → A → B → Prop} {rel' : SI → A' → B' → Prop} :
+Lemma viewO_map_ne `{SI: indexT} {A A' B B' : ofe}
+    {rel : index → A → B → Prop} {rel' : index → A' → B' → Prop} :
   NonExpansive2 (viewO_map (rel:=rel) (rel':=rel')).
 Proof.
   intros n f f' Hf g g' Hg [[[p ag]|] bf]; split=> //=.
   do 2 f_equiv. by apply agreeO_map_ne.
 Qed.
 
-Lemma view_map_cmra_morphism {SI} {A A' : ofe SI} {B B': ucmra SI}
+Lemma view_map_cmra_morphism `{SI: indexT} {A A' : ofe} {B B': ucmra}
     {rel : view_rel A B} {rel' : view_rel A' B'}
     (f : A → A') (g : B → B') `{!NonExpansive f, !CmraMorphism g} :
   (∀ n a b, rel n a b → rel' n (f a) (g b)) →

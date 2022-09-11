@@ -5,13 +5,13 @@ From iris.prelude Require Import options.
 
 (* The multiset union CMRA *)
 Section gmultiset.
-  Context {SI : indexT} `{Countable K}.
+  Context `{SI : indexT} `{Countable K}.
   Implicit Types X Y : gmultiset K.
 
-  Canonical Structure gmultisetO := discreteO SI (gmultiset K).
+  Canonical Structure gmultisetO := discreteO (gmultiset K).
 
   Local Instance gmultiset_valid_instance : Valid (gmultiset K) := λ _, True.
-  Local Instance gmultiset_validN_instance : ValidN SI (gmultiset K) := λ _ _, True.
+  Local Instance gmultiset_validN_instance : ValidN (gmultiset K) := λ _ _, True.
   Local Instance gmultiset_unit_instance : Unit (gmultiset K) := (∅ : gmultiset K).
   Local Instance gmultiset_op_instance : Op (gmultiset K) := disj_union.
   Local Instance gmultiset_pcore_instance : PCore (gmultiset K) := λ X, Some ∅.
@@ -41,17 +41,17 @@ Section gmultiset.
       by rewrite left_id.
   Qed.
 
-  Canonical Structure gmultisetR := discreteR SI (gmultiset K) gmultiset_ra_mixin.
+  Canonical Structure gmultisetR := discreteR (gmultiset K) gmultiset_ra_mixin.
 
   Global Instance gmultiset_cmra_discrete : CmraDiscrete gmultisetR.
   Proof. apply discrete_cmra_discrete. Qed.
 
-  Lemma gmultiset_ucmra_mixin : UcmraMixin SI (gmultiset K).
+  Lemma gmultiset_ucmra_mixin : UcmraMixin (gmultiset K).
   Proof.
     split; [done | | done]. intros X.
     by rewrite gmultiset_op_disj_union left_id_L.
   Qed.
-  Canonical Structure gmultisetUR := Ucmra SI (gmultiset K) gmultiset_ucmra_mixin.
+  Canonical Structure gmultisetUR := Ucmra (gmultiset K) gmultiset_ucmra_mixin.
 
   Global Instance gmultiset_cancelable X : Cancelable X.
   Proof.
@@ -95,6 +95,6 @@ Section gmultiset.
 
 End gmultiset.
 
-Global Arguments gmultisetO _ _ {_ _}.
-Global Arguments gmultisetR _ _ {_ _}.
-Global Arguments gmultisetUR _ _ {_ _}.
+Global Arguments gmultisetO {_} _ {_ _}.
+Global Arguments gmultisetR {_} _ {_ _}.
+Global Arguments gmultisetUR {_} _ {_ _}.

@@ -33,21 +33,21 @@ Global Instance: Params (@ReservationMap) 1 := {}.
 Global Instance: Params (@reservation_map_data_proj) 1 := {}.
 Global Instance: Params (@reservation_map_token_proj) 1 := {}.
 
-Definition reservation_map_data {SI} {A : cmra SI} (k : positive) (a : A) : reservation_map A :=
-  ReservationMap {[ k := a ]} (ε: coPset_disjUR SI).
-Definition reservation_map_token {SI} {A : cmra SI} (E : coPset) : reservation_map A :=
+Definition reservation_map_data `{SI: indexT} {A : cmra} (k : positive) (a : A) : reservation_map A :=
+  ReservationMap {[ k := a ]} (ε: coPset_disjUR).
+Definition reservation_map_token `{SI: indexT} {A : cmra} (E : coPset) : reservation_map A :=
   ReservationMap ∅ (CoPset E).
 Global Instance: Params (@reservation_map_data) 2 := {}.
 
 (* Ofe *)
 Section ofe.
-  Context {SI} {A : ofe SI}.
+  Context `{SI: indexT} {A : ofe}.
   Implicit Types x y : reservation_map A.
 
   Local Instance reservation_map_equiv : Equiv (reservation_map A) := λ x y,
     reservation_map_data_proj x ≡ reservation_map_data_proj y ∧
     reservation_map_token_proj x = reservation_map_token_proj y.
-  Local Instance reservation_map_dist : Dist SI (reservation_map A) := λ n x y,
+  Local Instance reservation_map_dist : Dist (reservation_map A) := λ n x y,
     reservation_map_data_proj x ≡{n}≡ reservation_map_data_proj y ∧
     reservation_map_token_proj x = reservation_map_token_proj y.
 
@@ -64,7 +64,7 @@ Section ofe.
     Proper ((≡) ==> (≡)) (@reservation_map_data_proj A).
   Proof. by destruct 1. Qed.
 
-  Definition reservation_map_ofe_mixin : OfeMixin SI (reservation_map A).
+  Definition reservation_map_ofe_mixin : OfeMixin (reservation_map A).
   Proof.
     by apply (iso_ofe_mixin
       (λ x, (reservation_map_data_proj x, reservation_map_token_proj x))).
@@ -72,7 +72,7 @@ Section ofe.
   Canonical Structure reservation_mapO :=
     Ofe (reservation_map A) reservation_map_ofe_mixin.
 
-  Global Instance ReservationMap_discrete a (b: coPset_disjO SI) :
+  Global Instance ReservationMap_discrete a (b: coPset_disjO) :
     Discrete a → Discrete b → Discrete (ReservationMap a b).
   Proof. intros ?? [??] [??]; split; unshelve unfold_leibniz; [apply SI..| |];by eapply discrete. Qed.
   Global Instance reservation_map_ofe_discrete :
@@ -85,7 +85,7 @@ Global Arguments reservation_mapO {_} _.
 
 (* Camera *)
 Section cmra.
-  Context {SI} {A : cmra SI}.
+  Context `{SI: indexT} {A : cmra}.
   Implicit Types a b : A.
   Implicit Types x y : reservation_map A.
   Implicit Types k : positive.
@@ -110,7 +110,7 @@ Section cmra.
     | CoPsetBot => False
     end.
   Global Arguments reservation_map_valid_instance !_ /.
-  Local Instance reservation_map_validN_instance : ValidN SI (reservation_map A) := λ n x,
+  Local Instance reservation_map_validN_instance : ValidN (reservation_map A) := λ n x,
     match reservation_map_token_proj x with
     | CoPset E =>
       ✓{n} (reservation_map_data_proj x) ∧
@@ -120,10 +120,10 @@ Section cmra.
     end.
   Global Arguments reservation_map_validN_instance !_ /.
   Local Instance reservation_map_pcore_instance : PCore (reservation_map A) := λ x,
-    Some (ReservationMap (core (reservation_map_data_proj x)) (ε: coPset_disjUR SI)).
+    Some (ReservationMap (core (reservation_map_data_proj x)) ε).
   Local Instance reservation_map_op_instance : Op (reservation_map A) := λ x y,
     ReservationMap (reservation_map_data_proj x ⋅ reservation_map_data_proj y)
-                   ((reservation_map_token_proj x: coPset_disjUR SI) ⋅ reservation_map_token_proj y).
+                   (reservation_map_token_proj x ⋅ reservation_map_token_proj y).
 
   Definition reservation_map_valid_eq :
     valid = λ x, match reservation_map_token_proj x with
@@ -145,7 +145,7 @@ Section cmra.
   Lemma reservation_map_included x y :
     x ≼ y ↔
       reservation_map_data_proj x ≼ reservation_map_data_proj y ∧
-      (reservation_map_token_proj x: coPset_disjUR SI) ≼ reservation_map_token_proj y.
+      reservation_map_token_proj x ≼ reservation_map_token_proj y.
   Proof.
     split; [intros [[z1 z2] Hz]; split; [exists z1|exists z2]; apply Hz|].
     intros [[z1 Hz1] [z2 Hz2]]; exists (ReservationMap z1 z2); split; auto.
@@ -156,7 +156,7 @@ Section cmra.
   Lemma reservation_map_token_proj_validN n x : ✓{n} x → ✓{n} reservation_map_token_proj x.
   Proof. by destruct x as [? [?|]]=> // -[??]. Qed.
 
-  Lemma reservation_map_cmra_mixin : CmraMixin SI (reservation_map A).
+  Lemma reservation_map_cmra_mixin : CmraMixin (reservation_map A).
   Proof.
     apply cmra_total_mixin.
     - eauto.
@@ -190,7 +190,7 @@ Section cmra.
       by exists (ReservationMap m1 E1), (ReservationMap m2 E2).
   Qed.
   Canonical Structure reservation_mapR :=
-    Cmra SI (reservation_map A) reservation_map_cmra_mixin.
+    Cmra (reservation_map A) reservation_map_cmra_mixin.
 
   Global Instance reservation_map_cmra_discrete :
     CmraDiscrete A → CmraDiscrete reservation_mapR.
@@ -200,8 +200,8 @@ Section cmra.
       by intros [?%cmra_discrete_valid ?].
   Qed.
 
-  Local Instance reservation_map_empty_instance : Unit (reservation_map A) := ReservationMap ε (ε: coPset_disjUR SI).
-  Lemma reservation_map_ucmra_mixin : UcmraMixin SI (reservation_map A).
+  Local Instance reservation_map_empty_instance : Unit (reservation_map A) := ReservationMap ε ε.
+  Lemma reservation_map_ucmra_mixin : UcmraMixin (reservation_map A).
   Proof.
     split; simpl.
     - rewrite reservation_map_valid_eq /=. split; [apply ucmra_unit_valid|]. set_solver.
@@ -209,7 +209,7 @@ Section cmra.
     - do 2 constructor; [apply (core_id_core _)|done].
   Qed.
   Canonical Structure reservation_mapUR :=
-    Ucmra SI (reservation_map A) reservation_map_ucmra_mixin.
+    Ucmra (reservation_map A) reservation_map_ucmra_mixin.
 
   Global Instance reservation_map_data_core_id k a :
     CoreId a → CoreId (reservation_map_data k a).
@@ -260,7 +260,7 @@ Section cmra.
     k ∈ E → ✓ a → reservation_map_token E ~~> reservation_map_data k a.
   Proof.
     intros ??. apply cmra_total_update=> n [mf [Ef|]] //.
-    rewrite reservation_map_validN_eq /= {1}/op /cmra_op /= {1}/ucmra_op /=.
+    rewrite reservation_map_validN_eq /= {1}/op /cmra_op /=.
     case_decide; last done.
     rewrite left_id_L {1}left_id. intros [Hmf Hdisj]; split.
     - destruct (Hdisj k) as [Hmfi|]; last set_solver.

@@ -5,10 +5,10 @@ From iris.prelude Require Import options.
 
 (* The union CMRA *)
 Section gset.
-  Context {SI: indexT} `{Countable K}.
+  Context `{SI: indexT} `{Countable K}.
   Implicit Types X Y : gset K.
 
-  Canonical Structure gsetO := discreteO SI (gset K).
+  Canonical Structure gsetO := discreteO (gset K).
 
   Local Instance gset_valid_instance : Valid (gset K) := λ _, True.
   Local Instance gset_unit_instance : Unit (gset K) := (∅ : gset K).
@@ -31,14 +31,14 @@ Section gset.
     apply ra_total_mixin; apply _ || eauto; [].
     intros X. by rewrite gset_core_self idemp_L.
   Qed.
-  Canonical Structure gsetR := discreteR SI (gset K) gset_ra_mixin.
+  Canonical Structure gsetR := discreteR (gset K) gset_ra_mixin.
 
   Global Instance gset_cmra_discrete : CmraDiscrete gsetR.
   Proof. apply discrete_cmra_discrete. Qed.
 
-  Lemma gset_ucmra_mixin : UcmraMixin SI (gset K).
+  Lemma gset_ucmra_mixin : UcmraMixin (gset K).
   Proof. split; [ done | | done ]. intros X. by rewrite gset_op_union left_id_L. Qed.
-  Canonical Structure gsetUR := Ucmra SI (gset K) gset_ucmra_mixin.
+  Canonical Structure gsetUR := Ucmra (gset K) gset_ucmra_mixin.
 
   Lemma gset_opM X mY : X ⋅? mY = X ∪ default ∅ mY.
   Proof. destruct mY; by rewrite /= ?right_id_L. Qed.
@@ -81,12 +81,12 @@ Global Instance gset_disj_inhab K `{Countable K}: Inhabited (gset_disj K).
 Proof. constructor. exact GSetBot. Qed.
 
 Section gset_disj.
-  Context {SI: indexT} `{Countable K}.
+  Context `{SI: indexT} `{Countable K}.
   Local Arguments op _ _ !_ !_ /.
   Local Arguments cmra_op _ !_ !_ /.
   Local Arguments ucmra_op _ !_ !_ /.
 
-  Canonical Structure gset_disjO := leibnizO SI (gset_disj K).
+  Canonical Structure gset_disjO := leibnizO (gset_disj K).
 
   Local Instance gset_disj_valid_instance : Valid (gset_disj K) := λ X,
     match X with GSet _ => True | GSetBot => False end.
@@ -128,14 +128,14 @@ Section gset_disj.
     - exists (GSet ∅); gset_disj_solve.
     - intros [X1|] [X2|]; gset_disj_solve.
   Qed.
-  Canonical Structure gset_disjR := discreteR SI (gset_disj K) gset_disj_ra_mixin.
+  Canonical Structure gset_disjR := discreteR (gset_disj K) gset_disj_ra_mixin.
 
   Global Instance gset_disj_cmra_discrete : CmraDiscrete gset_disjR.
   Proof. apply discrete_cmra_discrete. Qed.
 
-  Lemma gset_disj_ucmra_mixin : UcmraMixin SI (gset_disj K).
+  Lemma gset_disj_ucmra_mixin : UcmraMixin (gset_disj K).
   Proof. split; try apply _ || done. intros [X|]; gset_disj_solve. Qed.
-  Canonical Structure gset_disjUR := Ucmra SI (gset_disj K) gset_disj_ucmra_mixin.
+  Canonical Structure gset_disjUR := Ucmra (gset_disj K) gset_disj_ucmra_mixin.
 
   Local Arguments op _ _ _ _ : simpl never.
 

@@ -33,8 +33,8 @@ Inductive dfrac :=
   | DfracBoth : Qp → dfrac.
 
 Section dfrac.
-  Context {SI: indexT}.
-  Canonical Structure dfracO := leibnizO SI dfrac.
+  Context `{SI: indexT}.
+  Canonical Structure dfracO := leibnizO dfrac.
 
   Implicit Types p q : Qp.
   Implicit Types dp dq : dfrac.
@@ -134,7 +134,7 @@ Section dfrac.
       + intros. trans (q + q')%Qp; [|done]. apply Qp.lt_add_l.
       + intros. trans (q + q')%Qp; [|done]. apply Qp.lt_add_l.
   Qed.
-  Canonical Structure dfracR := discreteR SI dfrac dfrac_ra_mixin.
+  Canonical Structure dfracR := discreteR dfrac dfrac_ra_mixin.
 
   Global Instance dfrac_cmra_discrete : CmraDiscrete dfracR.
   Proof. apply discrete_cmra_discrete. Qed.
@@ -169,8 +169,8 @@ Section dfrac.
     - intro Hlt. etrans; last apply Hlt. apply Qp.lt_add_r.
   Qed.
 
-  Lemma dfrac_valid_own_l dq q: ✓ (DfracOwn (q : fracO SI) ⋅ dq) → (q < 1)%Qp.
-  Proof. rewrite comm. apply dfrac_valid_own_r. Qed.
+  Lemma dfrac_valid_own_l dq q: ✓ (DfracOwn q ⋅ dq) → (q < 1)%Qp.
+  Proof using SI. rewrite comm. apply dfrac_valid_own_r. Qed.
 
   Lemma dfrac_valid_discarded p : ✓ DfracDiscarded.
   Proof. done. Qed.
@@ -180,7 +180,7 @@ Section dfrac.
   Proof. done. Qed.
 
   Global Instance dfrac_is_op q q1 q2 :
-    IsOp (q: fracO SI) q1 q2 →
+    IsOp q q1 q2 →
     IsOp' (DfracOwn q) (DfracOwn q1) (DfracOwn q2).
   Proof. rewrite /IsOp' /IsOp dfrac_op_own=>-> //. Qed.
 
@@ -193,5 +193,3 @@ Section dfrac.
   Qed.
 
 End dfrac.
-Arguments dfracO : clear implicits.
-Arguments dfracR : clear implicits.

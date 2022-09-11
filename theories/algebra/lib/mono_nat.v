@@ -5,21 +5,21 @@ From iris.prelude Require Import options.
 (** Authoritative CMRA over [max_nat]. The authoritative element is a
 monotonically increasing [nat], while a fragment is a lower bound. *)
 
-Definition mono_nat SI := auth (max_natUR SI).
-Definition mono_natR SI := authR (max_natUR SI).
-Definition mono_natUR SI := authUR (max_natUR SI).
+Definition mono_nat `{SI: indexT} := auth (max_natUR).
+Definition mono_natR `{SI: indexT} := authR (max_natUR).
+Definition mono_natUR `{SI: indexT} := authUR (max_natUR).
 
 (** [mono_nat_auth] is the authoritative element. The definition includes the
 fragment at the same value so that lemma [mono_nat_included], which states that
 [mono_nat_lb n ≼ mono_nat_auth q n], does not require a frame-preserving
 update. *)
-Definition mono_nat_auth {SI} (q : Qp) (n : natO SI) : mono_nat SI :=
+Definition mono_nat_auth `{SI: indexT} (q : Qp) (n : nat) : mono_nat :=
   ●{q} MaxNat n ⋅ ◯ MaxNat n.
-Definition mono_nat_lb {SI} (n : natO SI) : mono_nat SI := ◯ MaxNat n.
+Definition mono_nat_lb `{SI: indexT} (n : nat) : mono_nat := ◯ MaxNat n.
 
 Section mono_nat.
-  Context {SI: indexT}.
-  Implicit Types (n : natO SI).
+  Context `{SI: indexT}.
+  Implicit Types (n : nat).
 
   Global Instance mono_nat_lb_core_id n : CoreId (@mono_nat_lb SI n).
   Proof. apply _. Qed.
@@ -97,4 +97,4 @@ Section mono_nat.
   Qed.
 End mono_nat.
 
-Typeclasses Opaque mono_nat_auth mono_nat_lb.
+Global Typeclasses Opaque mono_nat_auth mono_nat_lb.

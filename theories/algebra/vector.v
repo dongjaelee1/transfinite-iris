@@ -4,14 +4,14 @@ From iris.algebra Require Import list.
 From iris.prelude Require Import options.
 
 Section ofe.
-  Context {SI : indexT} {A : ofe SI}.
+  Context `{SI : indexT} {A : ofe}.
 
   Local Instance vec_equiv m : Equiv (vec A m) := equiv (A:=list A).
-  Local Instance vec_dist m : Dist SI (vec A m) := dist (A:=list A).
+  Local Instance vec_dist m : Dist (vec A m) := dist (A:=list A).
 
-  Definition vec_ofe_mixin m : OfeMixin SI (vec A m).
+  Definition vec_ofe_mixin m : OfeMixin (vec A m).
   Proof. by apply (iso_ofe_mixin vec_to_list). Qed.
-  Canonical Structure vecO m : ofe SI := Ofe (vec A m) (vec_ofe_mixin m).
+  Canonical Structure vecO m : ofe := Ofe (vec A m) (vec_ofe_mixin m).
 
   Global Instance list_cofe `{!Cofe A} m : Cofe (vecO m).
   Proof.
@@ -37,10 +37,10 @@ Section ofe.
 End ofe.
 
 Global Arguments vecO {_} _.
-Typeclasses Opaque vec_dist.
+Global Typeclasses Opaque vec_dist.
 
 Section proper.
-  Context {SI : indexT} {A : ofe SI}.
+  Context `{SI : indexT} {A : ofe}.
 
   Global Instance vcons_ne n :
     Proper (dist n ==> forall_relation (λ x, dist n ==> dist n)) (@vcons A).
@@ -69,28 +69,28 @@ Section proper.
 End proper.
 
 (** Functor *)
-Definition vec_map {SI : indexT} {A B : ofe SI} m (f : A → B) : vecO A m → vecO B m :=
+Definition vec_map `{SI : indexT} {A B : ofe} m (f : A → B) : vecO A m → vecO B m :=
   @vmap A B f m.
-Lemma vec_map_ext_ne {SI : indexT} {A B : ofe SI} m (f g : A → B) (v : vec A m) n :
+Lemma vec_map_ext_ne `{SI : indexT} {A B : ofe} m (f g : A → B) (v : vec A m) n :
   (∀ x, f x ≡{n}≡ g x) → vec_map m f v ≡{n}≡ vec_map m g v.
 Proof.
   intros Hf. eapply (list_fmap_ext_ne f g v) in Hf.
   by rewrite -!vec_to_list_map in Hf.
 Qed.
-Instance vec_map_ne {SI : indexT} {A B : ofe SI} m f n :
+Instance vec_map_ne `{SI : indexT} {A B : ofe} m f n :
   Proper (dist n ==> dist n) f →
   Proper (dist n ==> dist n) (@vec_map SI A B m f).
 Proof.
   intros ? v v' H. eapply list_fmap_ne in H; last done.
   by rewrite -!vec_to_list_map in H.
 Qed.
-Definition vecO_map {SI : indexT} {A B : ofe SI } m (f : A -n> B) : vecO A m -n> vecO B m :=
+Definition vecO_map `{SI : indexT} {A B : ofe } m (f : A -n> B) : vecO A m -n> vecO B m :=
   OfeMor (vec_map m f).
-Global Instance vecO_map_ne {SI : indexT} {A A'} m :
+Global Instance vecO_map_ne `{SI : indexT} {A A'} m :
   NonExpansive (@vecO_map SI A A' m).
 Proof. intros n f g ? v. by apply vec_map_ext_ne. Qed.
 
-Program Definition vecOF {SI : indexT} (F : oFunctor SI) m : oFunctor SI := {|
+Program Definition vecOF `{SI : indexT} (F : oFunctor) m : oFunctor := {|
   oFunctor_car A B := vecO (oFunctor_car F A B) m;
   oFunctor_map A1 A2 B1 B2 fg := vecO_map m (oFunctor_map F fg)
 |}.
@@ -109,7 +109,7 @@ Next Obligation.
   rewrite !vec_to_list_map. by apply: (oFunctor_map_compose (listOF F) f g f' g').
 Qed.
 
-Global Instance vecOF_contractive {SI : indexT} (F : oFunctor SI) m :
+Global Instance vecOF_contractive `{SI : indexT} (F : oFunctor) m :
   oFunctorContractive F → oFunctorContractive (vecOF F m).
 Proof.
   by intros ?? A1 A2 B1 B2 n ???; apply vecO_map_ne; first apply oFunctor_map_contractive.

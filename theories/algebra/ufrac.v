@@ -10,10 +10,10 @@ infers the [frac] camera by default when using the [Qp] type. *)
 Definition ufrac := Qp.
 
 Section ufrac.
-  Context {SI : indexT}.
+  Context `{SI : indexT}.
   Implicit Types p q : ufrac.
 
-  Canonical Structure ufracO := leibnizO SI ufrac.
+  Canonical Structure ufracO := leibnizO ufrac.
 
   Local Instance ufrac_valid_instance : Valid ufrac := λ x, True.
   Local Instance ufrac_pcore_instance : PCore ufrac := λ _, None.
@@ -29,7 +29,7 @@ Section ufrac.
 
   Definition ufrac_ra_mixin : RAMixin ufrac.
   Proof. split; try apply _; try done. Qed.
-  Canonical Structure ufracR := discreteR SI ufrac ufrac_ra_mixin.
+  Canonical Structure ufracR := discreteR ufrac ufrac_ra_mixin.
 
   Global Instance ufrac_cmra_discrete : CmraDiscrete ufracR.
   Proof. apply discrete_cmra_discrete. Qed.
@@ -42,5 +42,3 @@ Section ufrac.
   Global Instance is_op_ufrac q : IsOp' q (q/2)%Qp (q/2)%Qp.
   Proof. by rewrite /IsOp' /IsOp ufrac_op' Qp.div_2. Qed.
 End ufrac.
-Arguments ufracO : clear implicits.
-Arguments ufracR : clear implicits.

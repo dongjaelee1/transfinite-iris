@@ -2,13 +2,13 @@ From iris.algebra Require Export frac agree updates local_updates.
 From iris.algebra Require Import proofmode_classes.
 From iris.prelude Require Import options.
 
-Definition frac_agreeR {SI} (A : ofe SI) : cmra SI := prodR (fracR SI) (agreeR A).
+Definition frac_agreeR `{SI: indexT} (A : ofe) : cmra := prodR fracR (agreeR A).
 
-Definition to_frac_agree {SI} {A : ofe SI} (q : frac) (a : A) : frac_agreeR A :=
+Definition to_frac_agree `{SI: indexT} {A : ofe} (q : frac) (a : A) : frac_agreeR A :=
   (q, to_agree a).
 
 Section lemmas.
-  Context {SI} {A : ofe SI}.
+  Context `{SI: indexT} {A : ofe}.
   Implicit Types (q : frac) (a : A).
 
   Global Instance to_frac_agree_ne q : NonExpansive (@to_frac_agree SI A q).
@@ -53,4 +53,4 @@ Section lemmas.
 
 End lemmas.
 
-Typeclasses Opaque to_frac_agree.
+Global Typeclasses Opaque to_frac_agree.

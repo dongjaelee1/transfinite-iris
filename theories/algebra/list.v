@@ -4,10 +4,10 @@ From iris.algebra Require Import updates local_updates big_op.
 From iris.prelude Require Import options.
 
 Section ofe.
-Context {SI} {A : ofe SI}.
+Context `{SI: indexT} {A : ofe}.
 Implicit Types l : list A.
 
-Local Instance list_dist : Dist SI (list A) := λ n, Forall2 (dist n).
+Local Instance list_dist : Dist (list A) := λ n, Forall2 (dist n).
 
 Lemma list_dist_lookup n l1 l2 : l1 ≡{n}≡ l2 ↔ ∀ i, l1 !! i ≡{n}≡ l2 !! i.
 Proof. setoid_rewrite dist_option_Forall2. apply Forall2_lookup. Qed.
@@ -49,7 +49,7 @@ Lemma list_dist_cons_inv_r n l k y :
   l ≡{n}≡ y :: k → ∃ x l', x ≡{n}≡ y ∧ l' ≡{n}≡ k ∧ l = x :: l'.
 Proof. apply Forall2_cons_inv_r. Qed.
 
-Definition list_ofe_mixin : OfeMixin SI (list A).
+Definition list_ofe_mixin : OfeMixin (list A).
 Proof.
   split.
   - intros l k. rewrite equiv_Forall2 -Forall2_forall.
@@ -127,32 +127,32 @@ End ofe.
 Global Arguments listO {_} _.
 
 (** Non-expansiveness of higher-order list functions and big-ops *)
-Global Instance list_fmap_ne {SI} {A B : ofe SI} (f : A → B) n :
+Global Instance list_fmap_ne `{SI: indexT} {A B : ofe} (f : A → B) n :
   Proper (dist n ==> dist n) f → Proper (dist n ==> dist n) (fmap (M:=list) f).
 Proof. intros Hf l k ?; by eapply Forall2_fmap, Forall2_impl; eauto. Qed.
-Global Instance list_omap_ne {SI} {A B : ofe SI} (f : A → option B) n :
+Global Instance list_omap_ne `{SI: indexT} {A B : ofe} (f : A → option B) n :
   Proper (dist n ==> dist n) f → Proper (dist n ==> dist n) (omap (M:=list) f).
 Proof.
   intros Hf. induction 1 as [|x1 x2 l1 l2 Hx Hl]; csimpl; [constructor|].
   destruct (Hf _ _ Hx); [f_equiv|]; auto.
 Qed.
-Global Instance imap_ne {SI} {A B : ofe SI} (f : nat → A → B) n :
+Global Instance imap_ne `{SI: indexT} {A B : ofe} (f : nat → A → B) n :
   (∀ i, Proper (dist n ==> dist n) (f i)) → Proper (dist n ==> dist n) (imap f).
 Proof.
   intros Hf l1 l2 Hl. revert f Hf.
   induction Hl; intros f Hf; simpl; [constructor|f_equiv; naive_solver].
 Qed.
-Global Instance list_bind_ne {SI} {A B : ofe SI} (f : A → list A) n :
+Global Instance list_bind_ne `{SI: indexT} {A B : ofe} (f : A → list A) n :
   Proper (dist n ==> dist n) f → Proper (dist n ==> dist n) (mbind f).
 Proof. induction 2; simpl; [constructor|solve_proper]. Qed.
-Global Instance list_join_ne {SI} {A : ofe SI} : NonExpansive (mjoin (M:=list) (A:=A)).
+Global Instance list_join_ne `{SI: indexT} {A : ofe} : NonExpansive (mjoin (M:=list) (A:=A)).
 Proof. induction 1; simpl; [constructor|solve_proper]. Qed.
-Global Instance zip_with_ne {SI} {A B C : ofe SI} (f : A → B → C) n :
+Global Instance zip_with_ne `{SI: indexT} {A B C : ofe} (f : A → B → C) n :
   Proper (dist n ==> dist n ==> dist n) f →
   Proper (dist n ==> dist n ==> dist n) (zip_with f).
 Proof. induction 2; destruct 1; simpl; [constructor..|f_equiv; [f_equiv|]; auto]. Qed.
 
-Lemma big_opL_ne_2 {SI} {M: ofe SI} {o: M → M → M} `{!Monoid o} {A : ofe SI} (f g : nat → A → M) l1 l2 n :
+Lemma big_opL_ne_2 `{SI: indexT} {M: ofe} {o: M → M → M} `{!Monoid o} {A : ofe} (f g : nat → A → M) l1 l2 n :
   l1 ≡{n}≡ l2 →
   (∀ k y1 y2,
     l1 !! k = Some y1 → l2 !! k = Some y2 → y1 ≡{n}≡ y2 → f k y1 ≡{n}≡ g k y2) →
@@ -165,15 +165,15 @@ Proof.
 Qed.
 
 (** Functor *)
-Lemma list_fmap_ext_ne {SI} {A} {B : ofe SI} (f g : A → B) (l : list A) n :
+Lemma list_fmap_ext_ne `{SI: indexT} {A} {B : ofe} (f g : A → B) (l : list A) n :
   (∀ x, f x ≡{n}≡ g x) → f <$> l ≡{n}≡ g <$> l.
 Proof. intros Hf. by apply Forall2_fmap, Forall_Forall2_diag, Forall_true. Qed.
-Definition listO_map {SI} {A B: ofe SI} (f : A -n> B) : listO A -n> listO B :=
+Definition listO_map `{SI: indexT} {A B: ofe} (f : A -n> B) : listO A -n> listO B :=
   OfeMor (fmap f : listO A → listO B).
 Global Instance listO_map_ne SI A B : NonExpansive (@listO_map SI A B).
 Proof. intros n f g ? l. by apply list_fmap_ext_ne. Qed.
 
-Program Definition listOF {SI} (F : oFunctor SI) : oFunctor SI := {|
+Program Definition listOF `{SI: indexT} (F : oFunctor) : oFunctor := {|
   oFunctor_car A B := listO (oFunctor_car F A B);
   oFunctor_map A1 A2 B1 B2 fg := listO_map (oFunctor_map F fg)
 |}.
@@ -189,7 +189,7 @@ Next Obligation.
   apply list_fmap_equiv_ext=>y??; apply oFunctor_map_compose.
 Qed.
 
-Global Instance listOF_contractive {SI} (F: oFunctor SI) :
+Global Instance listOF_contractive `{SI: indexT} (F: oFunctor) :
   oFunctorContractive F → oFunctorContractive (listOF F).
 Proof.
   by intros ? A1 A2 B1 B2 n f g Hfg; apply listO_map_ne, oFunctor_map_contractive.
@@ -197,7 +197,7 @@ Qed.
 
 (* CMRA. Only works if [A] has a unit! *)
 Section cmra.
-  Context {SI} {A : ucmra SI}.
+  Context `{SI: indexT} {A : ucmra}.
   Implicit Types l : list A.
   Local Arguments op _ _ !_ !_ / : simpl nomatch.
 
@@ -211,7 +211,7 @@ Section cmra.
   Local Instance list_pcore_instance : PCore (list A) := λ l, Some (core <$> l).
 
   Local Instance list_valid_instance : Valid (list A) := Forall (λ x, ✓ x).
-  Local Instance list_validN_instance : ValidN SI (list A) := λ n, Forall (λ x, ✓{n} x).
+  Local Instance list_validN_instance : ValidN (list A) := λ n, Forall (λ x, ✓{n} x).
 
   Lemma cons_valid l x : ✓ (x :: l) ↔ ✓ x ∧ ✓ l.
   Proof. apply Forall_cons. Qed.
@@ -259,7 +259,7 @@ Section cmra.
       + exists (core x :: l3); constructor; by rewrite ?cmra_core_r.
   Qed.
 
-  Definition list_cmra_mixin : CmraMixin SI (list A).
+  Definition list_cmra_mixin : CmraMixin (list A).
   Proof.
     apply cmra_total_mixin.
     - eauto.
@@ -294,17 +294,17 @@ Section cmra.
           [by inversion_clear Heq; inversion_clear Hl..|].
         exists (y1' :: l1'), (y2' :: l2'); repeat constructor; auto.
   Qed.
-  Canonical Structure listR := Cmra SI (list A) list_cmra_mixin.
+  Canonical Structure listR := Cmra (list A) list_cmra_mixin.
 
   Global Instance list_unit_instance : Unit (list A) := [].
-  Definition list_ucmra_mixin : UcmraMixin SI (list A).
+  Definition list_ucmra_mixin : UcmraMixin (list A).
   Proof.
     split.
     - constructor.
     - by intros l.
     - by constructor.
   Qed.
-  Canonical Structure listUR := Ucmra SI (list A) list_ucmra_mixin.
+  Canonical Structure listUR := Ucmra (list A) list_ucmra_mixin.
 
   Global Instance list_cmra_discrete : CmraDiscrete A → CmraDiscrete listR.
   Proof.
@@ -328,11 +328,11 @@ End cmra.
 Global Arguments listR {_} _.
 Global Arguments listUR {_} _.
 
-Global Instance list_singletonM {SI} {A : ucmra SI} : SingletonM nat A (list A) := λ n x,
+Global Instance list_singletonM `{SI: indexT} {A : ucmra} : SingletonM nat A (list A) := λ n x,
   replicate n ε ++ [x].
 
 Section properties.
-  Context {SI} {A : ucmra SI}.
+  Context `{SI: indexT} {A : ucmra}.
   Implicit Types l : list A.
   Implicit Types x y z : A.
   Local Arguments op _ _ !_ !_ / : simpl nomatch.
@@ -544,7 +544,7 @@ Section properties.
 End properties.
 
 (** Functor *)
-Global Instance list_fmap_cmra_morphism {SI} {A B : ucmra SI} (f : A → B)
+Global Instance list_fmap_cmra_morphism `{SI: indexT} {A B : ucmra} (f : A → B)
   `{!CmraMorphism f} : CmraMorphism (fmap f : list A → list B).
 Proof.
   split; try apply _.
@@ -556,7 +556,7 @@ Proof.
     by rewrite list_lookup_op !list_lookup_fmap list_lookup_op cmra_morphism_op.
 Qed.
 
-Program Definition listURF {SI} (F : urFunctor SI) : urFunctor SI := {|
+Program Definition listURF `{SI: indexT} (F : urFunctor) : urFunctor := {|
   urFunctor_car A B := listUR (urFunctor_car F A B);
   urFunctor_map A1 A2 B1 B2 fg := listO_map (urFunctor_map F fg)
 |}.
@@ -572,18 +572,18 @@ Next Obligation.
   apply list_fmap_equiv_ext=>y??; apply urFunctor_map_compose.
 Qed.
 
-Global Instance listURF_contractive {SI} (F: urFunctor SI) :
+Global Instance listURF_contractive `{SI: indexT} (F: urFunctor) :
   urFunctorContractive F → urFunctorContractive (listURF F).
 Proof.
   by intros ? A1 A2 B1 B2 n f g Hfg; apply listO_map_ne, urFunctor_map_contractive.
 Qed.
 
-Program Definition listRF {SI} (F : urFunctor SI) : rFunctor SI := {|
+Program Definition listRF `{SI: indexT} (F : urFunctor) : rFunctor := {|
   rFunctor_car A B := listR (urFunctor_car F A B);
   rFunctor_map A1 A2 B1 B2 fg := listO_map (urFunctor_map F fg)
 |}.
 Solve Obligations with (intros; apply listURF).
 
-Global Instance listRF_contractive {SI} (F : urFunctor SI):
+Global Instance listRF_contractive `{SI: indexT} (F : urFunctor):
   urFunctorContractive F → rFunctorContractive (listRF F).
 Proof. apply listURF_contractive. Qed.
