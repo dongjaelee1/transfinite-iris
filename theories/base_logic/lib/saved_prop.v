@@ -8,25 +8,25 @@ Import uPred.
 (* "Saved anything" -- this can give you saved propositions, saved predicates,
    saved whatever-you-like. *)
 
-Class savedAnythingG {SI : indexT} (Σ : gFunctors SI) (F : oFunctor SI) := SavedAnythingG {
+Class savedAnythingG `{SI : indexT} (Σ : gFunctors) (F : oFunctor) := SavedAnythingG {
   saved_anything_inG :> inG Σ (agreeR (oFunctor_apply F (iPropO Σ)));
   saved_anything_contractive : oFunctorContractive F (* NOT an instance to avoid cycles with [subG_savedAnythingΣ]. *)
 }.
-Definition savedAnythingΣ {SI : indexT} (F : oFunctor SI) `{!oFunctorContractive F} : gFunctors SI :=
+Definition savedAnythingΣ `{SI : indexT} (F : oFunctor) `{!oFunctorContractive F} : gFunctors :=
   #[ GFunctor (agreeRF F) ].
 
-Global Instance subG_savedAnythingΣ {SI Σ} {F : oFunctor SI} `{!oFunctorContractive F} :
+Global Instance subG_savedAnythingΣ `{SI : indexT} {Σ} {F : oFunctor} `{!oFunctorContractive F} :
   subG (savedAnythingΣ F) Σ → savedAnythingG Σ F.
 Proof. solve_inG. Qed.
 
-Definition saved_anything_own {SI} {Σ: gFunctors SI} {F} `{!savedAnythingG Σ F}
+Definition saved_anything_own `{SI : indexT} {Σ: gFunctors} {F} `{!savedAnythingG Σ F}
     (γ : gname) (x : oFunctor_apply F (iPropO Σ)) : iProp Σ :=
   own γ (to_agree x).
-Typeclasses Opaque saved_anything_own.
+Global Typeclasses Opaque saved_anything_own.
 Global Instance: Params (@saved_anything_own) 5 := {}.
 
 Section saved_anything.
-  Context {SI} {Σ: gFunctors SI} {F} `{!savedAnythingG Σ F}.
+  Context `{SI : indexT} {Σ: gFunctors} {F} `{!savedAnythingG Σ F}.
   Implicit Types x y : oFunctor_apply F (iPropO Σ).
   Implicit Types γ : gname.
 
@@ -66,27 +66,27 @@ End saved_anything.
 Notation savedPropG Σ := (savedAnythingG Σ (▶ (∙ _))).
 Notation savedPropΣ := (savedAnythingΣ (▶ (∙ _))).
 
-Definition saved_prop_own {SI} {Σ : gFunctors SI} `{!savedPropG Σ} (γ : gname) (P: iProp Σ) :=
+Definition saved_prop_own `{SI : indexT} {Σ : gFunctors} `{!savedPropG Σ} (γ : gname) (P: iProp Σ) :=
   saved_anything_own (F := ▶ (∙ _)) γ (Next P).
 
-Instance saved_prop_own_contractive {SI} {Σ : gFunctors SI} `{!savedPropG Σ} γ :
+Global Instance saved_prop_own_contractive `{SI : indexT} {Σ : gFunctors} `{!savedPropG Σ} γ :
   Contractive (saved_prop_own γ).
 Proof. solve_contractive. Qed.
 
-Lemma saved_prop_alloc_strong {SI} {Σ : gFunctors SI} `{!savedPropG Σ} (I : gname → Prop) (P: iProp Σ) :
+Lemma saved_prop_alloc_strong `{SI : indexT} {Σ : gFunctors} `{!savedPropG Σ} (I : gname → Prop) (P: iProp Σ) :
   pred_infinite I →
   ⊢ |==> ∃ γ, ⌜I γ⌝ ∗ saved_prop_own γ P.
 Proof. iIntros (?). by iApply saved_anything_alloc_strong. Qed.
 
-Lemma saved_prop_alloc_cofinite {SI} {Σ : gFunctors SI} `{!savedPropG Σ} (G : gset gname) (P: iProp Σ) :
+Lemma saved_prop_alloc_cofinite `{SI : indexT} {Σ : gFunctors} `{!savedPropG Σ} (G : gset gname) (P: iProp Σ) :
   ⊢ |==> ∃ γ, ⌜γ ∉ G⌝ ∗ saved_prop_own γ P.
 Proof. iApply saved_anything_alloc_cofinite. Qed.
 
-Lemma saved_prop_alloc `{Σ : gFunctors SI} `{!savedPropG Σ} (P: iProp Σ) :
+Lemma saved_prop_alloc `{SI : indexT} {Σ : gFunctors} `{!savedPropG Σ} (P: iProp Σ) :
   ⊢ |==> ∃ γ, saved_prop_own γ P.
 Proof. iApply saved_anything_alloc. Qed.
 
-Lemma saved_prop_agree `{Σ : gFunctors SI} `{!savedPropG Σ} γ P Q :
+Lemma saved_prop_agree `{SI : indexT} {Σ : gFunctors} `{!savedPropG Σ} γ P Q :
   saved_prop_own γ P -∗ saved_prop_own γ Q -∗ ▷ (P ≡ Q).
 Proof.
   iIntros "HP HQ". iApply later_equivI.
@@ -97,10 +97,10 @@ Qed.
 Notation savedPredG Σ A := (savedAnythingG Σ (A -d> ▶ (∙ _))).
 Notation savedPredΣ A := (savedAnythingΣ (A -d> ▶ (∙ _))).
 
-Definition saved_pred_own `{Σ : gFunctors SI} `{!savedPredG Σ A} (γ : gname) (Φ : A → iProp Σ) :=
+Definition saved_pred_own `{SI : indexT} {Σ : gFunctors} `{!savedPredG Σ A} (γ : gname) (Φ : A → iProp Σ) :=
   saved_anything_own (F := A -d> ▶ (∙ _)) γ (OfeMor Next ∘ Φ).
 
-Global Instance saved_pred_own_contractive `{Σ : gFunctors SI} `{!savedPredG Σ A} γ :
+Global Instance saved_pred_own_contractive `{SI : indexT} {Σ : gFunctors} `{!savedPredG Σ A} γ :
   Contractive (saved_pred_own γ : (A -d> iPropO Σ) → iProp Σ).
 Proof.
   (* TODO: fix this once f_contractive is fixed *)
@@ -109,21 +109,21 @@ Proof.
   intros ??. by apply H.
 Qed.
 
-Lemma saved_pred_alloc_strong `{Σ : gFunctors SI} `{!savedPredG Σ A} (I : gname → Prop) (Φ : A → iProp Σ) :
+Lemma saved_pred_alloc_strong `{SI : indexT} {Σ : gFunctors} `{!savedPredG Σ A} (I : gname → Prop) (Φ : A → iProp Σ) :
   pred_infinite I →
   ⊢ |==> ∃ γ, ⌜I γ⌝ ∗ saved_pred_own γ Φ.
 Proof. iIntros (?). by iApply saved_anything_alloc_strong. Qed.
 
-Lemma saved_pred_alloc_cofinite `{Σ : gFunctors SI} `{!savedPredG Σ A} (G : gset gname) (Φ : A → iProp Σ) :
+Lemma saved_pred_alloc_cofinite `{SI : indexT} {Σ : gFunctors} `{!savedPredG Σ A} (G : gset gname) (Φ : A → iProp Σ) :
   ⊢ |==> ∃ γ, ⌜γ ∉ G⌝ ∗ saved_pred_own γ Φ.
 Proof. iApply saved_anything_alloc_cofinite. Qed.
 
-Lemma saved_pred_alloc `{Σ : gFunctors SI} `{!savedPredG Σ A} (Φ : A → iProp Σ) :
+Lemma saved_pred_alloc `{SI : indexT} {Σ : gFunctors} `{!savedPredG Σ A} (Φ : A → iProp Σ) :
   ⊢ |==> ∃ γ, saved_pred_own γ Φ.
 Proof. iApply saved_anything_alloc. Qed.
 
 (* We put the `x` on the outside to make this lemma easier to apply. *)
-Lemma saved_pred_agree `{Σ : gFunctors SI} `{!savedPredG Σ A} γ Φ Ψ x :
+Lemma saved_pred_agree `{SI : indexT} {Σ : gFunctors} `{!savedPredG Σ A} γ Φ Ψ x :
   saved_pred_own γ Φ -∗ saved_pred_own γ Ψ -∗ ▷ (Φ x ≡ Ψ x).
 Proof.
   unfold saved_pred_own. iIntros "#HΦ #HΨ /=". iApply later_equivI.

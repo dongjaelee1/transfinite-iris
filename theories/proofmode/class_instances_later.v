@@ -5,7 +5,7 @@ From iris.prelude Require Import options.
 Import bi.
 
 Section class_instances_later.
-Context {SI} {PROP : bi SI}.
+Context `{SI: indexT} {PROP : bi}.
 Implicit Types P Q R : PROP.
 
 (** FromAssumption *)
@@ -338,7 +338,7 @@ Global Instance into_later_intuitionistically n P Q :
   IntoLaterN false n P Q → IntoLaterN false n (□ P) (□ Q).
 Proof. rewrite /IntoLaterN /MaybeIntoLaterN=> ->. by rewrite laterN_intuitionistically_2. Qed.
 (* FIXME: currently depends on BiAffine because of laterN_absorbingly *)
-Global Instance into_later_absorbingly `{BiAffine SI PROP} n P Q :
+Global Instance into_later_absorbingly `{!BiAffine PROP} n P Q :
   IntoLaterN false n P Q → IntoLaterN false n (<absorb> P) (<absorb> Q).
 Proof. rewrite /IntoLaterN /MaybeIntoLaterN=> ->. by rewrite laterN_absorbingly. Qed.
 Global Instance into_later_persistently n P Q :

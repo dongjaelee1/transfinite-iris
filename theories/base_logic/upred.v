@@ -102,8 +102,8 @@ This completes the proof.
 
 *)
 
-Record uPred {SI: indexT} (M : ucmra SI) : Type := UPred {
-  uPred_holds : SI → M → Prop;
+Record uPred `{SI: indexT} (M : ucmra) : Type := UPred {
+  uPred_holds : index → M → Prop;
 
   uPred_mono n1 n2 x1 x2 :
     uPred_holds n1 x1 → x1 ≼{n2} x2 → n2 ⪯ n1 → uPred_holds n2 x2
@@ -118,15 +118,15 @@ Add Printing Constructor uPred.
 Global Instance: Params (@uPred_holds) 4 := {}.
 
 Section cofe.
-  Context {SI: indexT} {M : ucmra SI}.
+  Context `{SI: indexT} {M : ucmra}.
 
   Inductive uPred_equiv' (P Q : uPred M) : Prop :=
     { uPred_in_equiv : ∀ n x, ✓{n} x → P n x ↔ Q n x }.
   Local Instance uPred_equiv : Equiv (uPred M) := uPred_equiv'.
-  Inductive uPred_dist' (n : SI) (P Q : uPred M) : Prop :=
+  Inductive uPred_dist' (n : index) (P Q : uPred M) : Prop :=
     { uPred_in_dist : ∀ n' x, n' ⪯ n → ✓{n'} x → P n' x ↔ Q n' x }.
-  Local Instance uPred_dist : Dist SI (uPred M) := uPred_dist'.
-  Definition uPred_ofe_mixin : OfeMixin SI (uPred M).
+  Local Instance uPred_dist : Dist (uPred M) := uPred_dist'.
+  Definition uPred_ofe_mixin : OfeMixin (uPred M).
   Proof.
     split.
     - intros P Q; split.
@@ -137,10 +137,10 @@ Section cofe.
       + by intros P Q HPQ; split=> x i ??; symmetry; apply HPQ.
       + intros P Q Q' HP HQ; split=> i x ??.
         by trans (Q i x);[apply HP|apply HQ].
-    - intros α β P Q HPQ Hpre; split=> i x ??; apply HPQ; last by eauto. 
+    - intros α β P Q HPQ Hpre; split=> i x ??; apply HPQ; last by eauto.
       right; eapply index_le_lt_trans; eauto.
   Qed.
-  Canonical Structure uPredO : ofe SI := Ofe (uPred M) uPred_ofe_mixin.
+  Canonical Structure uPredO : ofe := Ofe (uPred M) uPred_ofe_mixin.
 
   Program Definition uPred_compl : chain uPredO → uPredO := λ c,
     {| uPred_holds n x := ∀ n', n' ⪯ n → ✓{n'} x → c n' n' x |}.
@@ -159,8 +159,8 @@ Section cofe.
     - eapply cmra_includedN_le=>//; eauto with index.
     - done.
   Qed.
-  Lemma uPred_bcompl'_ne α (c d : bchain uPredO α) (β : SI): 
-    (∀ (γ : SI) (Hγ : γ ≺ α), c γ Hγ ≡{β}≡ d γ Hγ) → 
+  Lemma uPred_bcompl'_ne α (c d : bchain uPredO α) (β : index):
+    (∀ (γ : index) (Hγ : γ ≺ α), c γ Hγ ≡{β}≡ d γ Hγ) →
     uPred_bcompl' α c ≡{β}≡ uPred_bcompl' α d.
   Proof.
     intros Hne; split=> i x Hiβ Hv; split.
@@ -180,7 +180,7 @@ Section cofe.
   Next Obligation.
     intros α Hα c; split=>i x Hiα Hv.
     etrans; [|unshelve by symmetry; apply (bchain_cauchy α c)]; last by eapply index_le_lt_trans; eauto.
-    split=>H'; [by apply H'|]. intros n' Hn' Hin' H. 
+    split=>H'; [by apply H'|]. intros n' Hn' Hin' H.
     unshelve eapply (bchain_cauchy α c n' i); [by eauto using index_le_lt_trans | by eauto | by eauto | by eauto | ].
     by eapply uPred_mono.
   Qed.
@@ -196,7 +196,7 @@ Section cofe.
 
   Global Program Instance truncatable : ProtoTruncatable uPredO :=
   {
-    proto_trunc α := λne a, uPred_bcompl' (index_succ _ α) (bchain_const a (index_succ _ α)  );
+    proto_trunc α := λne a, uPred_bcompl' (index_succ α) (bchain_const a (index_succ α)  );
   }.
   Next Obligation.
     intros α α' x y Heq. by apply uPred_bcompl'_ne.
@@ -220,21 +220,21 @@ Section cofe.
 End cofe.
 Global Arguments uPredO {_} _.
 
-Global Instance uPred_ne {SI} {M: ucmra SI} (P : uPred M) n : Proper (dist n ==> iff) (P n).
+Global Instance uPred_ne `{SI: indexT} {M: ucmra} (P : uPred M) n : Proper (dist n ==> iff) (P n).
 Proof.
   intros x1 x2 Hx; split=> ?; eapply uPred_mono; eauto; by rewrite Hx.
 Qed.
-Global Instance uPred_proper {SI} {M: ucmra SI} (P : uPred M) n : Proper ((≡) ==> iff) (P n).
+Global Instance uPred_proper `{SI: indexT} {M: ucmra} (P : uPred M) n : Proper ((≡) ==> iff) (P n).
 Proof. by intros x1 x2 Hx; apply uPred_ne, equiv_dist. Qed.
 
-Lemma uPred_holds_ne {SI} {M: ucmra SI} (P Q : uPred M) n1 n2 x :
+Lemma uPred_holds_ne `{SI: indexT} {M: ucmra} (P Q : uPred M) n1 n2 x :
   P ≡{n2}≡ Q → n2 ⪯ n1 → ✓{n2} x → Q n1 x → P n2 x.
 Proof.
   intros [Hne] ???. eapply Hne; try done. eauto using uPred_mono, cmra_validN_le.
 Qed.
 
 (* Equivalence to the definition of uPred in the appendix. *)
-Lemma uPred_alt {SI: indexT} {M : ucmra SI} (P: SI → M → Prop) :
+Lemma uPred_alt `{SI: indexT} {M : ucmra} (P: index → M → Prop) :
   (∀ n1 n2 x1 x2, P n1 x1 → x1 ≼{n1} x2 → n2 ⪯ n1 → P n2 x2) ↔
   ( (∀ x n1 n2, n2 ⪯ n1 → P n1 x → P n2 x) (* Pointwise down-closed *)
   ∧ (∀ n x1 x2, x1 ≡{n}≡ x2 → ∀ m, m ⪯ n → P m x1 ↔ P m x2) (* Non-expansive *)
@@ -251,30 +251,30 @@ Proof.
 Qed.
 
 (** functor *)
-Program Definition uPred_map {SI: indexT} {M1 M2 : ucmra SI} (f : M2 -n> M1)
+Program Definition uPred_map `{SI: indexT} {M1 M2 : ucmra} (f : M2 -n> M1)
   `{!CmraMorphism f} (P : uPred M1) :
   uPred M2 := {| uPred_holds n x := P n (f x) |}.
 Next Obligation. naive_solver eauto using uPred_mono, cmra_morphism_monotoneN. Qed.
 
-Global Instance uPred_map_ne {SI: indexT} {M1 M2 : ucmra SI} (f : M2 -n> M1)
+Global Instance uPred_map_ne `{SI: indexT} {M1 M2 : ucmra} (f : M2 -n> M1)
   `{!CmraMorphism f} n : Proper (dist n ==> dist n) (uPred_map f).
 Proof.
   intros x1 x2 Hx; split=> n' y ??.
   split; apply Hx; auto using cmra_morphism_validN.
 Qed.
-Lemma uPred_map_id {SI} {M : ucmra SI} (P : uPred M): uPred_map cid P ≡ P.
+Lemma uPred_map_id `{SI: indexT} {M : ucmra} (P : uPred M): uPred_map cid P ≡ P.
 Proof. by split=> n x ?. Qed.
-Lemma uPred_map_compose {SI} {M1 M2 M3 : ucmra SI} (f : M1 -n> M2) (g : M2 -n> M3)
+Lemma uPred_map_compose `{SI: indexT} {M1 M2 M3 : ucmra} (f : M1 -n> M2) (g : M2 -n> M3)
     `{!CmraMorphism f, !CmraMorphism g} (P : uPred M3):
   uPred_map (g ◎ f) P ≡ uPred_map f (uPred_map g P).
 Proof. by split=> n x Hx. Qed.
-Lemma uPred_map_ext {SI} {M1 M2 : ucmra SI} (f g : M1 -n> M2)
+Lemma uPred_map_ext `{SI: indexT} {M1 M2 : ucmra} (f g : M1 -n> M2)
       `{!CmraMorphism f} `{!CmraMorphism g}:
   (∀ x, f x ≡ g x) → ∀ x, uPred_map f x ≡ uPred_map g x.
 Proof. intros Hf P; split=> n x Hx /=; by rewrite /uPred_holds /= Hf. Qed.
-Definition uPredO_map {SI} {M1 M2 : ucmra SI} (f : M2 -n> M1) `{!CmraMorphism f} :
+Definition uPredO_map `{SI: indexT} {M1 M2 : ucmra} (f : M2 -n> M1) `{!CmraMorphism f} :
   uPredO M1 -n> uPredO M2 := OfeMor (uPred_map f : uPredO M1 → uPredO M2).
-Lemma uPredO_map_ne {SI} {M1 M2 : ucmra SI} (f g : M2 -n> M1)
+Lemma uPredO_map_ne `{SI: indexT} {M1 M2 : ucmra} (f g : M2 -n> M1)
     `{!CmraMorphism f, !CmraMorphism g} n :
   f ≡{n}≡ g → uPredO_map f ≡{n}≡ uPredO_map g.
 Proof.
@@ -282,7 +282,7 @@ Proof.
     rewrite /uPred_holds /= (dist_le _ _ _ _(Hfg y)).
 Qed.
 
-Program Definition uPredOF {SI} (F : urFunctor SI) : oFunctor SI := {|
+Program Definition uPredOF `{SI: indexT} (F : urFunctor) : oFunctor := {|
   oFunctor_car A B := uPredO (urFunctor_car F B A);
   oFunctor_map A1 A2 B1 B2 fg := uPredO_map (urFunctor_map F (fg.2, fg.1))
 |}.
@@ -299,7 +299,7 @@ Next Obligation.
   apply uPred_map_ext=>y; apply urFunctor_map_compose.
 Qed.
 
-Instance uPredOF_contractive {SI} (F: urFunctor SI) :
+Global Instance uPredOF_contractive `{SI: indexT} (F: urFunctor) :
   urFunctorContractive F → oFunctorContractive (uPredOF F).
 Proof.
   intros ? A1 A2 B1 B2 n P Q HPQ. apply uPredO_map_ne, urFunctor_map_contractive.
@@ -307,12 +307,12 @@ Proof.
 Qed.
 
 (** logical entailement *)
-Inductive uPred_entails {SI} {M: ucmra SI} (P Q : uPred M) : Prop :=
+Inductive uPred_entails `{SI: indexT} {M: ucmra} (P Q : uPred M) : Prop :=
   { uPred_in_entails : ∀ n x, ✓{n} x → P n x → Q n x }.
 Global Hint Resolve uPred_mono : uPred_def.
 
 (** logical connectives *)
-Program Definition uPred_pure_def {SI} {M: ucmra SI} (φ : Prop) : uPred M :=
+Program Definition uPred_pure_def `{SI: indexT} {M: ucmra} (φ : Prop) : uPred M :=
   {| uPred_holds n x := φ |}.
 Solve Obligations with done.
 Definition uPred_pure_aux : seal (@uPred_pure_def). Proof. by eexists. Qed.
@@ -321,7 +321,7 @@ Global Arguments uPred_pure {SI M}.
 Definition uPred_pure_eq :
   @uPred_pure = @uPred_pure_def := uPred_pure_aux.(seal_eq).
 
-Program Definition uPred_and_def {SI} {M: ucmra SI} (P Q : uPred M) : uPred M :=
+Program Definition uPred_and_def `{SI: indexT} {M: ucmra} (P Q : uPred M) : uPred M :=
   {| uPred_holds n x := P n x ∧ Q n x |}.
 Solve Obligations with naive_solver eauto 2 with uPred_def.
 Definition uPred_and_aux : seal (@uPred_and_def). Proof. by eexists. Qed.
@@ -329,7 +329,7 @@ Definition uPred_and := uPred_and_aux.(unseal).
 Global Arguments uPred_and {SI M}.
 Definition uPred_and_eq: @uPred_and = @uPred_and_def := uPred_and_aux.(seal_eq).
 
-Program Definition uPred_or_def {SI} {M: ucmra SI} (P Q : uPred M) : uPred M :=
+Program Definition uPred_or_def `{SI: indexT} {M: ucmra} (P Q : uPred M) : uPred M :=
   {| uPred_holds n x := P n x ∨ Q n x |}.
 Solve Obligations with naive_solver eauto 2 with uPred_def.
 Definition uPred_or_aux : seal (@uPred_or_def). Proof. by eexists. Qed.
@@ -337,7 +337,7 @@ Definition uPred_or := uPred_or_aux.(unseal).
 Global Arguments uPred_or {SI M}.
 Definition uPred_or_eq: @uPred_or = @uPred_or_def := uPred_or_aux.(seal_eq).
 
-Program Definition uPred_impl_def {SI} {M: ucmra SI} (P Q : uPred M) : uPred M :=
+Program Definition uPred_impl_def `{SI: indexT} {M: ucmra} (P Q : uPred M) : uPred M :=
   {| uPred_holds n x := ∀ n' x',
        x ≼ x' → n' ⪯ n → ✓{n'} x' → P n' x' → Q n' x' |}.
 Next Obligation.
@@ -351,7 +351,7 @@ Global Arguments uPred_impl {SI M}.
 Definition uPred_impl_eq :
   @uPred_impl = @uPred_impl_def := uPred_impl_aux.(seal_eq).
 
-Program Definition uPred_forall_def {SI} {M: ucmra SI} {A} (Ψ : A → uPred M) : uPred M :=
+Program Definition uPred_forall_def `{SI: indexT} {M: ucmra} {A} (Ψ : A → uPred M) : uPred M :=
   {| uPred_holds n x := ∀ a, Ψ a n x |}.
 Solve Obligations with naive_solver eauto 2 with uPred_def.
 Definition uPred_forall_aux : seal (@uPred_forall_def). Proof. by eexists. Qed.
@@ -360,7 +360,7 @@ Global Arguments uPred_forall {SI M A}.
 Definition uPred_forall_eq :
   @uPred_forall = @uPred_forall_def := uPred_forall_aux.(seal_eq).
 
-Program Definition uPred_exist_def {SI} {M: ucmra SI} {A} (Ψ : A → uPred M) : uPred M :=
+Program Definition uPred_exist_def `{SI: indexT} {M: ucmra} {A} (Ψ : A → uPred M) : uPred M :=
   {| uPred_holds n x := ∃ a, Ψ a n x |}.
 Solve Obligations with naive_solver eauto 2 with uPred_def.
 Definition uPred_exist_aux : seal (@uPred_exist_def). Proof. by eexists. Qed.
@@ -368,7 +368,7 @@ Definition uPred_exist := uPred_exist_aux.(unseal).
 Global Arguments uPred_exist {SI M A}.
 Definition uPred_exist_eq: @uPred_exist = @uPred_exist_def := uPred_exist_aux.(seal_eq).
 
-Program Definition uPred_internal_eq_def {SI} {M: ucmra SI} {A : ofe SI} (a1 a2 : A) : uPred M :=
+Program Definition uPred_internal_eq_def `{SI: indexT} {M: ucmra} {A : ofe} (a1 a2 : A) : uPred M :=
   {| uPred_holds n x := a1 ≡{n}≡ a2 |}.
 Solve Obligations with naive_solver eauto 2 using (dist_le (A:=A)).
 Definition uPred_internal_eq_aux : seal (@uPred_internal_eq_def). Proof. by eexists. Qed.
@@ -377,7 +377,7 @@ Global Arguments uPred_internal_eq {SI M A}.
 Definition uPred_internal_eq_eq:
   @uPred_internal_eq = @uPred_internal_eq_def := uPred_internal_eq_aux.(seal_eq).
 
-Program Definition uPred_sep_def {SI} {M: ucmra SI} (P Q : uPred M) : uPred M :=
+Program Definition uPred_sep_def `{SI: indexT} {M: ucmra} (P Q : uPred M) : uPred M :=
   {| uPred_holds n x := ∃ x1 x2, x ≡{n}≡ x1 ⋅ x2 ∧ P n x1 ∧ Q n x2 |}.
 Next Obligation.
   intros SI M P Q n1 n2 x y (x1&x2&Hx&?&?) [z Hy] Hn.
@@ -389,12 +389,12 @@ Definition uPred_sep := uPred_sep_aux.(unseal).
 Global Arguments uPred_sep {SI M}.
 Definition uPred_sep_eq: @uPred_sep = @uPred_sep_def := uPred_sep_aux.(seal_eq).
 
-Program Definition uPred_wand_def {SI} {M: ucmra SI} (P Q : uPred M) : uPred M :=
+Program Definition uPred_wand_def `{SI: indexT} {M: ucmra} (P Q : uPred M) : uPred M :=
   {| uPred_holds n x := ∀ n' x',
        n' ⪯ n → ✓{n'} (x ⋅ x') → P n' x' → Q n' (x ⋅ x') |}.
 Next Obligation.
   intros SI M P Q n1 n1' x1 x1' HPQ ? Hn n3 x3 ???; simpl in *.
-  eapply uPred_mono with n3 (x1 ⋅ x3); last reflexivity; first eapply HPQ; first by etrans. 
+  eapply uPred_mono with n3 (x1 ⋅ x3); last reflexivity; first eapply HPQ; first by etrans.
   all: eauto using cmra_validN_includedN, cmra_monoN_r, cmra_includedN_le.
 Qed.
 Definition uPred_wand_aux : seal (@uPred_wand_def). Proof. by eexists. Qed.
@@ -406,7 +406,7 @@ Definition uPred_wand_eq :
 (* Equivalently, this could be `∀ y, P n y`.  That's closer to the intuition
    of "embedding the step-indexed logic in Iris", but the two are equivalent
    because Iris is afine.  The following is easier to work with. *)
-Program Definition uPred_plainly_def {SI} {M: ucmra SI} (P : uPred M) : uPred M :=
+Program Definition uPred_plainly_def `{SI: indexT} {M: ucmra} (P : uPred M) : uPred M :=
   {| uPred_holds n x := P n ε |}.
 Solve Obligations with naive_solver eauto using uPred_mono, ucmra_unit_validN.
 Definition uPred_plainly_aux : seal (@uPred_plainly_def). Proof. by eexists. Qed.
@@ -415,7 +415,7 @@ Global Arguments uPred_plainly {SI M}.
 Definition uPred_plainly_eq :
   @uPred_plainly = @uPred_plainly_def := uPred_plainly_aux.(seal_eq).
 
-Program Definition uPred_persistently_def {SI} {M: ucmra SI} (P : uPred M) : uPred M :=
+Program Definition uPred_persistently_def `{SI: indexT} {M: ucmra} (P : uPred M) : uPred M :=
   {| uPred_holds n x := P n (core x) |}.
 Solve Obligations with naive_solver eauto using uPred_mono, @cmra_core_monoN.
 Definition uPred_persistently_aux : seal (@uPred_persistently_def). Proof. by eexists. Qed.
@@ -424,14 +424,14 @@ Global Arguments uPred_persistently {SI M}.
 Definition uPred_persistently_eq :
   @uPred_persistently = @uPred_persistently_def := uPred_persistently_aux.(seal_eq).
 
-Program Definition uPred_later_def {SI} {M: ucmra SI} (P : uPred M) : uPred M :=
+Program Definition uPred_later_def `{SI: indexT} {M: ucmra} (P : uPred M) : uPred M :=
   {| uPred_holds n x := ∀ n', n' ≺ n → P n' x |}.
 Next Obligation.
   intros SI M P n1 n2 x1 x2 H1 H2 Hle n' Hlt; simpl in *.
-  eapply uPred_mono; first eapply H1. 
-  - eauto using index_lt_le_trans. 
+  eapply uPred_mono; first eapply H1.
+  - eauto using index_lt_le_trans.
   - eauto using cmra_includedN_le.
-  - reflexivity. 
+  - reflexivity.
 Qed.
 Definition uPred_later_aux : seal (@uPred_later_def). Proof. by eexists. Qed.
 Definition uPred_later := uPred_later_aux.(unseal).
@@ -439,7 +439,7 @@ Global Arguments uPred_later {SI M}.
 Definition uPred_later_eq :
   @uPred_later = @uPred_later_def := uPred_later_aux.(seal_eq).
 
-Program Definition uPred_ownM_def {SI} {M: ucmra SI} (a : M) : uPred M :=
+Program Definition uPred_ownM_def `{SI: indexT} {M: ucmra} (a : M) : uPred M :=
   {| uPred_holds n x := a ≼{n} x |}.
 Next Obligation.
   intros SI M a n1 n2 x1 x [a' Hx1] [x2 Hx] Hn.
@@ -451,7 +451,7 @@ Global Arguments uPred_ownM {SI M}.
 Definition uPred_ownM_eq :
   @uPred_ownM = @uPred_ownM_def := uPred_ownM_aux.(seal_eq).
 
-Program Definition uPred_cmra_valid_def {SI} {M: ucmra SI} {A : cmra SI} (a : A) : uPred M :=
+Program Definition uPred_cmra_valid_def `{SI: indexT} {M: ucmra} {A : cmra} (a : A) : uPred M :=
   {| uPred_holds n x := ✓{n} a |}.
 Solve Obligations with naive_solver eauto 2 using cmra_validN_le.
 Definition uPred_cmra_valid_aux : seal (@uPred_cmra_valid_def). Proof. by eexists. Qed.
@@ -460,7 +460,7 @@ Global Arguments uPred_cmra_valid {SI M A}.
 Definition uPred_cmra_valid_eq :
   @uPred_cmra_valid = @uPred_cmra_valid_def := uPred_cmra_valid_aux.(seal_eq).
 
-Program Definition uPred_bupd_def {SI} {M: ucmra SI} (Q : uPred M) : uPred M :=
+Program Definition uPred_bupd_def `{SI: indexT} {M: ucmra} (Q : uPred M) : uPred M :=
   {| uPred_holds n x := ∀ k yf,
       k ⪯ n → ✓{k} (x ⋅ yf) → ∃ x', ✓{k} (x' ⋅ yf) ∧ Q k x' |}.
 Next Obligation.
@@ -492,7 +492,7 @@ Ltac unseal :=
   rewrite !unseal_eqs /=.
 
 Section primitive.
-Context {SI: indexT} {M : ucmra SI}.
+Context `{SI: indexT} {M : ucmra}.
 Implicit Types φ : Prop.
 Implicit Types P Q : uPred M.
 Implicit Types A : Type.
@@ -571,7 +571,7 @@ Lemma impl_ne :
   NonExpansive2 (@uPred_impl SI M).
 Proof.
   intros n P P' HP Q Q' HQ; split=> x n' ??.
-  unseal; split; intros HPQ x' n'' ????; apply HQ, HPQ, HP; 
+  unseal; split; intros HPQ x' n'' ????; apply HQ, HPQ, HP;
   match goal with |- _ ⪯ _ => first [reflexivity| by etrans]  | _ => by auto end.
 Qed.
 
@@ -588,10 +588,10 @@ Lemma wand_ne :
 Proof.
   intros n P P' HP Q Q' HQ; split=> n' x ??; unseal; split; intros HPQ x' n'' ???;
     apply HQ, HPQ, HP;
-    match goal with |- _ ⪯ _ => try reflexivity; by etrans  | _ => by eauto using cmra_validN_op_r end. 
+    match goal with |- _ ⪯ _ => try reflexivity; by etrans  | _ => by eauto using cmra_validN_op_r end.
 Qed.
 
-Lemma internal_eq_ne (A : ofe SI) :
+Lemma internal_eq_ne (A : ofe) :
   NonExpansive2 (@uPred_internal_eq SI M A).
 Proof.
   intros n x x' Hx y y' Hy; split=> n' z; unseal; split; intros; simpl in *.
@@ -637,7 +637,7 @@ Proof.
   by rewrite (dist_le _ _ _ _ Ha).
 Qed.
 
-Lemma cmra_valid_ne {A : cmra SI} :
+Lemma cmra_valid_ne {A : cmra} :
   NonExpansive (@uPred_cmra_valid SI M A).
 Proof.
   intros n a b Ha; unseal; split=> n' x ? /=.
@@ -648,9 +648,9 @@ Lemma bupd_ne : NonExpansive (@uPred_bupd SI M).
 Proof.
   intros n P Q HPQ.
   unseal; split=> n' x; split; intros HP k yf ??;
-    destruct (HP k yf) as (x'&?&?); match goal with |- ∃ _ , _ => idtac | _ => by auto end. 
+    destruct (HP k yf) as (x'&?&?); match goal with |- ∃ _ , _ => idtac | _ => by auto end.
   all: exists x'; split; auto; apply HPQ; eauto using cmra_validN_op_l.
-  all: by etrans. 
+  all: by etrans.
 Qed.
 
 (** Introduction and elimination rules *)
@@ -830,25 +830,25 @@ Lemma later_plainly_2 P : ■ ▷ P ⊢ ▷ ■ P.
 Proof. by unseal. Qed.
 
 (** Internal equality *)
-Lemma internal_eq_refl {A : ofe SI} P (a : A) : P ⊢ (a ≡ a).
+Lemma internal_eq_refl {A : ofe} P (a : A) : P ⊢ (a ≡ a).
 Proof. unseal; by split=> n x ??; simpl. Qed.
-Lemma internal_eq_rewrite {A : ofe SI} a b (Ψ : A → uPred M) :
+Lemma internal_eq_rewrite {A : ofe} a b (Ψ : A → uPred M) :
   NonExpansive Ψ → a ≡ b ⊢ Ψ a → Ψ b.
 Proof. intros HΨ. unseal; split=> n x ?? n' x' ??? Ha. by apply HΨ with n a. Qed.
 
-Lemma fun_ext {A} {B : A → ofe SI} (g1 g2 : discrete_fun B) :
+Lemma fun_ext {A} {B : A → ofe} (g1 g2 : discrete_fun B) :
   (∀ i, g1 i ≡ g2 i) ⊢ g1 ≡ g2.
 Proof. by unseal. Qed.
-Lemma sig_eq {A : ofe SI} (P : A → Prop) (x y : sigO P) :
+Lemma sig_eq {A : ofe} (P : A → Prop) (x y : sigO P) :
   proj1_sig x ≡ proj1_sig y ⊢ x ≡ y.
 Proof. by unseal. Qed.
 
-Lemma later_eq_1 {A : ofe SI} (x y : A) : Next x ≡ Next y ⊢ ▷ (x ≡ y).
+Lemma later_eq_1 {A : ofe} (x y : A) : Next x ≡ Next y ⊢ ▷ (x ≡ y).
 Proof. by unseal. Qed.
-Lemma later_eq_2 {A : ofe SI} (x y : A) : ▷ (x ≡ y) ⊢ Next x ≡ Next y.
+Lemma later_eq_2 {A : ofe} (x y : A) : ▷ (x ≡ y) ⊢ Next x ≡ Next y.
 Proof. by unseal. Qed.
 
-Lemma discrete_eq_1 {A : ofe SI} (a b : A) : Discrete a → a ≡ b ⊢ ⌜a ≡ b⌝.
+Lemma discrete_eq_1 {A : ofe} (a b : A) : Discrete a → a ≡ b ⊢ ⌜a ≡ b⌝.
 Proof.
   unseal=> ?. split=> n x ?. by apply (discrete_iff n).
 Qed.
@@ -857,7 +857,7 @@ Qed.
 between two [siProp], but we do not have the infrastructure
 to express the more general case. This temporary proof rule will
 be replaced by the proper one eventually. *)
-Lemma internal_eq_entails {A B : ofe SI} (a1 a2 : A) (b1 b2 : B) :
+Lemma internal_eq_entails {A B : ofe} (a1 a2 : A) (b1 b2 : B) :
   (∀ n, a1 ≡{n}≡ a2 → b1 ≡{n}≡ b2) → a1 ≡ a2 ⊢ b1 ≡ b2.
 Proof. unseal=>Hsi. split=>n x ?. apply Hsi. Qed.
 
@@ -909,7 +909,7 @@ Proof.
 Qed.
 Lemma ownM_unit P : P ⊢ (uPred_ownM ε).
 Proof. unseal; split=> n x ??; by  exists x; rewrite left_id. Qed.
-Lemma later_ownM `{FI: FiniteIndex SI} a : ▷ uPred_ownM a ⊢ ∃ b, uPred_ownM b ∧ ▷ (a ≡ b).
+Lemma later_ownM `{FI: !FiniteIndex SI} a : ▷ uPred_ownM a ⊢ ∃ b, uPred_ownM b ∧ ▷ (a ≡ b).
 Proof.
   unseal; split=> -n x /= ? Hax.
   destruct (finite_index n) as [->|[m ->]].
@@ -937,23 +937,23 @@ Lemma ownM_valid (a : M) : uPred_ownM a ⊢ ✓ a.
 Proof.
   unseal; split=> n x Hv [a' ?]; ofe_subst; eauto using cmra_validN_op_l.
 Qed.
-Lemma cmra_valid_intro {A : cmra SI} P (a : A) : ✓ a → P ⊢ (✓ a).
+Lemma cmra_valid_intro {A : cmra} P (a : A) : ✓ a → P ⊢ (✓ a).
 Proof. unseal=> ?; split=> n x ? _ /=; by apply cmra_valid_validN. Qed.
-Lemma cmra_valid_elim {A : cmra SI} (a : A) : ¬ ✓{zero} a → ✓ a ⊢ False.
+Lemma cmra_valid_elim {A : cmra} (a : A) : ¬ ✓{zero} a → ✓ a ⊢ False.
 Proof. unseal=> Ha; split=> n x ??; apply Ha, cmra_validN_le with n; auto using index_zero_minimum. Qed.
-Lemma plainly_cmra_valid_1 {A : cmra SI} (a : A) : ✓ a ⊢ ■ ✓ a.
+Lemma plainly_cmra_valid_1 {A : cmra} (a : A) : ✓ a ⊢ ■ ✓ a.
 Proof. by unseal. Qed.
-Lemma cmra_valid_weaken {A : cmra SI} (a b : A) : ✓ (a ⋅ b) ⊢ ✓ a.
+Lemma cmra_valid_weaken {A : cmra} (a b : A) : ✓ (a ⋅ b) ⊢ ✓ a.
 Proof. unseal; split=> n x _; apply cmra_validN_op_l. Qed.
 
-Lemma discrete_valid {A : cmra SI} `{!CmraDiscrete A} (a : A) : ✓ a ⊣⊢ ⌜✓ a⌝.
+Lemma discrete_valid {A : cmra} `{!CmraDiscrete A} (a : A) : ✓ a ⊣⊢ ⌜✓ a⌝.
 Proof. unseal; split=> n x _. by rewrite /= -cmra_discrete_valid_iff. Qed.
 
 (** This is really just a special case of an entailment
 between two [siProp], but we do not have the infrastructure
 to express the more general case. This temporary proof rule will
 be replaced by the proper one eventually. *)
-Lemma valid_entails {A B : cmra SI} (a : A) (b : B) :
+Lemma valid_entails {A B : cmra} (a : A) (b : B) :
   (∀ n, ✓{n} a → ✓{n} b) → ✓ a ⊢ ✓ b.
 Proof. unseal=> Hval. split=>n x ?. apply Hval. Qed.
 
@@ -963,7 +963,7 @@ instance of [siProp] soundness in the future. *)
 Lemma pure_soundness φ : (True ⊢ ⌜ φ ⌝) → φ.
 Proof. unseal=> -[H]. by apply (H zero ε); eauto using ucmra_unit_validN. Qed.
 
-Lemma internal_eq_soundness {A : ofe SI} (x y : A) : (True ⊢ x ≡ y) → x ≡ y.
+Lemma internal_eq_soundness {A : ofe} (x y : A) : (True ⊢ x ≡ y) → x ≡ y.
 Proof.
   unseal=> -[H]. apply equiv_dist=> n.
   by apply (H n ε); eauto using ucmra_unit_validN.
@@ -973,13 +973,13 @@ Lemma later_soundness P : (True ⊢ ▷ P) → (True ⊢ P).
 Proof.
   unseal=> -[HP]; split=> n x Hx _.
   apply uPred_mono with n ε; eauto using ucmra_unit_leastN.
-  apply (HP (index_succ _ n)); eauto using ucmra_unit_validN.
+  apply (HP (index_succ n)); eauto using ucmra_unit_validN.
   constructor.
 Qed.
 
 (* satisfiabiity for uPred *)
 Definition uPred_sat (P: uPred M) :=
-    ∀ n: SI, ∃ x: M, ✓{n} x ∧ P n x.
+    ∀ n: index, ∃ x: M, ✓{n} x ∧ P n x.
 
 Lemma uPred_sat_intro: uPred_sat True.
 Proof.
@@ -1030,7 +1030,7 @@ Qed.
 
 
 (* the finite rules for BiFinite *)
-Lemma later_exist_false `{FI: FiniteIndex SI} {A} (Φ : A → uPred M) :
+Lemma later_exist_false `{FI: !FiniteIndex SI} {A} (Φ : A → uPred M) :
   (▷ ∃ a, Φ a) ⊢ ▷ False ∨ (∃ a, ▷ Φ a).
 Proof.
   unseal; split=> -n x Hv /= H; eauto.
@@ -1040,7 +1040,7 @@ Proof.
     intros; eauto using uPred_mono.
 Qed.
 
-Lemma later_sep_1 `{FI: FiniteIndex SI} P Q : ▷ (P ∗ Q) ⊢ ▷ P ∗ ▷ Q.
+Lemma later_sep_1 `{FI: !FiniteIndex SI} P Q : ▷ (P ∗ Q) ⊢ ▷ P ∗ ▷ Q.
 Proof.
   unseal; split=> n x ? //= H.
   destruct (finite_index n) as [->|[m ->]]; eauto.
@@ -1052,7 +1052,7 @@ Proof.
 Qed.
 
 (* the later or rule for BiLaterOr *)
-Lemma later_or_2 `{FBE: FiniteBoundedExistential SI} (P Q: uPred M):
+Lemma later_or_2 `{FBE: !FiniteBoundedExistential SI} (P Q: uPred M):
   ▷ (P ∨ Q) ⊢ ▷ P ∨ ▷ Q.
 Proof.
   unseal; split=> -n x Hv /= H; eauto.
@@ -1070,7 +1070,7 @@ Definition timeless (P: uPred M) := ▷ P ⊢ ▷ False ∨ P.
 Lemma timeless_alt P: (timeless P) ↔ ((▷ False → P) ⊢ P).
 Proof.
   unfold timeless; unseal; split; intros [H]; split=> n x Hv //= HP; simpl in *.
-  - induction n  as [n IH] using (well_founded_ind (index_lt_wf SI)).
+  - induction n  as [n IH] using (well_founded_ind (index_lt_wf)).
     destruct (index_lt_dec_minimum n) as [H'|[m ?]]; eauto.
     edestruct H; eauto.
     intros; eapply IH; eauto using cmra_validN_le, index_le_lt_trans.

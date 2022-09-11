@@ -7,14 +7,14 @@ Import base_logic.bi.uPred.
 
 (* Setup of the proof mode *)
 Section class_instances.
-Context {SI} {M : ucmra SI}.
+Context `{SI: indexT} {M : ucmra}.
 Implicit Types P Q R : uPred M.
 
 Global Instance into_pure_cmra_valid `{!CmraDiscrete A} (a : A) :
   @IntoPure SI (uPredI M) (✓ a) (✓ a).
 Proof. by rewrite /IntoPure discrete_valid. Qed.
 
-Global Instance from_pure_cmra_valid {A : cmra SI} (a : A) :
+Global Instance from_pure_cmra_valid {A : cmra} (a : A) :
   @FromPure SI (uPredI M) false (✓ a) (✓ a).
 Proof.
   rewrite /FromPure /=. eapply bi.pure_elim=> // ?.

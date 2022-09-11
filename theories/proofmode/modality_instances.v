@@ -4,7 +4,7 @@ From iris.prelude Require Import options.
 Import bi.
 
 Section modalities.
-  Context {SI} {PROP : bi SI}.
+  Context `{SI: indexT} {PROP : bi}.
 
   Lemma modality_persistently_mixin :
     modality_mixin (@bi_persistently SI PROP) MIEnvId MIEnvClear.

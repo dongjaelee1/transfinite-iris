@@ -8,55 +8,55 @@ From iris.prelude Require Import options.
 exception of what's in the [invG] module. The module [invG] is thus exported in
 [fancy_updates], which [wsat] is only imported. *)
 Module invG.
-  Class invPreG {SI} (Σ : gFunctors SI) : Set := WsatPreG {
+  Class invPreG `{SI : indexT} (Σ : gFunctors) : Set := WsatPreG {
     inv_inPreG :> inG Σ (gmap_viewR positive (laterO (iPropO Σ)));
-    enabled_inPreG :> inG Σ (coPset_disjR SI);
+    enabled_inPreG :> inG Σ (coPset_disjR);
     disabled_inPreG :> inG Σ (gset_disjR positive);
   }.
 
-  Class invG {SI} (Σ : gFunctors SI) : Set := InvG {
+  Class invG `{SI : indexT} (Σ : gFunctors) : Set := InvG {
     inv_inG :> invPreG Σ;
     invariant_name : gname;
     enabled_name : gname;
     disabled_name : gname;
   }.
 
-  Definition invΣ (SI: indexT) : gFunctors SI :=
-    #[GFunctor (gmap_viewRF positive (laterOF (idOF SI)));
-      GFunctor (coPset_disjR SI);
+  Definition invΣ `{SI : indexT} : gFunctors :=
+    #[GFunctor (gmap_viewRF positive (laterOF idOF));
+      GFunctor (coPset_disjR);
       GFunctor (gset_disjR positive)].
 
-  Global Instance subG_invΣ {SI} {Σ: gFunctors SI} : subG (invΣ SI) Σ → invPreG Σ.
+  Global Instance subG_invΣ `{SI : indexT} {Σ: gFunctors} : subG (invΣ) Σ → invPreG Σ.
   Proof. solve_inG. Qed.
 End invG.
 Import invG.
 
-Definition invariant_unfold {SI} {Σ: gFunctors SI} (P : iProp Σ) : later (iProp Σ) :=
+Definition invariant_unfold `{SI : indexT} {Σ: gFunctors} (P : iProp Σ) : later (iProp Σ) :=
   Next P.
-Definition ownI {SI} {Σ: gFunctors SI} `{!invG Σ} (i : positive) (P : iProp Σ) : iProp Σ :=
+Definition ownI `{SI : indexT} {Σ: gFunctors} `{!invG Σ} (i : positive) (P : iProp Σ) : iProp Σ :=
   own invariant_name (gmap_view_frag i DfracDiscarded (invariant_unfold P)).
 Global Arguments ownI {_ _ _} _ _%I.
-Typeclasses Opaque ownI.
+Global Typeclasses Opaque ownI.
 Global Instance: Params (@invariant_unfold) 2 := {}.
 Global Instance: Params (@ownI) 4 := {}.
 
-Definition ownE {SI} {Σ: gFunctors SI} `{!invG Σ} (E : coPset) : iProp Σ :=
+Definition ownE `{SI : indexT} {Σ: gFunctors} `{!invG Σ} (E : coPset) : iProp Σ :=
   own enabled_name (CoPset E).
-Typeclasses Opaque ownE.
+Global Typeclasses Opaque ownE.
 Global Instance: Params (@ownE) 4 := {}.
 
-Definition ownD {SI} {Σ: gFunctors SI} `{!invG Σ} (E : gset positive) : iProp Σ :=
+Definition ownD `{SI : indexT} {Σ: gFunctors} `{!invG Σ} (E : gset positive) : iProp Σ :=
   own disabled_name (GSet E).
-Typeclasses Opaque ownD.
+Global Typeclasses Opaque ownD.
 Global Instance: Params (@ownD) 4 := {}.
 
-Definition wsat {SI} {Σ: gFunctors SI} `{!invG Σ} : iProp Σ :=
+Definition wsat `{SI : indexT} {Σ: gFunctors} `{!invG Σ} : iProp Σ :=
   locked (∃ I : gmap positive (iProp Σ),
     own invariant_name (gmap_view_auth 1 (invariant_unfold <$> I)) ∗
     [∗ map] i ↦ Q ∈ I, ▷ Q ∗ ownD {[i]} ∨ ownE {[i]})%I.
 
 Section wsat.
-Context {SI} {Σ: gFunctors SI} `{!invG Σ}.
+Context `{SI : indexT} {Σ: gFunctors} `{!invG Σ}.
 Implicit Types P : iProp Σ.
 
 (* Invariants *)
@@ -70,7 +70,7 @@ Proof. rewrite /ownI. apply _. Qed.
 Lemma ownE_empty : ⊢ |==> ownE ∅.
 Proof.
   rewrite /bi_emp_valid.
-  by rewrite (own_unit (coPset_disjUR SI) enabled_name).
+  by rewrite (own_unit coPset_disjUR enabled_name).
 Qed.
 Lemma ownE_op E1 E2 : E1 ## E2 → ownE (E1 ∪ E2) ⊣⊢ ownE E1 ∗ ownE E2.
 Proof. intros. by rewrite /ownE -own_op coPset_disj_union. Qed.
@@ -183,7 +183,7 @@ Qed.
 End wsat.
 
 (* Allocation of an initial wolibrld *)
-Lemma wsat_alloc_strong {SI: indexT} {Σ: gFunctors SI} `{!invPreG Σ} :
+Lemma wsat_alloc_strong {SI: indexT} {Σ: gFunctors} `{!invPreG Σ} :
   ⊢ |==> ∃ γI γE γD : gname, let H := InvG _ _ _ γI γE γD in wsat ∗ ownE ⊤.
 Proof.
   iIntros.
@@ -197,7 +197,7 @@ Proof.
 Qed.
 
 
-Lemma wsat_alloc {SI: indexT} {Σ: gFunctors SI} `{!invPreG Σ} :
+Lemma wsat_alloc {SI: indexT} {Σ: gFunctors} `{!invPreG Σ} :
   bi_emp_valid (|==> ∃ _ : invG Σ, wsat ∗ ownE ⊤)%I.
 Proof.
   iIntros. iMod wsat_alloc_strong as (γI γE γD) "H". iModIntro.

@@ -1039,7 +1039,7 @@ returns [false], then the conclusion can be moved in the intuitionistic context
 even if conditions 1 and 3 do not hold. Therefore, in that case, we prefer
 putting the conclusion to the intuitionistic context directly and not using
 [tac_specialize_intuitionistic_helper], which requires conditions 1 and 3. *)
-Fixpoint use_tac_specialize_intuitionistic_helper {SI} {M: bi SI}
+Fixpoint use_tac_specialize_intuitionistic_helper `{SI: indexT} {M: bi}
     (Δ : envs M) (pats : list spec_pat) : bool :=
   match pats with
   | [] => false

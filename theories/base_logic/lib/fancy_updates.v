@@ -7,15 +7,15 @@ From iris.prelude Require Import options.
 Export invG.
 Import uPred.
 
-Definition uPred_fupd_def {SI} {Σ: gFunctors SI} `{!invG Σ} (E1 E2 : coPset) (P : iProp Σ) : iProp Σ :=
+Definition uPred_fupd_def `{SI : indexT} {Σ: gFunctors} `{!invG Σ} (E1 E2 : coPset) (P : iProp Σ) : iProp Σ :=
   (wsat ∗ ownE E1 ==∗ ◇ (wsat ∗ ownE E2 ∗ P))%I.
 Definition uPred_fupd_aux : seal (@uPred_fupd_def). Proof. by eexists. Qed.
 Definition uPred_fupd := uPred_fupd_aux.(unseal).
 Global Arguments uPred_fupd {SI Σ _}.
-Lemma uPred_fupd_eq {SI} {Σ: gFunctors SI} `{!invG Σ} : @fupd _ uPred_fupd = uPred_fupd_def.
+Lemma uPred_fupd_eq `{SI : indexT} {Σ: gFunctors} `{!invG Σ} : @fupd _ uPred_fupd = uPred_fupd_def.
 Proof. rewrite -uPred_fupd_aux.(seal_eq) //. Qed.
 
-Lemma uPred_fupd_mixin {SI} {Σ: gFunctors SI} `{!invG Σ} : BiFUpdMixin (uPredI (iResUR Σ)) uPred_fupd.
+Lemma uPred_fupd_mixin `{SI : indexT} {Σ: gFunctors} `{!invG Σ} : BiFUpdMixin (uPredI (iResUR Σ)) uPred_fupd.
 Proof.
   split.
   - rewrite uPred_fupd_eq. solve_proper.
@@ -33,13 +33,13 @@ Proof.
     iIntros "!> !>". by iApply "HP".
   - rewrite uPred_fupd_eq /uPred_fupd_def. by iIntros (????) "[HwP $]".
 Qed.
-Global Instance uPred_bi_fupd {SI} {Σ: gFunctors SI} `{!invG Σ} : BiFUpd (uPredI (iResUR Σ)) :=
+Global Instance uPred_bi_fupd `{SI : indexT} {Σ: gFunctors} `{!invG Σ} : BiFUpd (uPredI (iResUR Σ)) :=
   {| bi_fupd_mixin := uPred_fupd_mixin |}.
 
-Global Instance uPred_bi_bupd_fupd {SI} {Σ: gFunctors SI} `{!invG Σ} : BiBUpdFUpd (uPredI (iResUR Σ)).
+Global Instance uPred_bi_bupd_fupd `{SI : indexT} {Σ: gFunctors} `{!invG Σ} : BiBUpdFUpd (uPredI (iResUR Σ)).
 Proof. rewrite /BiBUpdFUpd uPred_fupd_eq. by iIntros (E P) ">? [$ $] !> !>". Qed.
 
-Global Instance uPred_bi_fupd_plainly {SI} {Σ: gFunctors SI} `{!invG Σ} : BiFUpdPlainly (uPredI (iResUR Σ)).
+Global Instance uPred_bi_fupd_plainly `{SI : indexT} {Σ: gFunctors} `{!invG Σ} : BiFUpdPlainly (uPredI (iResUR Σ)).
 Proof.
   split.
   - rewrite uPred_fupd_eq /uPred_fupd_def. iIntros (E P) "H [Hw HE]".
@@ -60,7 +60,7 @@ Proof.
     by iFrame.
 Qed.
 
-Lemma fupd_plain_soundness {SI} {Σ: gFunctors SI}  `{!invPreG Σ} E1 E2 (P: iProp Σ) `{!Plain P}:
+Lemma fupd_plain_soundness `{SI : indexT} {Σ: gFunctors}  `{!invPreG Σ} E1 E2 (P: iProp Σ) `{!Plain P}:
   (∀ `{Hinv: !invG Σ}, ⊢ |={E1,E2}=> P) → ⊢ P.
 Proof.
   iIntros (Hfupd). apply later_soundness. iMod wsat_alloc as (Hinv) "[Hw HE]".
@@ -70,7 +70,7 @@ Proof.
   iMod ("H" with "[$]") as "[Hw [HE >H']]"; iFrame.
 Qed.
 
-Lemma step_fupdN_soundness {SI} {Σ: gFunctors SI} `{!invPreG Σ} φ n :
+Lemma step_fupdN_soundness `{SI : indexT} {Σ: gFunctors} `{!invPreG Σ} φ n :
   (∀ `{Hinv: !invG Σ}, ⊢@{iPropI Σ} |={⊤}[∅]▷=>^n |={⊤,∅}=> ⌜ φ ⌝) →
   φ.
 Proof.
@@ -88,7 +88,7 @@ Proof.
     iNext. by iMod "Hφ".
 Qed.
 
-Lemma step_fupdN_soundness' {SI} {Σ: gFunctors SI}  `{!invPreG Σ} φ n :
+Lemma step_fupdN_soundness' `{SI : indexT} {Σ: gFunctors}  `{!invPreG Σ} φ n :
   (∀ `{Hinv: !invG Σ}, ⊢@{iPropI Σ} |={⊤}[∅]▷=>^n ⌜ φ ⌝) →
   φ.
 Proof.

@@ -8,7 +8,7 @@ Local Open Scope lazy_bool_scope.
 
 (* Coq versions of the tactics *)
 Section tactics.
-Context {SI} {PROP : bi SI}.
+Context `{SI: indexT} {PROP : bi}.
 Implicit Types Γ : env PROP.
 Implicit Types Δ : envs PROP.
 Implicit Types P Q : PROP.
@@ -573,7 +573,7 @@ Proof.
 Qed.
 
 (** * Combining *)
-Class FromSeps {SI} {PROP : bi SI} (P : PROP) (Qs : list PROP) :=
+Class FromSeps `{SI: indexT} {PROP : bi} (P : PROP) (Qs : list PROP) :=
   from_seps : [∗] Qs ⊢ P.
 Local Arguments FromSeps {_ _} _%I _%I.
 Local Arguments from_seps {_ _} _%I _%I {_}.
@@ -799,7 +799,7 @@ Qed.
 (** * Rewriting *)
 Lemma tac_rewrite `{!BiInternalEq PROP} Δ i p Pxy d Q :
   envs_lookup i Δ = Some (p, Pxy) →
-  ∀ {A : ofe SI} (x y : A) (Φ : A → PROP),
+  ∀ {A : ofe} (x y : A) (Φ : A → PROP),
     IntoInternalEq Pxy x y →
     (Q ⊣⊢ Φ (if d is Left then y else x)) →
     NonExpansive Φ →
@@ -814,7 +814,7 @@ Qed.
 Lemma tac_rewrite_in `{!BiInternalEq PROP} Δ i p Pxy j q P d Q :
   envs_lookup i Δ = Some (p, Pxy) →
   envs_lookup j Δ = Some (q, P) →
-  ∀ {A : ofe SI} (x y : A) (Φ : A → PROP),
+  ∀ {A : ofe} (x y : A) (Φ : A → PROP),
     IntoInternalEq Pxy x y →
     (P ⊣⊢ Φ (if d is Left then y else x)) →
     NonExpansive Φ →
@@ -870,7 +870,7 @@ Inputs:
 
 Outputs:
 - [Γout] : the resulting environment. *)
-Class TransformIntuitionisticEnv {SI} {PROP1 PROP2: bi SI} (M : modality PROP1 PROP2)
+Class TransformIntuitionisticEnv {SI: indexT} {PROP1 PROP2: bi} (M : modality PROP1 PROP2)
     (C : PROP2 → PROP1 → Prop) (Γin : env PROP2) (Γout : env PROP1) := {
   transform_intuitionistic_env :
     (∀ P Q, C P Q → □ P ⊢ M (□ Q)) →
@@ -893,7 +893,7 @@ Inputs:
 Outputs:
 - [Γout] : the resulting environment.
 - [filtered] : a Boolean indicating if non-affine hypotheses have been cleared. *)
-Class TransformSpatialEnv {SI} {PROP1 PROP2: bi SI} (M : modality PROP1 PROP2)
+Class TransformSpatialEnv {SI: indexT} {PROP1 PROP2: bi} (M : modality PROP1 PROP2)
     (C : PROP2 → PROP1 → Prop) (Γin : env PROP2) (Γout : env PROP1)
     (filtered : bool) := {
   transform_spatial_env :
@@ -915,7 +915,7 @@ Inputs:
 
 Outputs:
 - [Γout] : the resulting environment. *)
-Inductive IntoModalIntuitionisticEnv {SI} {PROP2: bi SI} : ∀ {PROP1} (M : modality PROP1 PROP2)
+Inductive IntoModalIntuitionisticEnv {SI: indexT} {PROP2: bi} : ∀ {PROP1} (M : modality PROP1 PROP2)
     (Γin : env PROP2) (Γout : env PROP1), modality_action PROP1 PROP2 → Prop :=
   | MIEnvIsEmpty_intuitionistic {PROP1} (M : modality PROP1 PROP2) :
      IntoModalIntuitionisticEnv M Enil Enil MIEnvIsEmpty
@@ -926,12 +926,12 @@ Inductive IntoModalIntuitionisticEnv {SI} {PROP2: bi SI} : ∀ {PROP1} (M : moda
        (M : modality PROP1 PROP2) (C : PROP2 → PROP1 → Prop) Γin Γout :
      TransformIntuitionisticEnv M C Γin Γout →
      IntoModalIntuitionisticEnv M Γin Γout (MIEnvTransform C)
-  | MIEnvClear_intuitionistic {PROP1 : bi SI} (M : modality PROP1 PROP2) Γ :
+  | MIEnvClear_intuitionistic {PROP1 : bi} (M : modality PROP1 PROP2) Γ :
      IntoModalIntuitionisticEnv M Γ Enil MIEnvClear
   | MIEnvId_intuitionistic (M : modality PROP2 PROP2) Γ :
      IntoModalIntuitionisticEnv M Γ Γ MIEnvId.
 Existing Class IntoModalIntuitionisticEnv.
-Existing Instances MIEnvIsEmpty_intuitionistic MIEnvForall_intuitionistic
+Global Existing Instances MIEnvIsEmpty_intuitionistic MIEnvForall_intuitionistic
   MIEnvTransform_intuitionistic MIEnvClear_intuitionistic MIEnvId_intuitionistic.
 
 (* The class [IntoModalSpatialEnv M Γin Γout s] is used to transform the spatial
@@ -947,7 +947,7 @@ Inputs:
 Outputs:
 - [Γout] : the resulting environment.
 - [filtered] : a Boolean indicating if non-affine hypotheses have been cleared. *)
-Inductive IntoModalSpatialEnv {SI} {PROP2: bi SI} : ∀ {PROP1} (M : modality PROP1 PROP2)
+Inductive IntoModalSpatialEnv {SI: indexT} {PROP2: bi} : ∀ {PROP1} (M : modality PROP1 PROP2)
     (Γin : env PROP2) (Γout : env PROP1), modality_action PROP1 PROP2 → bool → Prop :=
   | MIEnvIsEmpty_spatial {PROP1} (M : modality PROP1 PROP2) :
      IntoModalSpatialEnv M Enil Enil MIEnvIsEmpty false
@@ -958,16 +958,16 @@ Inductive IntoModalSpatialEnv {SI} {PROP2: bi SI} : ∀ {PROP1} (M : modality PR
        (M : modality PROP1 PROP2) (C : PROP2 → PROP1 → Prop) Γin Γout fi :
      TransformSpatialEnv M C Γin Γout fi →
      IntoModalSpatialEnv M Γin Γout (MIEnvTransform C) fi
-  | MIEnvClear_spatial {PROP1 : bi SI} (M : modality PROP1 PROP2) Γ :
+  | MIEnvClear_spatial {PROP1 : bi} (M : modality PROP1 PROP2) Γ :
      IntoModalSpatialEnv M Γ Enil MIEnvClear false
   | MIEnvId_spatial (M : modality PROP2 PROP2) Γ :
      IntoModalSpatialEnv M Γ Γ MIEnvId false.
 Existing Class IntoModalSpatialEnv.
-Existing Instances MIEnvIsEmpty_spatial MIEnvForall_spatial
+Global Existing Instances MIEnvIsEmpty_spatial MIEnvForall_spatial
   MIEnvTransform_spatial MIEnvClear_spatial MIEnvId_spatial.
 
 Section tac_modal_intro.
-  Context {SI} {PROP1 PROP2 : bi SI} (M : modality PROP1 PROP2).
+  Context {SI: indexT} {PROP1 PROP2 : bi} (M : modality PROP1 PROP2).
 
   Global Instance transform_intuitionistic_env_nil C : TransformIntuitionisticEnv M C Enil Enil.
   Proof.
@@ -1079,7 +1079,7 @@ End tac_modal_intro.
 
 (** The class [MaybeIntoLaterNEnvs] is used by tactics that need to introduce
 laters, e.g., the symbolic execution tactics. *)
-Class MaybeIntoLaterNEnvs {SI} {PROP: bi SI} (n : nat) (Δ1 Δ2 : envs PROP) := {
+Class MaybeIntoLaterNEnvs {SI: indexT} {PROP: bi} (n : nat) (Δ1 Δ2 : envs PROP) := {
   into_later_intuitionistic :
     TransformIntuitionisticEnv (modality_laterN n) (MaybeIntoLaterN false n)
       (env_intuitionistic Δ1) (env_intuitionistic Δ2);
@@ -1088,13 +1088,13 @@ Class MaybeIntoLaterNEnvs {SI} {PROP: bi SI} (n : nat) (Δ1 Δ2 : envs PROP) := 
       (MaybeIntoLaterN false n) (env_spatial Δ1) (env_spatial Δ2) false
 }.
 
-Global Instance into_laterN_envs {SI} {PROP: bi SI} n (Γp1 Γp2 Γs1 Γs2 : env PROP) m :
+Global Instance into_laterN_envs {SI: indexT} {PROP: bi} n (Γp1 Γp2 Γs1 Γs2 : env PROP) m :
   TransformIntuitionisticEnv (modality_laterN n) (MaybeIntoLaterN false n) Γp1 Γp2 →
   TransformSpatialEnv (modality_laterN n) (MaybeIntoLaterN false n) Γs1 Γs2 false →
   MaybeIntoLaterNEnvs n (Envs Γp1 Γs1 m) (Envs Γp2 Γs2 m).
 Proof. by split. Qed.
 
-Lemma into_laterN_env_sound {SI} {PROP : bi SI} n (Δ1 Δ2 : envs PROP) :
+Lemma into_laterN_env_sound {SI: indexT} {PROP : bi} n (Δ1 Δ2 : envs PROP) :
   MaybeIntoLaterNEnvs n Δ1 Δ2 → of_envs Δ1 ⊢ ▷^n (of_envs Δ2).
 Proof.
   intros [[Hp ??] [Hs ??]]; rewrite !of_envs_eq /= !laterN_and -laterN_sep_2.

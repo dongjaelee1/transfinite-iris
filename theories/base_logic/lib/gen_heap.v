@@ -63,13 +63,13 @@ these can be matched up with the invariant namespaces. *)
 
 (** The CMRAs we need, and the global ghost names we are using. *)
 
-Class gen_heapPreG {SI} (L V : Type) (Σ : gFunctors SI) `{Countable L} := {
-  gen_heap_preG_inG :> inG Σ (gmap_viewR L (leibnizO SI V));
-  gen_meta_preG_inG :> inG Σ (gmap_viewR L (gnameO SI));
-  gen_meta_data_preG_inG :> inG Σ (reservation_mapR (agreeR (positiveO SI)));
+Class gen_heapPreG `{SI: indexT} (L V : Type) (Σ : gFunctors) `{Countable L} := {
+  gen_heap_preG_inG :> inG Σ (gmap_viewR L (leibnizO V));
+  gen_meta_preG_inG :> inG Σ (gmap_viewR L gnameO);
+  gen_meta_data_preG_inG :> inG Σ (reservation_mapR (agreeR positiveO));
 }.
 
-Class gen_heapG {SI} (L V : Type) (Σ : gFunctors SI) `{Countable L} := GenHeapG {
+Class gen_heapG `{SI: indexT} (L V : Type) (Σ : gFunctors) `{Countable L} := GenHeapG {
   gen_heap_inG :> gen_heapPreG L V Σ;
   gen_heap_name : gname;
   gen_meta_name : gname
@@ -78,29 +78,29 @@ Global Arguments GenHeapG {SI} L V Σ {_ _ _} _ _.
 Global Arguments gen_heap_name {SI L V Σ _ _} _ : assert.
 Global Arguments gen_meta_name {SI L V Σ _ _} _ : assert.
 
-Definition gen_heapΣ {SI} (L V : Type) `{Countable L} : gFunctors SI := #[
-  GFunctor (gmap_viewR L (leibnizO SI V));
-  GFunctor (gmap_viewR L (gnameO SI));
-  GFunctor (reservation_mapR (agreeR (positiveO SI)))
+Definition gen_heapΣ `{SI: indexT} (L V : Type) `{Countable L} : gFunctors := #[
+  GFunctor (gmap_viewR L (leibnizO V));
+  GFunctor (gmap_viewR L (gnameO));
+  GFunctor (reservation_mapR (agreeR (positiveO)))
 ].
 
-Global Instance subG_gen_heapPreG {SI} {Σ: gFunctors SI} {L V} `{Countable L} :
+Global Instance subG_gen_heapPreG `{SI: indexT} {Σ: gFunctors} {L V} `{Countable L} :
   subG (gen_heapΣ L V) Σ → gen_heapPreG L V Σ.
 Proof. solve_inG. Qed.
 
 
 Section definitions.
-  Context {SI} {Σ: gFunctors SI} `{Countable L, hG : !gen_heapG L V Σ}.
+  Context `{SI: indexT} {Σ: gFunctors} `{Countable L, hG : !gen_heapG L V Σ}.
 
   Definition gen_heap_interp (σ : gmap L V) : iProp Σ := ∃ m: gmap L gname,
     (* The [⊆] is used to avoid assigning ghost information to the locations in
     the initial heap (see [gen_heap_init]). *)
     ⌜ dom m ⊆ dom σ ⌝ ∧
-    own (gen_heap_name hG) (gmap_view_auth 1 (σ : gmap L (leibnizO SI V))) ∗
-    own (gen_meta_name hG) (gmap_view_auth 1 (m : gmap L (gnameO SI))).
+    own (gen_heap_name hG) (gmap_view_auth 1 (σ : gmap L (leibnizO V))) ∗
+    own (gen_meta_name hG) (gmap_view_auth 1 (m : gmap L (gnameO))).
 
   Definition mapsto_def (l : L) (dq : dfrac) (v: V) : iProp Σ :=
-    own (gen_heap_name hG) (gmap_view_frag l dq (v : leibnizO SI V)).
+    own (gen_heap_name hG) (gmap_view_frag l dq (v : leibnizO V)).
   Definition mapsto_aux : seal (@mapsto_def). Proof. by eexists. Qed.
   Definition mapsto := mapsto_aux.(unseal).
   Definition mapsto_eq : @mapsto = @mapsto_def := mapsto_aux.(seal_eq).
@@ -133,7 +133,7 @@ Local Notation "l ↦ v" := (mapsto l (DfracOwn 1) v)
   (at level 20, format "l  ↦  v") : bi_scope.
 
 Section gen_heap.
-  Context {SI} {Σ: gFunctors SI} {L V} `{Countable L, !gen_heapG L V Σ}.
+  Context `{SI: indexT} {Σ: gFunctors} {L V} `{Countable L, !gen_heapG L V Σ}.
   Implicit Types P Q : iProp Σ.
   Implicit Types Φ : V → iProp Σ.
   Implicit Types σ : gmap L V.
@@ -154,12 +154,12 @@ Section gen_heap.
   Global Instance mapsto_persistent l v : Persistent (l ↦□ v).
   Proof. rewrite mapsto_eq. apply _. Qed.
 
-  Lemma mapsto_valid l dq v : l ↦{dq} v -∗ ⌜✓ (dq: dfracR SI)⌝%Qp.
+  Lemma mapsto_valid l dq v : l ↦{dq} v -∗ ⌜✓ dq⌝%Qp.
   Proof.
     rewrite mapsto_eq. iIntros "Hl".
     iDestruct (own_valid with "Hl") as %?%gmap_view_frag_valid. done.
   Qed.
-  Lemma mapsto_valid_2 l dq1 dq2 v1 v2 : l ↦{dq1} v1 -∗ l ↦{dq2} v2 -∗ ⌜✓ ((dq1: dfracR SI) ⋅ dq2) ∧ v1 = v2⌝.
+  Lemma mapsto_valid_2 l dq1 dq2 v1 v2 : l ↦{dq1} v1 -∗ l ↦{dq2} v2 -∗ ⌜✓ (dq1 ⋅ dq2) ∧ v1 = v2⌝.
   Proof.
     rewrite mapsto_eq. iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %[??]%gmap_view_frag_op_valid_L.
@@ -174,7 +174,7 @@ Section gen_heap.
   Qed.
 
   Lemma mapsto_combine l dq1 dq2 v1 v2 :
-    l ↦{dq1} v1 -∗ l ↦{dq2} v2 -∗ l ↦{(dq1: dfracR SI) ⋅ dq2} v1 ∗ ⌜v1 = v2⌝.
+    l ↦{dq1} v1 -∗ l ↦{dq2} v2 -∗ l ↦{dq1 ⋅ dq2} v1 ∗ ⌜v1 = v2⌝.
   Proof.
     iIntros "Hl1 Hl2". iDestruct (mapsto_agree with "Hl1 Hl2") as %->.
     iCombine "Hl1 Hl2" as "Hl".
@@ -183,7 +183,7 @@ Section gen_heap.
   Qed.
 
   Lemma mapsto_frac_ne l1 l2 dq1 dq2 v1 v2 :
-    ¬ ✓((dq1: dfracR SI) ⋅ dq2) → l1 ↦{dq1} v1 -∗ l2 ↦{dq2} v2 -∗ ⌜l1 ≠ l2⌝.
+    ¬ ✓(dq1 ⋅ dq2) → l1 ↦{dq1} v1 -∗ l2 ↦{dq2} v2 -∗ ⌜l1 ≠ l2⌝.
   Proof.
     iIntros (?) "Hl1 Hl2"; iIntros (->).
     by iDestruct (mapsto_valid_2 with "Hl1 Hl2") as %[??].
@@ -315,14 +315,14 @@ End gen_heap.
 The key difference to [gen_heap_init] is that the [inG] instances in the new
 [gen_heapG] instance are related to the original [gen_heapPreG] instance,
 whereas [gen_heap_init] forgets about that relation. *)
-Lemma gen_heap_init_names {SI} {Σ: gFunctors SI} `{Countable L, !gen_heapPreG L V Σ} σ :
+Lemma gen_heap_init_names `{SI: indexT} {Σ: gFunctors} `{Countable L, !gen_heapPreG L V Σ} σ :
   ⊢ |==> ∃ γh γm : gname,
     let hG := GenHeapG L V Σ γh γm in
     gen_heap_interp σ ∗ ([∗ map] l ↦ v ∈ σ, l ↦ v) ∗ ([∗ map] l ↦ _ ∈ σ, meta_token l ⊤).
 Proof.
-  iMod (own_alloc (gmap_view_auth 1 (∅ : gmap L (leibnizO SI V)))) as (γh) "Hh".
+  iMod (own_alloc (gmap_view_auth 1 (∅ : gmap L (leibnizO V)))) as (γh) "Hh".
   { exact: gmap_view_auth_valid. }
-  iMod (own_alloc (gmap_view_auth 1 (∅ : gmap L (gnameO SI)))) as (γm) "Hm".
+  iMod (own_alloc (gmap_view_auth 1 (∅ : gmap L (gnameO)))) as (γm) "Hm".
   { exact: gmap_view_auth_valid. }
   iExists γh, γm.
   iAssert (gen_heap_interp (hG:=GenHeapG _ _ _ γh γm) ∅) with "[Hh Hm]" as "Hinterp".
@@ -332,7 +332,7 @@ Proof.
   rewrite right_id_L. done.
 Qed.
 
-Lemma gen_heap_init {SI} {Σ: gFunctors SI} `{Countable L, !gen_heapPreG L V Σ} σ :
+Lemma gen_heap_init `{SI: indexT} {Σ: gFunctors} `{Countable L, !gen_heapPreG L V Σ} σ :
   ⊢ |==> ∃ _ : gen_heapG L V Σ,
     gen_heap_interp σ ∗ ([∗ map] l ↦ v ∈ σ, l ↦ v) ∗ ([∗ map] l ↦ _ ∈ σ, meta_token l ⊤).
 Proof.
@@ -348,17 +348,17 @@ Definition γ_gen_heap_meta : gname := encode "gen_heap.meta".
 Definition gen_heap_gnames : coPset := {[ γ_gen_heap; γ_gen_heap_meta ]}.
 
 (* mirrors gen_heapPreG but for type class inference reasons we do not reuse gen_heapPreG *)
-Class gen_heapS {SI} (L V : Type) (Σ : gFunctors SI) `{Countable L} := {
+Class gen_heapS {SI} (L V : Type) (Σ : gFunctors) `{Countable L} := {
   gen_heapS_inG :> inG Σ (authR (gen_heapUR SI L V));
   gen_heapS_meta_inG :> inG Σ (authR (gen_metaUR SI L));
   gen_heapS_data_inG :> inG Σ (reservation_mapR (agreeR (positiveO SI)))
 }.
 
-Instance gen_heapS_gen_heapG {SI} {Σ : gFunctors SI} `{Countable L} `{gen_heapS SI L V Σ} : gen_heapG L V Σ :=
+Instance gen_heapS_gen_heapG {SI} {Σ : gFunctors} `{Countable L} `{gen_heapS SI L V Σ} : gen_heapG L V Σ :=
   GenHeapG _ _ _ _ _ _ _ _ _ γ_gen_heap γ_gen_heap_meta.
 
 
-Lemma alloc_gen_heap {SI} {Σ : gFunctors SI} L V `{Countable L} `{gen_heapPreG SI L V Σ} (σ: gmap L V):
+Lemma alloc_gen_heap {SI} {Σ : gFunctors} L V `{Countable L} `{gen_heapPreG SI L V Σ} (σ: gmap L V):
   sbi_emp_valid (|==> ∃ γ_gen_heap γ_gen_heap_meta, let H := GenHeapG SI L V _ _ _ _ _ _ γ_gen_heap γ_gen_heap_meta in gen_heap_interp σ)%I.
 Proof.
   iMod (own_alloc (● to_gen_heap SI σ)) as (γ_gen_heap) "H1".
@@ -370,7 +370,7 @@ Proof.
   iFrame "H1 H2". by rewrite dom_empty_L.
 Qed.
 
-Lemma heap_init_to_bigOp {SI} {Σ : gFunctors SI} `{hG: gen_heapG SI L V Σ} σ:
+Lemma heap_init_to_bigOp {SI} {Σ : gFunctors} `{hG: gen_heapG SI L V Σ} σ:
   own (gen_heap_name hG) (◯ (to_gen_heap SI σ)) -∗
       [∗ map] i ↦ v ∈ σ, i ↦ v .
 Proof.
@@ -390,7 +390,7 @@ Proof.
     by iApply IHσ.
 Qed.
 
-Lemma alloc_gen_heap_strong {SI} {Σ : gFunctors SI} L V `{Countable L} `{gen_heapPreG SI L V Σ} (σ: gmap L V):
+Lemma alloc_gen_heap_strong {SI} {Σ : gFunctors} L V `{Countable L} `{gen_heapPreG SI L V Σ} (σ: gmap L V):
   sbi_emp_valid (|==> ∃ γ_gen_heap γ_gen_heap_meta, let H := GenHeapG SI L V _ _ _ _ _ _ γ_gen_heap γ_gen_heap_meta in gen_heap_interp σ ∗ [∗ map] i↦v ∈ σ, i ↦ v)%I.
 Proof.
   iMod (own_alloc (● to_gen_heap SI σ ⋅ ◯ to_gen_heap SI σ)) as (γ_gen_heap) "(H1&Hfrag)".
@@ -403,7 +403,7 @@ Proof.
   - by iApply heap_init_to_bigOp.
 Qed.
 
-Lemma initial_gen_heap {SI} {Σ : gFunctors SI} L V `{Countable L} `{gen_heapS SI L V Σ} (σ: gmap L V):
+Lemma initial_gen_heap {SI} {Σ : gFunctors} L V `{Countable L} `{gen_heapS SI L V Σ} (σ: gmap L V):
   initial gen_heap_gnames (gen_heap_interp σ)%I.
 Proof.
   feed pose proof (initial_alloc γ_gen_heap (● to_gen_heap SI σ)) as HH.

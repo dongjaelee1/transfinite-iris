@@ -4,7 +4,7 @@ From iris.prelude Require Import options.
 Import bi.
 
 Section class_instances_plainly.
-Context {SI} {PROP: bi SI} `{!BiPlainly PROP}.
+Context `{SI: indexT} {PROP: bi} `{!BiPlainly PROP}.
 Implicit Types P Q R : PROP.
 
 Global Instance from_assumption_plainly_l_true P Q :

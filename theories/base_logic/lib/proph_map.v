@@ -8,25 +8,25 @@ Local Notation proph_map P V := (gmap P (list V)).
 Definition proph_val_list (P V : Type) := list (P * V).
 
 (** The CMRA we need. *)
-Class proph_mapPreG {SI} (P V : Type) (Σ : gFunctors SI) `{Countable P} := {
-  proph_map_preG_inG :> inG Σ (gmap_viewR P (listO $ leibnizO SI V))
+Class proph_mapPreG `{SI: indexT} (P V : Type) (Σ : gFunctors) `{Countable P} := {
+  proph_map_preG_inG :> inG Σ (gmap_viewR P (listO $ leibnizO V))
 }.
 
-Class proph_mapG {SI} (P V : Type) (Σ : gFunctors SI) `{Countable P} := ProphMapG {
+Class proph_mapG `{SI: indexT} (P V : Type) (Σ : gFunctors) `{Countable P} := ProphMapG {
   proph_map_inG :> proph_mapPreG P V Σ;
   proph_map_name : gname
 }.
 Global Arguments proph_map_name {_ _ _ _ _ _} _ : assert.
 
-Definition proph_mapΣ {SI} (P V : Type) `{Countable P} : gFunctors SI :=
-  #[GFunctor (gmap_viewR P (listO $ leibnizO SI V))].
+Definition proph_mapΣ `{SI: indexT} (P V : Type) `{Countable P} : gFunctors :=
+  #[GFunctor (gmap_viewR P (listO $ leibnizO V))].
 
-Global Instance subG_proph_mapPreG {SI} {Σ: gFunctors SI} {P V} `{Countable P} :
+Global Instance subG_proph_mapPreG `{SI: indexT} {Σ: gFunctors} {P V} `{Countable P} :
   subG (proph_mapΣ P V) Σ → proph_mapPreG P V Σ.
 Proof. solve_inG. Qed.
 
 Section definitions.
-  Context {SI} {Σ: gFunctors SI} `{pG : proph_mapG SI P V Σ}.
+  Context `{SI: indexT} {Σ: gFunctors} `{!EqDecision P} `{!Countable P} `{pG : !proph_mapG P V Σ}.
   Implicit Types pvs : proph_val_list P V.
   Implicit Types R : proph_map P V.
   Implicit Types p : P.
@@ -45,10 +45,10 @@ Section definitions.
   Definition proph_map_interp pvs (ps : gset P) : iProp Σ :=
     (∃ R, ⌜proph_resolves_in_list R pvs ∧
           dom R ⊆ ps⌝ ∗
-          own (proph_map_name pG) (gmap_view_auth (V:=listO $ leibnizO SI V) 1 R))%I.
+          own (proph_map_name pG) (gmap_view_auth (V:=listO $ leibnizO V) 1 R))%I.
 
   Definition proph_def (p : P) (vs : list V) : iProp Σ :=
-    own (proph_map_name pG) (gmap_view_frag (V:=listO $ leibnizO SI V) p (DfracOwn 1) vs).
+    own (proph_map_name pG) (gmap_view_frag (V:=listO $ leibnizO V) p (DfracOwn 1) vs).
 
   Definition proph_aux : seal (@proph_def). Proof. by eexists. Qed.
   Definition proph := proph_aux.(unseal).
@@ -77,7 +77,7 @@ End list_resolves.
 The key difference to [proph_map_init] is that the [inG] instances in the new
 [proph_mapPreG] instance are related to the original [proph_mapPreG] instance,
 whereas [proph_map_init] forgets about that relation. *)
-Lemma proph_map_init_names {SI: indexT} {Σ: gFunctors SI} `{Countable P, !proph_mapPreG P V Σ} pvs ps :
+Lemma proph_map_init_names `{SI: indexT} {Σ: gFunctors} `{Countable P, !proph_mapPreG P V Σ} pvs ps :
   ⊢ |==> ∃ γ, let H := ProphMapG SI P V Σ _ _ _ γ in proph_map_interp pvs ps.
 Proof.
   iMod (own_alloc (gmap_view_auth 1 ∅)) as (γ) "Hh".
@@ -86,7 +86,7 @@ Proof.
   iPureIntro. done.
 Qed.
 
-Lemma proph_map_init {SI: indexT} {Σ: gFunctors SI} `{Countable P, !proph_mapPreG P V Σ} pvs ps :
+Lemma proph_map_init `{SI: indexT} {Σ: gFunctors} `{Countable P, !proph_mapPreG P V Σ} pvs ps :
   ⊢ |==> ∃ _ : proph_mapG P V Σ, proph_map_interp pvs ps.
 Proof.
   iMod (proph_map_init_names pvs ps) as (γ) "H". iModIntro.
@@ -94,7 +94,7 @@ Proof.
 Qed.
 
 Section proph_map.
-  Context {SI} {Σ: gFunctors SI} `{proph_mapG SI P V Σ}.
+  Context `{SI: indexT} {Σ: gFunctors}  `{!EqDecision P} `{!Countable P} `{!proph_mapG P V Σ}.
   Implicit Types p : P.
   Implicit Types v : V.
   Implicit Types vs : list V.

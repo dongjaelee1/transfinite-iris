@@ -8,15 +8,15 @@ Import uPred.
 
 Definition na_inv_pool_name := gname.
 
-Class na_invG {SI} Σ :=
-  na_inv_inG :> inG Σ (prodR (coPset_disjR SI) (gset_disjR positive)).
-Definition na_invΣ {SI} : gFunctors SI :=
-  #[ GFunctor (constRF (prodR (coPset_disjR SI) (gset_disjR positive))) ].
-Global Instance subG_na_invG {SI} {Σ: gFunctors SI} : subG na_invΣ Σ → na_invG Σ.
+Class na_invG `{SI: indexT} Σ :=
+  na_inv_inG :> inG Σ (prodR coPset_disjR (gset_disjR positive)).
+Definition na_invΣ `{SI: indexT} : gFunctors :=
+  #[ GFunctor (constRF (prodR coPset_disjR (gset_disjR positive))) ].
+Global Instance subG_na_invG `{SI: indexT} {Σ: gFunctors} : subG na_invΣ Σ → na_invG Σ.
 Proof. solve_inG. Qed.
 
 Section defs.
-  Context {SI} {Σ: gFunctors SI} `{!invG Σ, !na_invG Σ}.
+  Context `{SI: indexT} {Σ: gFunctors} `{!invG Σ, !na_invG Σ}.
 
   Definition na_own (p : na_inv_pool_name) (E : coPset) : iProp Σ :=
     own p (CoPset E, GSet ∅).
@@ -27,10 +27,10 @@ Section defs.
 End defs.
 
 Global Instance: Params (@na_inv) 3 := {}.
-Typeclasses Opaque na_own na_inv.
+Global Typeclasses Opaque na_own na_inv.
 
 Section proofs.
-  Context {SI} {Σ: gFunctors SI} `{!invG Σ, !na_invG Σ}.
+  Context `{SI: indexT} {Σ: gFunctors} `{!invG Σ, !na_invG Σ}.
 
   Global Instance na_own_timeless p E : Timeless (na_own p E).
   Proof. rewrite /na_own; apply _. Qed.
@@ -76,7 +76,7 @@ Section proofs.
   Lemma na_inv_alloc p E N P : ▷ P ={E}=∗ na_inv p N P.
   Proof.
     iIntros "HP".
-    iMod (own_unit (prodUR (coPset_disjUR SI) (gset_disjUR positive)) p) as "Hempty".
+    iMod (own_unit (prodUR coPset_disjUR (gset_disjUR positive)) p) as "Hempty".
     iMod (own_updateP with "Hempty") as ([m1 m2]) "[Hm Hown]".
     { apply prod_updateP'.
       - apply cmra_updateP_id, (reflexivity (R:=eq)).
@@ -92,7 +92,7 @@ Section proofs.
     iNext. iLeft. by iFrame.
   Qed.
 
-  Lemma na_inv_acc `{FiniteIndex SI} p E F N P :
+  Lemma na_inv_acc `{!FiniteIndex SI} p E F N P :
     ↑N ⊆ E → ↑N ⊆ F →
     na_inv p N P -∗ na_own p F ={E}=∗ ▷ P ∗ na_own p (F∖↑N) ∗
                        (▷ P ∗ na_own p (F∖↑N) ={E}=∗ na_own p F).
@@ -114,7 +114,7 @@ Section proofs.
 
   Global Instance into_inv_na p N P : IntoInv (na_inv p N P) N := {}.
 
-  Global Instance into_acc_na `{FiniteIndex SI} p F E N P :
+  Global Instance into_acc_na `{!FiniteIndex SI} p F E N P :
     IntoAcc (X:=unit) (na_inv p N P)
             (↑N ⊆ E ∧ ↑N ⊆ F) (na_own p F) (fupd E E) (fupd E E)
             (λ _, ▷ P ∗ na_own p (F∖↑N))%I (λ _, ▷ P ∗ na_own p (F∖↑N))%I
@@ -162,7 +162,7 @@ Section proofs.
     intros ???. iIntros "HI Hna". iApply (na_inv_acc_open_timeless_weakening with "HI Hna"); auto.
   Qed.
 
-  Lemma na_inv_acc_open `{FiniteBoundedExistential SI} p E F N P :
+  Lemma na_inv_acc_open `{!FiniteBoundedExistential SI} p E F N P :
     ↑N ⊆ E → ↑N ⊆ F →
     na_inv p N P -∗ na_own p F ={E}=∗ ▷ (P ∗ na_own p (F∖↑N)
                     ∗ (▷ P ∗ na_own p (F∖↑N) -∗ |={E}=> na_own p F)).

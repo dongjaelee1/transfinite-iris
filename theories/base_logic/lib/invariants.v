@@ -7,7 +7,7 @@ From iris.prelude Require Import options.
 Import uPred.
 
 (** Semantic Invariants *)
-Definition inv_def {SI} {Σ: gFunctors SI}  `{!invG Σ} (N : namespace) (P : iProp Σ) : iProp Σ :=
+Definition inv_def `{SI : indexT} {Σ: gFunctors}  `{!invG Σ} (N : namespace) (P : iProp Σ) : iProp Σ :=
   (□ ∀ E, ⌜↑N ⊆ E⌝ → |={E,E ∖ ↑N}=> ▷ P ∗ (▷ P ={E ∖ ↑N,E}=∗ True))%I.
 Definition inv_aux : seal (@inv_def). Proof. by eexists. Qed.
 Definition inv := inv_aux.(unseal).
@@ -17,7 +17,7 @@ Global Instance: Params (@inv) 4 := {}.
 
 (** * Invariants *)
 Section inv.
-  Context {SI} {Σ: gFunctors SI}  `{!invG Σ}.
+  Context `{SI : indexT} {Σ: gFunctors}  `{!invG Σ}.
   Implicit Types i : positive.
   Implicit Types N : namespace.
   Implicit Types E : coPset.
@@ -97,7 +97,7 @@ Section inv.
   Global Instance inv_persistent N P : Persistent (inv N P).
   Proof. rewrite inv_eq. apply _. Qed.
 
-  Lemma inv_alter `{FiniteIndex SI} N P Q : inv N P -∗ ▷ □ (P -∗ Q ∗ (Q -∗ P)) -∗ inv N Q.
+  Lemma inv_alter `{!FiniteIndex SI} N P Q : inv N P -∗ ▷ □ (P -∗ Q ∗ (Q -∗ P)) -∗ inv N Q.
   Proof.
     rewrite inv_eq. iIntros "#HI #HPQ !>" (E Hsub).
     iMod ("HI" $! E Hsub) as "[HP Hclose]".
@@ -132,7 +132,7 @@ Section inv.
     rewrite inv_eq /inv_def; iIntros (?) "#HI". by iApply "HI".
   Qed.
 
-  Lemma inv_combine `{FiniteIndex SI} N1 N2 N P Q :
+  Lemma inv_combine `{!FiniteIndex SI} N1 N2 N P Q :
     N1 ## N2 →
     ↑N1 ∪ ↑N2 ⊆@{coPset} ↑N →
     inv N1 P -∗ inv N2 Q -∗ inv N (P ∗ Q).
@@ -145,7 +145,7 @@ Section inv.
     iMod "Hclose" as %_. iMod ("HcloseQ" with "HQ") as %_. by iApply "HcloseP".
   Qed.
 
-  Lemma inv_combine_dup_l `{FiniteIndex SI} N P Q :
+  Lemma inv_combine_dup_l `{!FiniteIndex SI} N P Q :
     □ (P -∗ P ∗ P) -∗
     inv N P -∗ inv N Q -∗ inv N (P ∗ Q).
   Proof.
@@ -190,16 +190,16 @@ Section inv.
     iIntros "!> {$HP} HP". iApply "Hclose"; auto.
   Qed.
 
-  Lemma inv_split_l `{FiniteIndex SI} N P Q : inv N (P ∗ Q) -∗ inv N P.
+  Lemma inv_split_l `{!FiniteIndex SI} N P Q : inv N (P ∗ Q) -∗ inv N P.
   Proof.
     iIntros "#HI". iApply (inv_alter with "HI").
     iIntros "!> !> [$ $] $".
   Qed.
-  Lemma inv_split_r `{FiniteIndex SI} N P Q : inv N (P ∗ Q) -∗ inv N Q.
+  Lemma inv_split_r `{!FiniteIndex SI} N P Q : inv N (P ∗ Q) -∗ inv N Q.
   Proof.
     rewrite (comm _ P Q). eapply inv_split_l.
   Qed.
-  Lemma inv_split `{FiniteIndex SI} N P Q : inv N (P ∗ Q) -∗ inv N P ∗ inv N Q.
+  Lemma inv_split `{!FiniteIndex SI} N P Q : inv N (P ∗ Q) -∗ inv N P ∗ inv N Q.
   Proof.
     iIntros "#H".
     iPoseProof (inv_split_l with "H") as "$".

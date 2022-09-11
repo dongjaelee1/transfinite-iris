@@ -10,7 +10,7 @@ Import uPred.
 individual CMRAs instead of (lists of) CMRA *functors*. This additional class is
 needed because Coq is otherwise unable to solve type class constraints due to
 higher-order unification problems. *)
-Class inG {SI} (Σ : gFunctors SI) (A : cmra SI) := InG {
+Class inG `{SI: indexT} (Σ : gFunctors) (A : cmra) := InG {
   inG_id : gid Σ;
   inG_apply := rFunctor_apply (gFunctors_lookup Σ inG_id);
   inG_prf : A = inG_apply (iPropO Σ) _;
@@ -23,7 +23,7 @@ mode [!] for [A] since we can have multiple [inG]s for different [A]s, so we do
 not want Coq to pick one arbitrarily. *)
 Global Hint Mode inG - - ! : typeclass_instances.
 
-Lemma subG_inG {SI} Σ (F : gFunctor SI) : subG F Σ → inG Σ (rFunctor_apply F (iPropO Σ)).
+Lemma subG_inG `{SI: indexT} Σ (F : gFunctor) : subG F Σ → inG Σ (rFunctor_apply F (iPropO Σ)).
 Proof. move=> /(_ 0%fin) /= [j ->]. by exists j. Qed.
 
 (** This tactic solves the usual obligations "subG ? Σ → {in,?}G ? Σ" *)
@@ -58,19 +58,19 @@ Ltac solve_inG :=
   split; (assumption || by apply _).
 
 (** * Definition of the connective [own] *)
-Local Definition inG_unfold {SI} {Σ: gFunctors SI} {A} {i : inG Σ A} :
+Local Definition inG_unfold `{SI: indexT} {Σ: gFunctors} {A} {i : inG Σ A} :
     inG_apply i (iPropO Σ) -n> inG_apply i (iPrePropO Σ) :=
   rFunctor_map _ (iProp_fold, iProp_unfold).
-Local Definition inG_fold {SI} {Σ: gFunctors SI} {A} {i : inG Σ A} :
+Local Definition inG_fold `{SI: indexT} {Σ: gFunctors} {A} {i : inG Σ A} :
     inG_apply i (iPrePropO Σ) -n> inG_apply i (iPropO Σ) :=
   rFunctor_map _ (iProp_unfold, iProp_fold).
 
-Local Definition iRes_singleton {SI} {Σ: gFunctors SI} {A} {i : inG Σ A} (γ : gname) (a : A) : iResUR Σ :=
+Local Definition iRes_singleton `{SI: indexT} {Σ: gFunctors} {A} {i : inG Σ A} (γ : gname) (a : A) : iResUR Σ :=
   discrete_fun_singleton (inG_id i)
     {[ γ := inG_unfold (cmra_transport inG_prf a) ]}.
 Global Instance: Params (@iRes_singleton) 4 := {}.
 
-Local Definition own_def {SI} {Σ: gFunctors SI} `{!inG Σ A} (γ : gname) (a : A) : iProp Σ :=
+Local Definition own_def `{SI: indexT} {Σ: gFunctors} `{!inG Σ A} (γ : gname) (a : A) : iProp Σ :=
   uPred_ownM (iRes_singleton γ a).
 Local Definition own_aux : seal (@own_def). by eexists. Qed.
 Definition own := own_aux.(unseal).
@@ -80,7 +80,7 @@ Local Instance: Params (@own) 5 := {}.
 
 (** * Properties about ghost ownership *)
 Section global.
-Context {SI} {Σ: gFunctors SI} `{i : !inG Σ A}.
+Context `{SI: indexT} {Σ: gFunctors} `{i : !inG Σ A}.
 Implicit Types a : A.
 
 Local Lemma inG_unfold_fold (x : inG_apply i (iPrePropO Σ)) :
@@ -201,7 +201,7 @@ Proof. rewrite !own_eq /own_def. apply _. Qed.
 Global Instance own_core_persistent γ a : CoreId a → Persistent (own γ a).
 Proof. rewrite !own_eq /own_def; apply _. Qed.
 
-Lemma later_own `{FiniteIndex SI} γ a : ▷ own γ a -∗ ◇ ∃ b, own γ b ∧ ▷ (a ≡ b).
+Lemma later_own `{!FiniteIndex SI} γ a : ▷ own γ a -∗ ◇ ∃ b, own γ b ∧ ▷ (a ≡ b).
 Proof.
   rewrite own_eq /own_def later_ownM. apply exist_elim=> r.
   assert (NonExpansive (λ r : iResUR Σ, r (inG_id i) !! γ)).
@@ -305,7 +305,7 @@ Global Arguments own_update {_ _ _} [_] _ _ _ _.
 Global Arguments own_update_2 {_ _ _} [_] _ _ _ _ _.
 Global Arguments own_update_3 {_ _ _} [_] _ _ _ _ _ _.
 
-Lemma own_unit {SI} A `{i : !inG Σ (A:ucmra SI)} γ : ⊢ |==> own γ (ε:A).
+Lemma own_unit `{SI: indexT} A `{i : !inG Σ (A:ucmra)} γ : ⊢ |==> own γ (ε:A).
 Proof.
   rewrite /bi_emp_valid (ownM_unit emp) !own_eq /own_def.
   apply bupd_ownM_update, discrete_fun_singleton_update_empty.
@@ -319,7 +319,7 @@ Qed.
 
 (** Big op class instances *)
 Section big_op_instances.
-  Context {SI} {A: ucmra SI} `{!inG Σ A}.
+  Context `{SI: indexT} {A: ucmra} `{!inG Σ A}.
 
   Global Instance own_cmra_sep_homomorphism γ :
     WeakMonoidHomomorphism op uPred_sep (≡) (own γ).
@@ -366,7 +366,7 @@ End big_op_instances.
 
 (** Proofmode class instances *)
 Section proofmode_instances.
-  Context {SI} {Σ: gFunctors SI} `{!inG Σ A}.
+  Context `{SI: indexT} {Σ: gFunctors} `{!inG Σ A}.
   Implicit Types a b : A.
 
   Global Instance into_sep_own γ a b1 b2 :

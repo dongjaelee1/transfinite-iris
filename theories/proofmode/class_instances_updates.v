@@ -6,7 +6,7 @@ From iris.prelude Require Import options.
 Import bi.
 
 Section class_instances_updates.
-Context {SI} {PROP : bi SI}.
+Context `{SI: indexT} {PROP : bi}.
 Implicit Types P Q R : PROP.
 
 Global Instance from_assumption_bupd `{!BiBUpd PROP} p P Q :

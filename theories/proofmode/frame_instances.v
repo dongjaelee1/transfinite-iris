@@ -16,7 +16,7 @@ but that makes framing less predictable and might have some performance impact.
 Hence, we only perform such cleanup for [True] and [emp]. *)
 
 Section bi.
-Context {SI} {PROP : bi SI}.
+Context `{SI: indexT} {PROP : bi}.
 Implicit Types P Q R : PROP.
 (* Frame *)
 Global Instance frame_here_absorbing p R : Absorbing R → Frame p R R True | 0.
@@ -51,23 +51,23 @@ Proof.
   - by rewrite right_id -affinely_affinely_if affine_affinely.
 Qed.
 
-Global Instance make_embed_pure `{BiEmbed SI PROP PROP'} φ :
+Global Instance make_embed_pure `{!BiEmbed PROP PROP'} φ :
   KnownMakeEmbed (PROP:=PROP) ⌜φ⌝ ⌜φ⌝.
 Proof. apply embed_pure. Qed.
-Global Instance make_embed_emp `{BiEmbedEmp SI PROP PROP'} :
+Global Instance make_embed_emp `{!BiEmbed PROP PROP'} `{!BiEmbedEmp PROP PROP'} :
   KnownMakeEmbed (PROP:=PROP) emp emp.
 Proof. apply embed_emp. Qed.
-Global Instance make_embed_default `{BiEmbed SI PROP PROP'} P :
+Global Instance make_embed_default `{!BiEmbed PROP PROP'} P :
   MakeEmbed P (⎡P⎤)%I | 100.
 Proof. by rewrite /MakeEmbed. Qed.
 
-Global Instance frame_embed `{BiEmbed SI PROP PROP'} p P Q (Q' : PROP') R :
+Global Instance frame_embed `{!BiEmbed PROP PROP'} p P Q (Q' : PROP') R :
   Frame p R P Q → MakeEmbed Q Q' → Frame p ⎡R⎤ ⎡P⎤ Q'.
 Proof.
   rewrite /Frame /MakeEmbed => <- <-.
   rewrite embed_sep embed_intuitionistically_if_2 => //.
 Qed.
-Global Instance frame_pure_embed `{BiEmbed SI PROP PROP'} p P Q (Q' : PROP') φ :
+Global Instance frame_pure_embed `{!BiEmbed PROP PROP'} p P Q (Q' : PROP') φ :
   Frame p ⌜φ⌝ P Q → MakeEmbed Q Q' → Frame p ⌜φ⌝ ⎡P⎤ Q'.
 Proof. rewrite /Frame /MakeEmbed -embed_pure. apply (frame_embed p P Q). Qed.
 
@@ -302,9 +302,9 @@ Proof.
   rewrite persistently_elim impl_elim_r //.
 Qed.
 
-Global Instance frame_eq_embed {PROP': bi SI} `{!BiEmbed PROP PROP', !BiInternalEq PROP,
+Global Instance frame_eq_embed {PROP': bi} `{!BiEmbed PROP PROP', !BiInternalEq PROP,
     !BiInternalEq PROP', !BiEmbedInternalEq PROP PROP'}
-    p P Q (Q' : PROP') {A : ofe SI} (a b : A) :
+    p P Q (Q' : PROP') {A : ofe} (a b : A) :
   Frame p (a ≡ b) P Q → MakeEmbed Q Q' → Frame p (a ≡ b) ⎡P⎤ Q'.
 Proof. rewrite /Frame /MakeEmbed -embed_internal_eq. apply (frame_embed p P Q). Qed.
 
@@ -331,10 +331,10 @@ Proof.
   by rewrite laterN_intuitionistically_if_2 laterN_sep_2.
 Qed.
 
-Global Instance frame_bupd `{BiBUpd SI PROP} p R P Q :
+Global Instance frame_bupd `{!BiBUpd PROP} p R P Q :
   Frame p R P Q → Frame p R (|==> P) (|==> Q).
 Proof. rewrite /Frame=><-. by rewrite bupd_frame_l. Qed.
-Global Instance frame_fupd `{BiFUpd SI PROP} p E1 E2 R P Q :
+Global Instance frame_fupd `{!BiFUpd PROP} p E1 E2 R P Q :
   Frame p R P Q → Frame p R (|={E1,E2}=> P) (|={E1,E2}=> Q).
 Proof. rewrite /Frame=><-. by rewrite fupd_frame_l. Qed.
 

@@ -12,7 +12,7 @@ algorithm. We use [shelve] to avoid the creation of unshelved goals for evars
 by [refine], which otherwise causes TC search to fail. Such unshelved goals are
 created for example when solving [FromAssumption p ?P ?Q] where both [?P] and
 [?Q] are evars. See [test_iApply_evar] in [tests/proofmode] for an example. *)
-Lemma from_assumption_exact {SI} {PROP : bi SI} p (P : PROP) : FromAssumption p P P.
+Lemma from_assumption_exact `{SI: indexT} {PROP : bi} p (P : PROP) : FromAssumption p P P.
 Proof. by rewrite /FromAssumption /= intuitionistically_if_elim. Qed.
 Global Hint Extern 0 (FromAssumption _ _ _) =>
   notypeclasses refine (from_assumption_exact _ _); shelve : typeclass_instances.
@@ -21,13 +21,13 @@ Global Hint Extern 0 (FromAssumption _ _ _) =>
 (** Similarly, the lemma [from_exist_exist] is defined using a [Hint Extern] to
 enable the better unification algorithm.
 See https://gitlab.mpi-sws.org/iris/iris/issues/288 *)
-Lemma from_exist_exist {SI} {PROP : bi SI} {A} (Φ : A → PROP) : FromExist (∃ a, Φ a) Φ.
+Lemma from_exist_exist `{SI: indexT} {PROP : bi} {A} (Φ : A → PROP) : FromExist (∃ a, Φ a) Φ.
 Proof. by rewrite /FromExist. Qed.
 Global Hint Extern 0 (FromExist _ _) =>
   notypeclasses refine (from_exist_exist _) : typeclass_instances.
 
 Section class_instances.
-Context {SI} {PROP : bi SI}.
+Context `{SI: indexT} {PROP : bi}.
 Implicit Types P Q R : PROP.
 Implicit Types mP : option PROP.
 

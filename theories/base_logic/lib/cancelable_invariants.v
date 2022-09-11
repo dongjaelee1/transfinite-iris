@@ -5,14 +5,14 @@ From iris.base_logic.lib Require Export invariants.
 From iris.prelude Require Import options.
 Import uPred.
 
-Class cinvG {SI} Σ := cinv_inG :> inG Σ (fracR SI).
-Definition cinvΣ SI : gFunctors SI := #[GFunctor (fracR SI)].
+Class cinvG `{SI: indexT} Σ := cinv_inG :> inG Σ fracR.
+Definition cinvΣ `{SI: indexT} : gFunctors := #[GFunctor fracR].
 
-Global Instance subG_cinvΣ {SI} {Σ} : subG (cinvΣ SI) Σ → cinvG Σ.
+Global Instance subG_cinvΣ `{SI: indexT} {Σ} : subG (cinvΣ) Σ → cinvG Σ.
 Proof. solve_inG. Qed.
 
 Section defs.
-  Context {SI} {Σ : gFunctors SI} `{!invG Σ, !cinvG Σ}.
+  Context `{SI: indexT} {Σ : gFunctors} `{!invG Σ, !cinvG Σ}.
 
   Definition cinv_own (γ : gname) (p : frac) : iProp Σ := own γ p.
 
@@ -23,7 +23,7 @@ End defs.
 Global Instance: Params (@cinv) 6 := {}.
 
 Section proofs.
-  Context {SI} {Σ : gFunctors SI} `{!invG Σ, !cinvG Σ}.
+  Context `{SI: indexT} {Σ : gFunctors} `{!invG Σ, !cinvG Σ}.
 
   Global Instance cinv_own_timeless γ p : Timeless (cinv_own γ p).
   Proof. rewrite /cinv_own; apply _. Qed.
@@ -108,7 +108,7 @@ Section proofs.
   Qed.
 
   (*** Accessors *)
-  Lemma cinv_acc_strong `{FiniteBoundedExistential SI}  E N γ p P :
+  Lemma cinv_acc_strong `{!FiniteBoundedExistential SI}  E N γ p P :
     ↑N ⊆ E →
     cinv N γ P -∗ (cinv_own γ p ={E,E∖↑N}=∗
     ▷ P ∗ cinv_own γ p ∗ (∀ E' : coPset, ▷ P ∨ cinv_own γ 1 ={E',↑N ∪ E'}=∗ True)).
@@ -125,7 +125,7 @@ Section proofs.
     - iDestruct (cinv_own_1_l with "Hown' Hown") as %[].
   Qed.
 
-  Lemma cinv_acc `{FiniteBoundedExistential SI} E N γ p P :
+  Lemma cinv_acc `{!FiniteBoundedExistential SI} E N γ p P :
     ↑N ⊆ E →
     cinv N γ P -∗ cinv_own γ p ={E,E∖↑N}=∗ ▷ P ∗ cinv_own γ p ∗ (▷ P ={E∖↑N,E}=∗ True).
   Proof.
@@ -137,7 +137,7 @@ Section proofs.
   Qed.
 
   (*** Other *)
-  Lemma cinv_cancel `{FiniteBoundedExistential SI} E N γ P : ↑N ⊆ E → cinv N γ P -∗ cinv_own γ 1 ={E}=∗ ▷ P.
+  Lemma cinv_cancel `{!FiniteBoundedExistential SI} E N γ P : ↑N ⊆ E → cinv N γ P -∗ cinv_own γ 1 ={E}=∗ ▷ P.
   Proof.
     iIntros (?) "#Hinv Hγ".
     iMod (cinv_acc_strong with "Hinv Hγ") as "($ & Hγ & H)"; first done.
@@ -147,7 +147,7 @@ Section proofs.
 
   Global Instance into_inv_cinv N γ P : IntoInv (cinv N γ P) N := {}.
 
-  Global Instance into_acc_cinv `{FiniteBoundedExistential SI} E N γ P p :
+  Global Instance into_acc_cinv `{!FiniteBoundedExistential SI} E N γ P p :
     IntoAcc (X:=unit) (cinv N γ P)
             (↑N ⊆ E) (cinv_own γ p) (fupd E (E∖↑N)) (fupd (E∖↑N) E)
             (λ _, ▷ P ∗ cinv_own γ p)%I (λ _, ▷ P)%I (λ _, None)%I.
@@ -158,4 +158,4 @@ Section proofs.
   Qed.
 End proofs.
 
-Typeclasses Opaque cinv_own cinv.
+Global Typeclasses Opaque cinv_own cinv.

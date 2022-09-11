@@ -2,11 +2,11 @@ From iris.bi Require Export bi.
 From iris.proofmode Require Import classes class_instances.
 From iris.prelude Require Import options.
 
-Class Fractional {SI} {PROP : bi SI} (Φ : Qp → PROP) :=
+Class Fractional `{SI: indexT} {PROP : bi} (Φ : Qp → PROP) :=
   fractional p q : Φ (p + q)%Qp ⊣⊢ Φ p ∗ Φ q.
 Arguments Fractional {_ _} _%I : simpl never.
 
-Class AsFractional {SI} {PROP : bi SI} (P : PROP) (Φ : Qp → PROP) (q : Qp) := {
+Class AsFractional `{SI: indexT} {PROP : bi} (P : PROP) (Φ : Qp → PROP) (q : Qp) := {
   as_fractional : P ⊣⊢ Φ q;
   as_fractional_fractional :> Fractional Φ
 }.
@@ -20,7 +20,7 @@ allow [q] to be an evar. *)
 Global Hint Mode AsFractional - - - + - : typeclass_instances.
 
 Section fractional.
-  Context {SI} {PROP : bi SI}.
+  Context `{SI: indexT} {PROP : bi}.
   Implicit Types P Q : PROP.
   Implicit Types Φ : Qp → PROP.
   Implicit Types q : Qp.

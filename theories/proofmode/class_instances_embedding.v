@@ -7,13 +7,13 @@ Import bi.
 instance is not used when there is no embedding between [PROP] and [PROP']. The
 first [`{BiEmbed PROP PROP'}] is not considered as a premise by Coq TC search
 mechanism because the rest of the hypothesis is dependent on it. *)
-Global Instance as_emp_valid_embed {SI} {PROP PROP': bi SI} `{!BiEmbed PROP PROP'} (φ : Prop) (P : PROP) :
+Global Instance as_emp_valid_embed `{SI: indexT} {PROP PROP': bi} `{!BiEmbed PROP PROP'} (φ : Prop) (P : PROP) :
   BiEmbed PROP PROP' →
   AsEmpValid0 φ P → AsEmpValid φ ⎡P⎤.
 Proof. rewrite /AsEmpValid0 /AsEmpValid=> _ ->. rewrite embed_emp_valid //. Qed.
 
 Section class_instances_embedding.
-Context {SI} {PROP PROP': bi SI} `{!BiEmbed PROP PROP'}.
+Context `{SI: indexT} {PROP PROP': bi} `{!BiEmbed PROP PROP'}.
 Implicit Types P Q R : PROP.
 
 Global Instance into_pure_embed P φ :
@@ -152,7 +152,7 @@ Proof. rewrite /FromModal /= =><-. by rewrite embed_plainly. Qed.
 
 Global Instance into_internal_eq_embed
     `{!BiInternalEq PROP, !BiInternalEq PROP', !BiEmbedInternalEq PROP PROP'}
-    {A : ofe SI} (x y : A) (P : PROP) :
+    {A : ofe} (x y : A) (P : PROP) :
   IntoInternalEq P x y → IntoInternalEq (⎡P⎤ : PROP')%I x y.
 Proof. rewrite /IntoInternalEq=> ->. by rewrite embed_internal_eq. Qed.
 
