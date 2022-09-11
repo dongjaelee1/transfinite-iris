@@ -10,13 +10,13 @@ Class Embed (A B : Type) := embed : A → B.
 Global Arguments embed {_ _ _} _%I : simpl never.
 Notation "⎡ P ⎤" := (embed P) : bi_scope.
 Global Instance: Params (@embed) 3 := {}.
-Typeclasses Opaque embed.
+Global Typeclasses Opaque embed.
 
 Global Hint Mode Embed ! - : typeclass_instances.
 Global Hint Mode Embed - ! : typeclass_instances.
 
 (* Mixins allow us to create instances easily without having to use Program *)
-Record BiEmbedMixin {SI} (PROP1 PROP2 : bi SI) `(Embed PROP1 PROP2) := {
+Record BiEmbedMixin `{SI: indexT} (PROP1 PROP2 : bi) `(Embed PROP1 PROP2) := {
   bi_embed_mixin_ne : NonExpansive (embed (A:=PROP1) (B:=PROP2));
   bi_embed_mixin_mono : Proper ((⊢) ==> (⊢)) (embed (A:=PROP1) (B:=PROP2));
   bi_embed_mixin_emp_valid_inj (P : PROP1) :
@@ -26,7 +26,7 @@ Record BiEmbedMixin {SI} (PROP1 PROP2 : bi SI) `(Embed PROP1 PROP2) := {
   externally (i.e., as [Inj (dist n) (dist n) embed]), it is expressed using the
   internal equality of _any other_ BI [PROP']. This is more general, as we do
   not have any machinary to embed [siProp] into a BI with internal equality. *)
-  bi_embed_mixin_interal_inj {PROP': bi SI} `{!BiInternalEq PROP'} (P Q : PROP1) :
+  bi_embed_mixin_interal_inj {PROP': bi} `{!BiInternalEq PROP'} (P Q : PROP1) :
     ⎡P⎤ ≡ ⎡Q⎤ ⊢@{PROP'} (P ≡ Q);
   bi_embed_mixin_emp_2 : emp ⊢@{PROP2} ⎡emp⎤;
   bi_embed_mixin_impl_2 (P Q : PROP1) :
@@ -43,7 +43,7 @@ Record BiEmbedMixin {SI} (PROP1 PROP2 : bi SI) `(Embed PROP1 PROP2) := {
     ⎡<pers> P⎤ ⊣⊢@{PROP2} <pers> ⎡P⎤
 }.
 
-Class BiEmbed {SI} (PROP1 PROP2 : bi SI) := {
+Class BiEmbed `{SI: indexT} (PROP1 PROP2 : bi) := {
   bi_embed_embed :> Embed PROP1 PROP2;
   bi_embed_mixin : BiEmbedMixin PROP1 PROP2 bi_embed_embed;
 }.
@@ -51,42 +51,42 @@ Global Hint Mode BiEmbed - ! - : typeclass_instances.
 Global Hint Mode BiEmbed - - ! : typeclass_instances.
 Global Arguments bi_embed_embed : simpl never.
 
-Class BiEmbedEmp {SI} (PROP1 PROP2 : bi SI) `{BiEmbed SI PROP1 PROP2} :=
+Class BiEmbedEmp `{SI: indexT} (PROP1 PROP2 : bi) `{!BiEmbed PROP1 PROP2} :=
   embed_emp_1 : ⎡ emp : PROP1 ⎤ ⊢ emp.
 Global Hint Mode BiEmbedEmp - ! - - : typeclass_instances.
 Global Hint Mode BiEmbedEmp - - ! - : typeclass_instances.
 
-Class BiEmbedLater {SI} (PROP1 PROP2 : bi SI) `{!BiEmbed PROP1 PROP2} :=
+Class BiEmbedLater `{SI: indexT} (PROP1 PROP2 : bi) `{!BiEmbed PROP1 PROP2} :=
   embed_later P : ⎡▷ P⎤ ⊣⊢@{PROP2} ▷ ⎡P⎤.
 Global Hint Mode BiEmbedLater - ! - - : typeclass_instances.
 Global Hint Mode BiEmbedLater - - ! - : typeclass_instances.
 
-Class BiEmbedInternalEq {SI} (PROP1 PROP2 : bi SI)
+Class BiEmbedInternalEq `{SI: indexT} (PROP1 PROP2 : bi)
     `{!BiEmbed PROP1 PROP2, !BiInternalEq PROP1, !BiInternalEq PROP2} :=
-  embed_internal_eq_1 (A : ofe SI) (x y : A) : ⎡x ≡ y⎤ ⊢@{PROP2} x ≡ y.
+  embed_internal_eq_1 (A : ofe) (x y : A) : ⎡x ≡ y⎤ ⊢@{PROP2} x ≡ y.
 Global Hint Mode BiEmbedInternalEq - ! - - - - : typeclass_instances.
 Global Hint Mode BiEmbedInternalEq - - ! - - - : typeclass_instances.
 
-Class BiEmbedBUpd {SI} (PROP1 PROP2 : bi SI)
+Class BiEmbedBUpd `{SI: indexT} (PROP1 PROP2 : bi)
     `{!BiEmbed PROP1 PROP2, !BiBUpd PROP1, !BiBUpd PROP2} :=
   embed_bupd P : ⎡|==> P⎤ ⊣⊢@{PROP2} |==> ⎡P⎤.
 Global Hint Mode BiEmbedBUpd - - ! - - - : typeclass_instances.
 Global Hint Mode BiEmbedBUpd - ! - - - - : typeclass_instances.
 
-Class BiEmbedFUpd {SI} (PROP1 PROP2 : bi SI)
+Class BiEmbedFUpd `{SI: indexT} (PROP1 PROP2 : bi)
     `{!BiEmbed PROP1 PROP2, !BiFUpd PROP1, !BiFUpd PROP2} :=
   embed_fupd E1 E2 P : ⎡|={E1,E2}=> P⎤ ⊣⊢@{PROP2} |={E1,E2}=> ⎡P⎤.
 Global Hint Mode BiEmbedFUpd - - ! - - - : typeclass_instances.
 Global Hint Mode BiEmbedFUpd - ! - - - - : typeclass_instances.
 
-Class BiEmbedPlainly {SI} (PROP1 PROP2 : bi SI)
+Class BiEmbedPlainly `{SI: indexT} (PROP1 PROP2 : bi)
     `{!BiEmbed PROP1 PROP2, !BiPlainly PROP1, !BiPlainly PROP2} :=
   embed_plainly (P : PROP1) : ⎡■ P⎤ ⊣⊢@{PROP2} ■ ⎡P⎤.
 Global Hint Mode BiEmbedPlainly - - ! - - - : typeclass_instances.
 Global Hint Mode BiEmbedPlainly - ! - - - - : typeclass_instances.
 
 Section embed_laws.
-  Context {SI} {PROP1 PROP2: bi SI} `{!BiEmbed PROP1 PROP2}.
+  Context `{SI: indexT} {PROP1 PROP2: bi} `{!BiEmbed PROP1 PROP2}.
   Local Notation embed := (embed (A:=PROP1) (B:=PROP2)).
   Local Notation "⎡ P ⎤" := (embed P) : bi_scope.
   Implicit Types P : PROP1.
@@ -117,7 +117,7 @@ Section embed_laws.
 End embed_laws.
 
 Section embed.
-  Context {SI} {PROP1 PROP2: bi SI} `{!BiEmbed PROP1 PROP2}.
+  Context `{SI: indexT} {PROP1 PROP2: bi} `{!BiEmbed PROP1 PROP2}.
   Local Notation embed := (embed (A:=PROP1) (B:=PROP2)).
   Local Notation "⎡ P ⎤" := (embed P) : bi_scope.
   Implicit Types P Q R : PROP1.
@@ -291,7 +291,7 @@ Section embed.
   Section internal_eq.
     Context `{!BiInternalEq PROP1, !BiInternalEq PROP2, !BiEmbedInternalEq PROP1 PROP2}.
 
-    Lemma embed_internal_eq (A : ofe SI) (x y : A) : ⎡x ≡ y⎤ ⊣⊢@{PROP2} x ≡ y.
+    Lemma embed_internal_eq (A : ofe) (x y : A) : ⎡x ≡ y⎤ ⊣⊢@{PROP2} x ≡ y.
     Proof.
       apply bi.equiv_spec; split; [apply embed_internal_eq_1|].
       etrans; [apply (internal_eq_rewrite x y (λ y, ⎡x ≡ y⎤%I)); solve_proper|].

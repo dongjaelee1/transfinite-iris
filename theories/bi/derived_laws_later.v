@@ -6,7 +6,7 @@ Module bi.
 Import interface.bi.
 Import derived_laws.bi.
 Section later_derived.
-Context {SI: indexT} {PROP : bi SI}.
+Context `{SI: indexT} {PROP : bi}.
 Implicit Types φ : Prop.
 Implicit Types P Q R : PROP.
 Implicit Types Ps : list PROP.
@@ -251,7 +251,7 @@ Proof. by rewrite /bi_intuitionistically -laterN_persistently laterN_affinely_2.
 Lemma laterN_intuitionistically_if_2 n p P : □?p ▷^n P ⊢ ▷^n □?p P.
 Proof. destruct p; simpl; auto using laterN_intuitionistically_2. Qed.
 (* FIXME: transfinite BI interface needs to add BiAffine because we do not have the commuting rule. *)
-Lemma laterN_absorbingly `{BiAffine SI PROP} n P : ▷^n <absorb> P ⊣⊢ <absorb> ▷^n P.
+Lemma laterN_absorbingly `{!BiAffine PROP} n P : ▷^n <absorb> P ⊣⊢ <absorb> ▷^n P.
 Proof. induction n as [|n IH]; simpl; eauto. by rewrite IH later_absorbingly. Qed.
 
 Global Instance laterN_persistent n P : Persistent P → Persistent (▷^n P).
@@ -346,7 +346,7 @@ Qed.
 
 Global Instance except_0_persistent P : Persistent P → Persistent (◇ P).
 Proof. rewrite /bi_except_0; apply _. Qed.
-Global Instance except_0_absorbing `{BiAffine SI PROP} P : Absorbing P → Absorbing (◇ P).
+Global Instance except_0_absorbing `{!BiAffine PROP} P : Absorbing P → Absorbing (◇ P).
 Proof. rewrite /bi_except_0; apply _. Qed.
 
 (* Timeless instances *)

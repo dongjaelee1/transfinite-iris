@@ -13,7 +13,7 @@ Global Instance: Params (@plainly) 2 := {}.
 Notation "■ P" := (plainly P) : bi_scope.
 
 (* Mixins allow us to create instances easily without having to use Program *)
-Record BiPlainlyMixin {SI: indexT} (PROP : bi SI) `(Plainly PROP) := {
+Record BiPlainlyMixin `{SI: indexT} (PROP : bi) `(Plainly PROP) := {
   bi_plainly_mixin_plainly_ne : NonExpansive (plainly (A:=PROP));
 
   bi_plainly_mixin_plainly_mono (P Q : PROP) : (P ⊢ Q) → ■ P ⊢ ■ Q;
@@ -38,14 +38,14 @@ Record BiPlainlyMixin {SI: indexT} (PROP : bi SI) `(Plainly PROP) := {
   bi_plainly_mixin_later_plainly_2 (P : PROP) : ■ ▷ P ⊢ ▷ ■ P;
 }.
 
-Class BiPlainly {SI: indexT} (PROP : bi SI) := {
+Class BiPlainly `{SI: indexT} (PROP : bi) := {
   bi_plainly_plainly :> Plainly PROP;
   bi_plainly_mixin : BiPlainlyMixin PROP bi_plainly_plainly;
 }.
 Global Hint Mode BiPlainly - ! : typeclass_instances.
 Global Arguments bi_plainly_plainly {_} _ : simpl never.
 
-Class BiPlainlyExist {SI} {PROP: bi SI} `{!BiPlainly PROP} :=
+Class BiPlainlyExist `{SI: indexT} {PROP: bi} `{!BiPlainly PROP} :=
   plainly_exist_1 A (Ψ : A → PROP) :
     ■ (∃ a, Ψ a) ⊢ ∃ a, ■ (Ψ a).
 Global Arguments BiPlainlyExist : clear implicits.
@@ -53,7 +53,7 @@ Global Arguments BiPlainlyExist {_} _ {_}.
 Global Arguments plainly_exist_1 {_} _ {_ _} _.
 Global Hint Mode BiPlainlyExist - ! - : typeclass_instances.
 
-Class BiPropExt {SI} {PROP: bi SI} `{!BiPlainly PROP, !BiInternalEq PROP} :=
+Class BiPropExt `{SI: indexT} {PROP: bi} `{!BiPlainly PROP, !BiInternalEq PROP} :=
   prop_ext_2 (P Q : PROP) : ■ (P ∗-∗ Q) ⊢ P ≡ Q.
 Global Arguments BiPropExt : clear implicits.
 Global Arguments BiPropExt {_} _ {_ _}.
@@ -62,7 +62,7 @@ Global Hint Mode BiPropExt - ! - - : typeclass_instances.
 
 
 Section plainly_laws.
-  Context {SI} {PROP: bi SI} `{!BiPlainly PROP}.
+  Context `{SI: indexT} {PROP: bi} `{!BiPlainly PROP}.
   Implicit Types P Q : PROP.
 
   Global Instance plainly_ne : NonExpansive (@plainly PROP _).
@@ -92,23 +92,23 @@ Section plainly_laws.
 End plainly_laws.
 
 (* Derived properties and connectives *)
-Class Plain {SI} {PROP: bi SI} `{!BiPlainly PROP} (P : PROP) := plain : P ⊢ ■ P.
+Class Plain `{SI: indexT} {PROP: bi} `{!BiPlainly PROP} (P : PROP) := plain : P ⊢ ■ P.
 Global Arguments Plain {_ _ _} _%I : simpl never.
 Global Arguments plain {_ _ _} _%I {_}.
 Global Hint Mode Plain - + - ! : typeclass_instances.
 Global Instance: Params (@Plain) 2 := {}.
 
-Definition plainly_if {SI} {PROP: bi SI} `{!BiPlainly PROP} (p : bool) (P : PROP) : PROP :=
+Definition plainly_if `{SI: indexT} {PROP: bi} `{!BiPlainly PROP} (p : bool) (P : PROP) : PROP :=
   (if p then ■ P else P)%I.
 Global Arguments plainly_if {_ _ _} !_ _%I /.
 Global Instance: Params (@plainly_if) 3 := {}.
-Typeclasses Opaque plainly_if.
+Global Typeclasses Opaque plainly_if.
 
 Notation "■? p P" := (plainly_if p P) : bi_scope.
 
 (* Derived laws *)
 Section plainly_derived.
-Context {SI} {PROP: bi SI} `{!BiPlainly PROP}.
+Context `{SI: indexT} {PROP: bi} `{!BiPlainly PROP}.
 Implicit Types P : PROP.
 
 Local Hint Resolve pure_intro forall_intro : core.
@@ -382,7 +382,7 @@ Proof.
   - apply persistently_mono, wand_intro_l. by rewrite sep_and impl_elim_r.
 Qed.
 
-Global Instance limit_preserving_Plain {A:ofe SI} `{!Cofe A} (Φ : A → PROP) :
+Global Instance limit_preserving_Plain {A:ofe} `{!Cofe A} (Φ : A → PROP) :
   NonExpansive Φ → LimitPreserving (λ x, Plain (Φ x)).
 Proof. intros. apply limit_preserving_entails; solve_proper. Qed.
 
@@ -559,7 +559,7 @@ Qed.
 Section internal_eq.
   Context `{!BiInternalEq PROP}.
 
-  Lemma plainly_internal_eq {A:ofe SI} (a b : A) : ■ (a ≡ b) ⊣⊢@{PROP} a ≡ b.
+  Lemma plainly_internal_eq {A: ofe} (a b : A) : ■ (a ≡ b) ⊣⊢@{PROP} a ≡ b.
   Proof.
     apply (anti_symm (⊢)).
     { by rewrite plainly_elim. }
@@ -567,7 +567,7 @@ Section internal_eq.
     rewrite -(internal_eq_refl True%I a) plainly_pure; auto.
   Qed.
 
-  Global Instance internal_eq_plain {A : ofe SI} (a b : A) :
+  Global Instance internal_eq_plain {A : ofe} (a b : A) :
     Plain (PROP:=PROP) (a ≡ b).
   Proof. by intros; rewrite /Plain plainly_internal_eq. Qed.
 End internal_eq.

@@ -36,7 +36,7 @@ Notation "'[∗' 'mset]' x ∈ X , P" := (big_opMS bi_sep (λ x, P) X) : bi_scop
 version also ensures that both lists have the same length. Although this version
 can be defined in terms of the unary using a [zip] (see [big_sepL2_alt]), we do
 not define it that way to get better computational behavior (for [simpl]). *)
-Fixpoint big_sepL2 {SI} {PROP : bi SI} {A B}
+Fixpoint big_sepL2 `{SI: indexT} {PROP : bi} {A B}
     (Φ : nat → A → B → PROP) (l1 : list A) (l2 : list B) : PROP :=
   match l1, l2 with
   | [], [] => emp
@@ -45,13 +45,13 @@ Fixpoint big_sepL2 {SI} {PROP : bi SI} {A B}
   end%I.
 Global Instance: Params (@big_sepL2) 4 := {}.
 Global Arguments big_sepL2 {SI PROP A B} _ !_ !_ /.
-Typeclasses Opaque big_sepL2.
+Global Typeclasses Opaque big_sepL2.
 Notation "'[∗' 'list]' k ↦ x1 ; x2 ∈ l1 ; l2 , P" :=
   (big_sepL2 (λ k x1 x2, P) l1 l2) : bi_scope.
 Notation "'[∗' 'list]' x1 ; x2 ∈ l1 ; l2 , P" :=
   (big_sepL2 (λ _ x1 x2, P) l1 l2) : bi_scope.
 
-Definition big_sepM2_def {SI} {PROP : bi SI} `{Countable K} {A B}
+Definition big_sepM2_def `{SI: indexT} {PROP : bi} `{Countable K} {A B}
     (Φ : K → A → B → PROP) (m1 : gmap K A) (m2 : gmap K B) : PROP :=
   (⌜ ∀ k, is_Some (m1 !! k) ↔ is_Some (m2 !! k) ⌝ ∧
    [∗ map] k ↦ xy ∈ map_zip m1 m2, Φ k xy.1 xy.2)%I.
@@ -67,7 +67,7 @@ Notation "'[∗' 'map]' x1 ; x2 ∈ m1 ; m2 , P" :=
 
 (** * Properties *)
 Section big_op.
-Context {SI} {PROP : bi SI}.
+Context `{SI: indexT} {PROP : bi}.
 Implicit Types P Q : PROP.
 Implicit Types Ps Qs : list PROP.
 Implicit Types A : Type.
@@ -511,7 +511,7 @@ Section sep_list2.
     ([∗ list] k ↦ y1;y2 ∈ l1;l2, Φ k y1 y2) ⊣⊢ [∗ list] k ↦ y1;y2 ∈ l1';l2', Ψ k y1 y2.
   Proof.
     intros Hl1 Hl2 Hf. rewrite !big_sepL2_alt. f_equiv.
-    { unshelve f_equiv; first apply SI. f_equiv; by apply length_proper. }
+    { do 2 f_equiv; by apply length_proper. }
     apply big_opL_proper_2; [by f_equiv|].
     intros k [x1 y1] [x2 y2] (?&?&[=<- <-]&?&?)%lookup_zip_with_Some
       (?&?&[=<- <-]&?&?)%lookup_zip_with_Some [??]; naive_solver.
@@ -791,7 +791,7 @@ Proof.
   rewrite zip_diag big_sepL_fmap /=. done.
 Qed.
 
-Lemma big_sepL2_ne_2 {A B : ofe SI}
+Lemma big_sepL2_ne_2 {A B : ofe}
     (Φ Ψ : nat → A → B → PROP) l1 l2 l1' l2' n :
   l1 ≡{n}≡ l1' → l2 ≡{n}≡ l2' →
   (∀ k y1 y1' y2 y2',
@@ -1386,8 +1386,8 @@ Section map2.
       Φ k y1 y2 ⊣⊢ Ψ k y1' y2') →
     ([∗ map] k ↦ y1;y2 ∈ m1;m2, Φ k y1 y2) ⊣⊢ [∗ map] k ↦ y1;y2 ∈ m1';m2', Ψ k y1 y2.
   Proof.
-    intros Hm1 Hm2 Hf. rewrite big_sepM2_eq /big_sepM2_def. f_equiv.
-    { unshelve f_equiv; first apply SI; split; intros Hm k.
+    intros Hm1 Hm2 Hf. rewrite !big_sepM2_alt. f_equiv.
+    { f_equiv; split; intros Hm k.
       - trans (is_Some (m1 !! k)); [symmetry; apply is_Some_proper; by f_equiv|].
         rewrite Hm. apply is_Some_proper; by f_equiv.
       - trans (is_Some (m1' !! k)); [apply is_Some_proper; by f_equiv|].
@@ -1763,7 +1763,7 @@ Proof.
   rewrite map_zip_diag big_sepM_fmap. done.
 Qed.
 
-Lemma big_sepM2_ne_2 `{Countable K} (A B : ofe SI)
+Lemma big_sepM2_ne_2 `{Countable K} (A B : ofe)
     (Φ Ψ : K → A → B → PROP) m1 m2 m1' m2' n :
   m1 ≡{n}≡ m1' → m2 ≡{n}≡ m2' →
   (∀ k y1 y1' y2 y2',

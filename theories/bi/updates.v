@@ -59,7 +59,7 @@ Notation "P ={ E }▷=∗^ n Q" := (P ={E}[E]▷=∗^n Q) (only parsing) : stdpp
 
 (** Bundled versions  *)
 (* Mixins allow us to create instances easily without having to use Program *)
-Record BiBUpdMixin {SI: indexT} (PROP : bi SI) `(BUpd PROP) := {
+Record BiBUpdMixin `{SI: indexT} (PROP : bi) `(BUpd PROP) := {
   bi_bupd_mixin_bupd_ne : NonExpansive (bupd (PROP:=PROP));
   bi_bupd_mixin_bupd_intro (P : PROP) : P ==∗ P;
   bi_bupd_mixin_bupd_mono (P Q : PROP) : (P ⊢ Q) → (|==> P) ==∗ Q;
@@ -67,7 +67,7 @@ Record BiBUpdMixin {SI: indexT} (PROP : bi SI) `(BUpd PROP) := {
   bi_bupd_mixin_bupd_frame_r (P R : PROP) : (|==> P) ∗ R ==∗ P ∗ R;
 }.
 
-Record BiFUpdMixin {SI: indexT} (PROP : bi SI) `(FUpd PROP) := {
+Record BiFUpdMixin `{SI: indexT} (PROP : bi) `(FUpd PROP) := {
   bi_fupd_mixin_fupd_ne E1 E2 : NonExpansive (fupd (PROP:=PROP) E1 E2);
   bi_fupd_mixin_fupd_intro_mask E1 E2 (P : PROP) : E2 ⊆ E1 → P ⊢ |={E1,E2}=> |={E2,E1}=> P;
   bi_fupd_mixin_except_0_fupd E1 E2 (P : PROP) : ◇ (|={E1,E2}=> P) ={E1,E2}=∗ P;
@@ -78,25 +78,25 @@ Record BiFUpdMixin {SI: indexT} (PROP : bi SI) `(FUpd PROP) := {
   bi_fupd_mixin_fupd_frame_r E1 E2 (P R : PROP) : (|={E1,E2}=> P) ∗ R ={E1,E2}=∗ P ∗ R;
 }.
 
-Class BiBUpd {SI: indexT} (PROP : bi SI) := {
+Class BiBUpd `{SI: indexT} (PROP : bi) := {
   bi_bupd_bupd :> BUpd PROP;
   bi_bupd_mixin : BiBUpdMixin PROP bi_bupd_bupd;
 }.
 Global Hint Mode BiBUpd - ! : typeclass_instances.
 Global Arguments bi_bupd_bupd : simpl never.
 
-Class BiFUpd {SI: indexT} (PROP : bi SI) := {
+Class BiFUpd `{SI: indexT} (PROP : bi) := {
   bi_fupd_fupd :> FUpd PROP;
   bi_fupd_mixin : BiFUpdMixin PROP bi_fupd_fupd;
 }.
 Global Hint Mode BiFUpd - ! : typeclass_instances.
 Global Arguments bi_fupd_fupd : simpl never.
 
-Class BiBUpdFUpd {SI: indexT} (PROP : bi SI) `{BiBUpd SI PROP, BiFUpd SI PROP} :=
+Class BiBUpdFUpd `{SI: indexT} (PROP : bi) `{!BiBUpd PROP, !BiFUpd PROP} :=
   bupd_fupd E (P : PROP) : (|==> P) ={E}=∗ P.
 Global Hint Mode BiBUpdFUpd - ! - - : typeclass_instances.
 
-Class BiBUpdPlainly {SI: indexT} (PROP : bi SI) `{!BiBUpd PROP, !BiPlainly PROP} :=
+Class BiBUpdPlainly `{SI: indexT} (PROP : bi) `{!BiBUpd PROP, !BiPlainly PROP} :=
   bupd_plainly (P : PROP) : (|==> ■ P) -∗ P.
 Global Hint Mode BiBUpdPlainly - ! - - : typeclass_instances.
 
@@ -104,7 +104,7 @@ Global Hint Mode BiBUpdPlainly - ! - - : typeclass_instances.
 only make sense for affine logics. From the axioms below, one could derive
 [■ P ={E}=∗ P] (see the lemma [fupd_plainly_elim]), which in turn gives
 [True ={E}=∗ emp]. *)
-Class BiFUpdPlainly {SI: indexT} (PROP : bi SI) `{!BiFUpd PROP, !BiPlainly PROP} := {
+Class BiFUpdPlainly {SI: indexT} (PROP : bi) `{!BiFUpd PROP, !BiPlainly PROP} := {
   (** When proving a fancy update of a plain proposition, you can also prove it
   while being allowed to open all invariants. *)
   fupd_plainly_mask_empty E (P : PROP) :
@@ -126,7 +126,7 @@ Class BiFUpdPlainly {SI: indexT} (PROP : bi SI) `{!BiFUpd PROP, !BiPlainly PROP}
 Global Hint Mode BiBUpdFUpd - ! - - : typeclass_instances.
 
 Section bupd_laws.
-  Context {SI} {PROP: bi SI} `{!BiBUpd PROP}.
+  Context `{SI: indexT} {PROP: bi} `{!BiBUpd PROP}.
   Implicit Types P : PROP.
 
   Global Instance bupd_ne : NonExpansive (@bupd PROP _).
@@ -142,7 +142,7 @@ Section bupd_laws.
 End bupd_laws.
 
 Section fupd_laws.
-  Context {SI} {PROP: bi SI} `{!BiFUpd PROP}.
+  Context `{SI: indexT} {PROP: bi} `{!BiFUpd PROP}.
   Implicit Types P : PROP.
 
   Global Instance fupd_ne E1 E2 : NonExpansive (@fupd PROP _ E1 E2).
@@ -163,7 +163,7 @@ Section fupd_laws.
 End fupd_laws.
 
 Section bupd_derived.
-  Context {SI} {PROP: bi SI} `{!BiBUpd PROP}.
+  Context `{SI: indexT} {PROP: bi} `{!BiBUpd PROP}.
   Implicit Types P Q R : PROP.
 
   (* FIXME: Removing the `PROP:=` diverges. *)
@@ -232,7 +232,7 @@ Section bupd_derived.
 End bupd_derived.
 
 Section fupd_derived.
-  Context {SI} {PROP: bi SI} `{!BiFUpd PROP}.
+  Context `{SI: indexT} {PROP: bi} `{!BiFUpd PROP}.
   Implicit Types P Q R : PROP.
 
   Global Instance fupd_proper E1 E2 :

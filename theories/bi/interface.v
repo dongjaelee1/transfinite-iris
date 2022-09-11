@@ -4,7 +4,7 @@ From iris.prelude Require Import options.
 Set Primitive Projections.
 
 Section bi_mixin.
-  Context {SI: indexT} {PROP : Type} `{Dist SI PROP, Equiv PROP}.
+  Context `{SI: indexT} {PROP : Type} `{!Dist PROP, Equiv PROP}.
   Context (bi_entails : PROP → PROP → Prop).
   Context (bi_emp : PROP).
   Context (bi_pure : Prop → PROP).
@@ -153,9 +153,9 @@ Section bi_mixin.
   Qed.
 End bi_mixin.
 
-Structure bi {SI} := Bi {
+Structure bi `{SI: indexT} := Bi {
   bi_car :> Type;
-  bi_dist : Dist SI bi_car;
+  bi_dist : Dist bi_car;
   bi_equiv : Equiv bi_car;
   bi_entails : bi_car → bi_car → Prop;
   bi_emp : bi_car;
@@ -169,18 +169,17 @@ Structure bi {SI} := Bi {
   bi_wand : bi_car → bi_car → bi_car;
   bi_persistently : bi_car → bi_car;
   bi_later : bi_car → bi_car;
-  bi_ofe_mixin : OfeMixin SI bi_car;
+  bi_ofe_mixin : OfeMixin bi_car;
   bi_cofe : Cofe (Ofe bi_car bi_ofe_mixin);
   bi_bi_mixin : BiMixin bi_entails bi_emp bi_pure bi_and bi_or bi_impl bi_forall
                         bi_exist bi_sep bi_wand bi_persistently;
   bi_bi_later_mixin : BiLaterMixin bi_entails bi_pure bi_or bi_impl
                                    bi_forall bi_sep bi_persistently bi_later;
 }.
-Arguments bi _: clear implicits.
 
-Coercion bi_ofeO {SI: indexT} (PROP : bi SI) : ofe SI := Ofe PROP (bi_ofe_mixin PROP).
+Coercion bi_ofeO `{SI: indexT} (PROP : bi) : ofe := Ofe PROP (bi_ofe_mixin PROP).
 Canonical Structure bi_ofeO.
-Global Instance bi_cofe' {SI: indexT} (PROP : bi SI) : Cofe PROP.
+Global Instance bi_cofe' `{SI: indexT} (PROP : bi) : Cofe PROP.
 Proof. apply bi_cofe. Qed.
 
 Global Instance: Params (@bi_entails) 2 := {}.
@@ -213,8 +212,8 @@ Global Arguments bi_persistently {_ PROP} _%I : simpl never, rename.
 Global Arguments bi_later {_ PROP} _%I : simpl never, rename.
 
 Global Hint Extern 0 (bi_entails _ _) => reflexivity : core.
-Global Instance bi_rewrite_relation {SI: indexT} (PROP : bi SI) : RewriteRelation (@bi_entails SI PROP) := {}.
-Global Instance bi_inhabited {SI: indexT} {PROP : bi SI} : Inhabited PROP := populate (bi_pure True).
+Global Instance bi_rewrite_relation `{SI: indexT} (PROP : bi) : RewriteRelation (@bi_entails SI PROP) := {}.
+Global Instance bi_inhabited `{SI: indexT} {PROP : bi} : Inhabited PROP := populate (bi_pure True).
 
 Notation "P ⊢ Q" := (bi_entails P%I Q%I) : stdpp_scope.
 Notation "P '⊢@{' PROP } Q" := (bi_entails (PROP:=PROP) P%I Q%I) (only parsing) : stdpp_scope.
@@ -251,10 +250,10 @@ Notation "'<pers>' P" := (bi_persistently P) : bi_scope.
 
 Notation "▷ P" := (bi_later P) : bi_scope.
 
-Definition bi_emp_valid {SI: indexT} {PROP : bi SI} (P : PROP) : Prop := (emp ⊢ P).
+Definition bi_emp_valid `{SI: indexT} {PROP : bi} (P : PROP) : Prop := (emp ⊢ P).
 
 Global Arguments bi_emp_valid {_ _} _%I : simpl never.
-Typeclasses Opaque bi_emp_valid.
+Global Typeclasses Opaque bi_emp_valid.
 
 Notation "⊢ Q" := (bi_emp_valid Q%I) : stdpp_scope.
 Notation "'⊢@{' PROP } Q" := (@bi_emp_valid _ PROP Q%I) (only parsing) : stdpp_scope.
@@ -265,7 +264,7 @@ Notation "( P ⊢.)" := (bi_entails P) (only parsing) : stdpp_scope.
 
 Module bi.
 Section bi_laws.
-Context {SI} {PROP : bi SI}.
+Context `{SI: indexT} {PROP : bi}.
 Implicit Types φ : Prop.
 Implicit Types P Q R : PROP.
 Implicit Types A : Type.
