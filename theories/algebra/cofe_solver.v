@@ -7,17 +7,17 @@ Require Coq.Logic.ProofIrrelevance.
 Section cofe.
   Context (SI : indexT).
   (* Shorthand notation to avoid making a distinction between Cofes and ofes *)
-  Definition COFE := { C : ofe SI & Cofe C }.
-  Global Coercion projCOFE (C: COFE) : ofe SI := (projT1 C).
+  Definition COFE := { C : ofe & Cofe C }.
+  Global Coercion projCOFE (C: COFE) : ofe := (projT1 C).
   Global Instance COFE_cofe (C: COFE) : Cofe C := projT2 C.
-  Definition cofe (A: ofe SI) `{C: Cofe SI A} := existT A C.
+  Definition cofe (A: ofe) `{C: !Cofe A} := existT A C.
 End cofe.
 
 Definition proj_id {SI} {A B : COFE SI} (Heq : A = B) : projCOFE _ A = projCOFE _ B.
 Proof. by rewrite Heq. Qed.
 
 (* non-expansive maps commute with bounded limits only in a restricted way *)
-Lemma bounded_ne_bcompl {SI : indexT} {A B : ofe SI} {Hc : Cofe A} {Hb : Cofe B} (f : A -n> B):
+Lemma bounded_ne_bcompl `{SI : indexT} {A B : ofe} {Hc : Cofe A} {Hb : Cofe B} (f : A -n> B):
   ∀ β (c : bchain _ β) Hβ γ (Hγ : γ ≺ β), f (bcompl Hβ c) ≡{γ}≡ bcompl Hβ (bchain_map f c).
 Proof.
   intros β c Hβ γ Hγ.
@@ -27,8 +27,8 @@ Proof.
   - rewrite conv_bcompl /bchain_map. cbn. reflexivity.
 Qed.
 
-Record solution {SI} (F : oFunctor SI) := Solution {
-  solution_car :> ofe SI;
+Record solution `{SI: indexT} (F : oFunctor) := Solution {
+  solution_car :> ofe;
   solution_cofe : Cofe solution_car;
   solution_unfold : solution_car -n> F solution_car;
   solution_fold : F solution_car -n> solution_car;
@@ -38,18 +38,18 @@ Record solution {SI} (F : oFunctor SI) := Solution {
 
 Arguments solution_unfold {_} _.
 Arguments solution_fold {_} _.
-Existing Instance solution_cofe.
+Global Existing Instance solution_cofe.
 
 Module solver. Section solver.
-Context (SI : indexT) (F : oFunctor SI) `{Fcontr : oFunctorContractive SI F}.
-Context `{Fcofe : ∀ (T1 T2 : ofe SI), Cofe (oFunctor_car F T1 T2)}.
-Context `{Ftrunc : ∀ (T1 T2 : ofe SI), Truncatable (oFunctor_car F T1 T2)}.
-Context `{Funique : ∀ (T1 T2 : ofe SI), BcomplUniqueLim (oFunctor_car F T1 T2)}.
+Context `{SI : indexT} (F : oFunctor) `{Fcontr : !oFunctorContractive F}.
+Context `{Fcofe : !∀ (T1 T2 : ofe), Cofe (oFunctor_car F T1 T2)}.
+Context `{Ftrunc : !∀ (T1 T2 : ofe), Truncatable (oFunctor_car F T1 T2)}.
+Context `{Funique : !∀ (T1 T2 : ofe), BcomplUniqueLim (oFunctor_car F T1 T2)}.
 Notation map := (oFunctor_map F).
-Context (inh_Funit : F (unitO SI)).
+Context (inh_Funit : F (unitO)).
 
 (* a version of the functor which directly integrates the Cofe instance *)
-Definition G (A: ofe SI): COFE SI := cofe SI (F A).
+Definition G (A: ofe): COFE SI := cofe SI (F A).
 
 (** We are using proof irrelevance very much.
   Currently, that doesn't matter much, however, as we need PE for a different reason anyways.
@@ -60,14 +60,14 @@ Import ProofIrrelevance.
 Local Instance all_ProofIrrel (A : Prop) : ProofIrrel A.
 Proof. intros a b. apply proof_irrelevance. Qed.
 
-Lemma map_compose {A1 A2 A3 B1 B2 B3 : ofe SI}
+Lemma map_compose {A1 A2 A3 B1 B2 B3 : ofe}
   (f : A2 -n> A1) (g : A3 -n> A2) (f' : B1 -n> B2) (g' : B2 -n> B3) :
   map (g, g') ◎ map (f, f') ≡ map (f ◎ g, g' ◎ f').
 Proof. intros x. cbn. by setoid_rewrite <- oFunctor_map_compose. Qed.
 
 (* Specialized version so that for dist (in principle, the previous lemma can be used,
   but this one is cheaper for rewriting due to TC inference *)
-Lemma map_compose_dist {A1 A2 A3 B1 B2 B3 : ofe SI}
+Lemma map_compose_dist {A1 A2 A3 B1 B2 B3 : ofe}
   (f : A2 -n> A1) (g : A3 -n> A2) (f' : B1 -n> B2) (g' : B2 -n> B3) α:
   map (g, g') ◎ map (f, f') ≡{α}≡ map (f ◎ g, g' ◎ f').
 Proof. apply equiv_dist, map_compose. Qed.
@@ -89,9 +89,9 @@ Ltac map_compose_tac :=
 Instance map_proper A1 A2 B1 B2: Proper (equiv ==> equiv) (@oFunctor_map _ F A1 A2 B1 B2).
 Proof using Fcontr. by intros ?? ->. Qed.
 
-Instance ccompose_proper (A B C : ofe SI) : Proper (equiv ==> equiv ==> equiv) (@ccompose _ A B C).
+Instance ccompose_proper (A B C : ofe) : Proper (equiv ==> equiv ==> equiv) (@ccompose _ A B C).
 Proof. apply ne_proper_2. apply _. Qed.
-Instance ccompose_proper' (A B C : ofe SI) n : Proper (dist n ==> dist n ==> dist n) (@ccompose _ A B C).
+Instance ccompose_proper' (A B C : ofe) n : Proper (dist n ==> dist n ==> dist n) (@ccompose _ A B C).
 Proof. apply _. Qed.
 
 
@@ -125,7 +125,7 @@ Ltac merge_truncs :=
 
 (** a typeclass for registering equalities between OFEs, used for the transport infrastructure *)
 (* most of the times, we give instances explicitly (as transitivity and symmetry would make life hard for TC inference), but having it as a typeclass is still sensible for a few uses *)
-Class ofe_eq (X Y : ofe SI)  := ofe_equal : X = Y.
+Class ofe_eq (X Y : ofe)  := ofe_equal : X = Y.
 Hint Mode ofe_eq + + : typeclass_instances.
 Arguments ofe_eq : simpl never.
 
@@ -138,7 +138,7 @@ Lemma ofe_eq_symm {X Y} (H : ofe_eq X Y) : ofe_eq Y X.
 Proof. intros. by rewrite H. Qed.
 Lemma ofe_eq_trans {X Y Z} (H1 : ofe_eq X Y) (H2 : ofe_eq Y Z) : ofe_eq X Z.
 Proof. intros. by rewrite H1 H2. Qed.
-Lemma ofe_eq_funct {X Y : ofe SI} {α α'} (Heq : α = α') (H : ofe_eq X Y) :
+Lemma ofe_eq_funct {X Y : ofe} {α α'} (Heq : α = α') (H : ofe_eq X Y) :
   ofe_eq ([G X]_{α}) ([G Y]_{α'}).
 Proof. by rewrite H Heq. Qed.
 
@@ -146,7 +146,7 @@ Proof. by rewrite H Heq. Qed.
 Hint Resolve ofe_eq_funct : ofe_eq.
 
 
-Program Definition transport_id (X Y : ofe SI) {H : ofe_eq X Y} : X -n> Y := λne x, _ .
+Program Definition transport_id (X Y : ofe) {H : ofe_eq X Y} : X -n> Y := λne x, _ .
 Next Obligation. intros X Y Heq x. rewrite <- Heq. exact x. Defined.
 Next Obligation. intros. intros x y H1. destruct H. apply H1. Defined.
 Arguments transport_id : simpl never.
@@ -155,22 +155,22 @@ Arguments transport_id : simpl never.
   the category of OFEs with transport_id arrows is thin if assuming proof irrelevance. Thus checking if
   any two transports are equal reduces to type-checking.
 *)
-Lemma transport_id_compose (X Y Z : ofe SI) {Heq1 : ofe_eq X Y} {Heq2 : ofe_eq Y Z} :
+Lemma transport_id_compose (X Y Z : ofe) {Heq1 : ofe_eq X Y} {Heq2 : ofe_eq Y Z} :
   transport_id Y Z  ◎ transport_id X Y ≡ @transport_id X Z (ofe_eq_trans Heq1 Heq2).
 Proof.
   intros x; cbn. destruct Heq1, Heq2.
   by rewrite (proof_irrel (ofe_eq_trans eq_refl eq_refl) eq_refl ).
 Qed.
 
-Lemma transport_id_identity (X : ofe SI) {Heq : ofe_eq X X} : @transport_id X X Heq ≡ cid.
+Lemma transport_id_identity (X : ofe) {Heq : ofe_eq X X} : @transport_id X X Heq ≡ cid.
 Proof. intros x; cbn. by rewrite (proof_irrel Heq eq_refl). Qed.
 
-Lemma transport_id_pi (X Y : ofe SI) {Heq1 : ofe_eq X Y} {Heq2 : ofe_eq X Y}:
+Lemma transport_id_pi (X Y : ofe) {Heq1 : ofe_eq X Y} {Heq2 : ofe_eq X Y}:
   @transport_id X Y Heq1 ≡ @transport_id X Y Heq2.
 Proof. by rewrite (proof_irrel Heq1 Heq2). Qed.
 
 (* commutation of transports with truncation/expansion *)
-Lemma transport_id_truncate (Y Z : ofe SI) γ γ' (Heq : γ = γ') I:
+Lemma transport_id_truncate (Y Z : ofe) γ γ' (Heq : γ = γ') I:
   @transport_id ([G Z]_{γ}) ([G Y]_{γ'}) (ofe_eq_funct Heq I) ◎ ofe_trunc_truncate γ
   ≡ ofe_trunc_truncate γ' ◎ map (@transport_id Y Z (ofe_eq_symm I), transport_id Z Y).
 Proof using Fcontr.
@@ -178,7 +178,7 @@ Proof using Fcontr.
   intros x; cbn. by rewrite oFunctor_map_id.
 Qed.
 
-Lemma transport_id_truncate_symm (Y Z : ofe SI) γ γ' (Heq : γ = γ') (I : ofe_eq Y Z):
+Lemma transport_id_truncate_symm (Y Z : ofe) γ γ' (Heq : γ = γ') (I : ofe_eq Y Z):
   @transport_id ([G Z]_{γ}) ([G Y]_{γ'}) (ofe_eq_funct Heq (ofe_eq_symm I)) ◎ ofe_trunc_truncate γ
   ≡ ofe_trunc_truncate γ' ◎ map (@transport_id Y Z I, @transport_id Z Y (ofe_eq_symm I)).
 Proof using Fcontr.
@@ -186,7 +186,7 @@ Proof using Fcontr.
   intros x; cbn. by rewrite oFunctor_map_id.
 Qed.
 
-Lemma transport_id_truncate' (Y Z : ofe SI) γ γ' (Heq : γ = γ') I0 I1 I2:
+Lemma transport_id_truncate' (Y Z : ofe) γ γ' (Heq : γ = γ') I0 I1 I2:
   @transport_id ([G Z]_{γ}) ([G Y]_{γ'}) I0 ◎ ofe_trunc_truncate γ
   ≡ ofe_trunc_truncate γ' ◎ map (@transport_id Y Z I1, @transport_id Z Y I2).
 Proof using Fcontr.
@@ -195,7 +195,7 @@ Proof using Fcontr.
   subst. apply transport_id_truncate.
 Qed.
 
-Lemma transport_id_expand (Y Z : ofe SI) γ γ' (Heq : γ' = γ) I:
+Lemma transport_id_expand (Y Z : ofe) γ γ' (Heq : γ' = γ) I:
   map(@transport_id Y Z (ofe_eq_symm I), transport_id Z Y) ◎ ofe_trunc_expand γ'
   ≡ ofe_trunc_expand γ ◎ @transport_id ([G Z]_{γ'}) ([G Y]_{γ}) (ofe_eq_funct Heq I).
 Proof using Fcontr.
@@ -203,7 +203,7 @@ Proof using Fcontr.
   intros x; cbn. by rewrite oFunctor_map_id.
 Qed.
 
-Lemma transport_id_expand_symm (Y Z : ofe SI) γ γ' (Heq : γ' = γ) (I : ofe_eq Y Z):
+Lemma transport_id_expand_symm (Y Z : ofe) γ γ' (Heq : γ' = γ) (I : ofe_eq Y Z):
   map(@transport_id Y Z I, @transport_id Z Y (ofe_eq_symm I)) ◎ ofe_trunc_expand γ'
   ≡ ofe_trunc_expand γ ◎ @transport_id ([G Z]_{γ'}) ([G Y]_{γ}) (ofe_eq_funct Heq (ofe_eq_symm I)).
 Proof using Fcontr.
@@ -211,7 +211,7 @@ Proof using Fcontr.
   intros x; cbn. by rewrite oFunctor_map_id.
 Qed.
 
-Lemma transport_id_expand' (Y Z : ofe SI) γ γ' (Heq : γ' = γ) I0 I1 I2:
+Lemma transport_id_expand' (Y Z : ofe) γ γ' (Heq : γ' = γ) I0 I1 I2:
   map(@transport_id Y Z I1, @transport_id Z Y I2) ◎ ofe_trunc_expand γ'
   ≡ ofe_trunc_expand γ ◎ @transport_id ([G Z]_{γ'}) ([G Y]_{γ}) I0.
 Proof using Fcontr.
@@ -367,8 +367,8 @@ Ltac clear_transports := compose_transports; clear_id_transports; cbn -[trunc_ma
 
 
 (* shortcut definition for the often-used fold/unfold pattern *)
-Definition unfold_transport {Y Z: ofe SI} (Heq : ofe_eq Y Z) := transport_id Y Z.
-Definition fold_transport {Y Z : ofe SI} (Heq : ofe_eq Y Z) := @transport_id Z Y (ofe_eq_symm Heq).
+Definition unfold_transport {Y Z: ofe} (Heq : ofe_eq Y Z) := transport_id Y Z.
+Definition fold_transport {Y Z : ofe} (Heq : ofe_eq Y Z) := @transport_id Z Y (ofe_eq_symm Heq).
 
 (** casts between OFEs commute with bcompl *)
 (*the COFEs really need to be equal so that the limits are also equal *)
@@ -384,7 +384,7 @@ Qed.
 (** A record for the inductive hypothesis.
   Parameterised by a predicate P (instead of an ordinal β and specialising to the predicate ⪯ β) as we have different instantiations (with ≺ β and True) for the two limit cases.
 *)
-Record is_bounded_approx {P : SI -> Prop} {X : ∀ α, P α → COFE SI}
+Record is_bounded_approx {P : index -> Prop} {X : ∀ α, P α → COFE SI}
   {e : ∀ α₁ α₂ (Hα₁ : P α₁) (Hα₂ : P α₂), α₁ ≺ α₂ → X α₁ Hα₁ -n> X α₂ Hα₂}
   {p : ∀ α₁ α₂ (Hα₁ : P α₁) (Hα₂ : P α₂), α₁ ≺ α₂ → X α₂ Hα₂ -n> X α₁ Hα₁}
   {ϕ : ∀ α (Hα : P α), X α Hα -n> [G (X α Hα)]_{succ α}}
@@ -431,7 +431,7 @@ Record is_bounded_approx {P : SI -> Prop} {X : ∀ α, P α → COFE SI}
   }.
 Arguments is_bounded_approx {_} _ _ _ _ _.
 
-Record bounded_approx {P : SI → Prop} := mk_bounded_approx
+Record bounded_approx {P : index → Prop} := mk_bounded_approx
   {
     bounded_approx_X : ∀ α, P α → COFE SI;
     bounded_approx_e : ∀ α₁ α₂ (Hα₁ : P α₁) (Hα₂ : P α₂), α₁ ≺ α₂ → bounded_approx_X α₁ Hα₁ -n> bounded_approx_X α₂ Hα₂;
@@ -463,7 +463,7 @@ Arguments bounded_approx _ : clear implicits.
   We implement this by requiring actual Leibniz equality between the OFEs and wrapping this equality in fold_transport, unfold_transport for easier handling.
   That way, we can use the type cast like isomorphisms (without nasty eq_rect stuff), but can still prove properties using the information that the transports are just typecasts.
 *)
-Inductive approx_agree {P0 P1 : SI → Prop} {A0 : bounded_approx P0} {A1 : bounded_approx P1} : Type :=
+Inductive approx_agree {P0 P1 : index → Prop} {A0 : bounded_approx P0} {A1 : bounded_approx P1} : Type :=
   {
     agree_eq : ∀ γ (H0 : P0 γ) (H1 : P1 γ), projCOFE _ (bounded_approx_X A0 γ H0) = projCOFE _ (bounded_approx_X A1 γ H1);
 
@@ -524,7 +524,7 @@ Qed.
    thus A0 and A2 can only agree on P0 ∧ P1 ∧ P2.
   This is captured by the requirement P0 → P2 → P1
 *)
-Lemma approx_agree_transitive (P0 P1 P2 : SI → Prop) A0 A1 A2: (∀ γ, P0 γ → P2 γ → P1 γ)
+Lemma approx_agree_transitive (P0 P1 P2 : index → Prop) A0 A1 A2: (∀ γ, P0 γ → P2 γ → P1 γ)
   → @approx_agree P0 P1 A0 A1 → @approx_agree P1 P2 A1 A2 → @approx_agree P0 P2 A0 A2.
 Proof with (intros x; cbn; unfold fold_transport, unfold_transport; clear_transports; equalise_pi).
   intros Hs Hag0 Hag1.
@@ -545,7 +545,7 @@ Proof with (intros x; cbn; unfold fold_transport, unfold_transport; clear_transp
     rewrite (agree_ψ_nat Hag1 _ _ _)...
 Qed.
 
-Lemma bounded_approx_eq {P : SI → Prop} (A : bounded_approx P) α Hα Hsα :
+Lemma bounded_approx_eq {P : index → Prop} (A : bounded_approx P) α Hα Hsα :
   projCOFE _ (bounded_approx_X A (succ α) Hsα) = [G (bounded_approx_X A α Hα)]_{succ α}.
 Proof. eapply approx_eq, A. Defined.
 
@@ -556,7 +556,7 @@ Fact agree_transport_functorial P0 P1 P2 (A0 : bounded_approx P0) (A1 : bounded_
 Proof. rewrite transport_id_compose. apply transport_id_pi. Qed.
 
 (** * One-step Extensions *)
-Record extension {γ : SI} {A : bounded_approx (λ γ', γ' ≺ γ)} :=
+Record extension {γ : index} {A : bounded_approx (λ γ', γ' ≺ γ)} :=
   {
     ext_Xγ : COFE SI;
     ext_eγ : ∀ γ0 (Hγ0 : γ0 ≺ γ), bounded_approx_X A γ0 Hγ0 -n> ext_Xγ;
@@ -660,7 +660,7 @@ Proof with (unfold fold_transport, unfold_transport; intros x; cbn; clear_transp
 Qed.
 
 (** * Base case *)
-Lemma zero_e_p (α₁ α₂ : SI) : α₁ ⪯ zero → α₂ ⪯ zero → α₁ ≺ α₂ → False.
+Lemma zero_e_p (α₁ α₂ : index) : α₁ ⪯ zero → α₂ ⪯ zero → α₁ ≺ α₂ → False.
 Proof.
   intros Hα₁ Hα₂ Hlt.
   destruct Hα₁ as [ -> | H%index_lt_zero_is_normal]; [ | easy].
@@ -673,7 +673,7 @@ Qed.
 Notation "'[' f ']^{' a '}_{' b '}'" := (trunc_map a b f).
 
 Section base_case.
-  Let X0' : COFE SI := cofe _ (unitO SI).
+  Let X0' : COFE SI := cofe _ (unitO).
   Let X0 : COFE SI := cofe _ ([ G X0']_{zero}).
 
   Let ϕ0' : X0' -n> X0 := λne _, ⌊inh_Funit⌋_{zero}.
@@ -741,7 +741,7 @@ Ltac autorew :=
 (** * Successor case *)
 
 Section succ_case_X.
-  Context (β : SI).
+  Context (β : index).
   Context (IH : @bounded_approx (λ γ, γ ≺ succ β)).
 
   Let X := bounded_approx_X IH.
@@ -818,7 +818,7 @@ Section succ_case_X.
   Definition sψ' : [G sX']_{succ (succ β)} -n> sX' :=
     trunc_map (succ (succ β)) (succ β) (map (ϕ β β_refl, ψ β β_refl)).
 
-  Lemma dist_later_succ (A : ofe SI) (x y : A) γ : dist_later (succ γ) x y ↔ x ≡{γ}≡ y.
+  Lemma dist_later_succ (A : ofe) (x y : A) γ : dist_later (succ γ) x y ↔ x ≡{γ}≡ y.
   Proof.
     split; intros Hd.
     - eauto with index.
@@ -1067,12 +1067,12 @@ Qed.
 (* this is needed for the limit case construction *)
 Section inverse_limit.
   (* for every index γ satisfying P, we have an OFE X_γ *)
-  Context {P : SI → Prop}.
-  Context (X : ∀ β, P β → ofe SI).
+  Context {P : index → Prop}.
+  Context (X : ∀ β, P β → ofe).
 
-  Definition btowerO : ofe SI := discrete_funO (λ β: SI, discrete_funO (λ (H : P β), X β H)).
+  Definition btowerO : ofe := discrete_funO (λ β: index, discrete_funO (λ (H : P β), X β H)).
 
-  Program Definition proj_tower (β :SI) (Hβ : P β) := λne (t : btowerO), t β Hβ.
+  Program Definition proj_tower (β :index) (Hβ : P β) := λne (t : btowerO), t β Hβ.
   Next Obligation.
     intros β Hβ α' x y Heq. unfold btowerO in *. apply Heq.
   Qed.
@@ -1123,7 +1123,7 @@ Section inv_lim_extensional.
 
   Import Coq.Logic.PropExtensionality.
   Import Coq.Logic.FunctionalExtensionality.
-  Lemma sigO_extensional (A : ofe SI) (P1 P2 : A → Prop) : (∀ x, P1 x ↔ P2 x) → sigO P1 = sigO P2.
+  Lemma sigO_extensional (A : ofe) (P1 P2 : A → Prop) : (∀ x, P1 x ↔ P2 x) → sigO P1 = sigO P2.
   Proof.
     intros Hext. unfold sigO.
     assert (P1 = P2).
@@ -1132,7 +1132,7 @@ Section inv_lim_extensional.
   Defined.
 
   Context
-    {P : SI → Prop} (X1 X2 : ∀ β, P β → ofe SI)
+    {P : index → Prop} (X1 X2 : ∀ β, P β → ofe)
     (p1 : ∀ γ γ' Hγ Hγ' (Hlt : γ ≺ γ'), X1 γ' Hγ' -n> X1 γ Hγ)
     (p2 : ∀ γ γ' Hγ Hγ' (Hlt : γ ≺ γ'), X2 γ' Hγ' -n> X2 γ Hγ)
     (Heq : ∀ γ Hγ, X1 γ Hγ = X2 γ Hγ).
@@ -1177,10 +1177,10 @@ Section inv_lim_extensional.
     set (e := y p1 Heq Hmorph). generalize e. clear e y.
     (* we need to prove that the two predicates we instantiate sigO with are the same *)
     assert ((λ f : btowerO X2,
-           ∀ (γ0 γ1 : SI) (Hγ0γ1 : γ0 ≺ γ1) (Hγ0 : P γ0) (Hγ1 : P γ1),
+           ∀ (γ0 γ1 : index) (Hγ0γ1 : γ0 ≺ γ1) (Hγ0 : P γ0) (Hγ1 : P γ1),
              p1 γ0 γ1 Hγ0 Hγ1 Hγ0γ1 (f γ1 Hγ1) ≡ f γ0 Hγ0)
             = (λ f : btowerO X2,
-           ∀ (γ0 γ1 : SI) (Hγ0γ1 : γ0 ≺ γ1) (Hγ0 : P γ0) (Hγ1 : P γ1),
+           ∀ (γ0 γ1 : index) (Hγ0γ1 : γ0 ≺ γ1) (Hγ0 : P γ0) (Hγ1 : P γ1),
              p2 γ0 γ1 Hγ0 Hγ1 Hγ0γ1 (f γ1 Hγ1) ≡ f γ0 Hγ0)).
     {
       apply functional_extensionality_dep; intros.
@@ -1213,17 +1213,17 @@ End inv_lim_extensional.
 Section limit_case.
   (* We assume an already merged approximation.
     Later on, when we combine the cases, we use the above merged_agree lemma + transitivity of approx_agree to show that the new approximation we define in the limit case agrees with the original, unmerged approximations*)
-  Context (β : limit_idx SI) (IH : @bounded_approx (λ γ, γ ≺ β)).
+  Context (β : limit_idx) (IH : @bounded_approx (λ γ, γ ≺ β)).
 
   Let X α (H: α ≺ β) := bounded_approx_X IH α H.
   Let e := bounded_approx_e IH.
   Let p := bounded_approx_p IH.
 
   (* we apply the functor F to every Xα and then truncate at α -- thus FX α is equal to X (α + 1) *)
-  Definition FX : ∀ α, α ≺ β → ofe SI := λ α Hα, [G (X α Hα)]_{succ α}.
+  Definition FX : ∀ α, α ≺ β → ofe := λ α Hα, [G (X α Hα)]_{succ α}.
   Instance FX_cofe α Hα : Cofe (FX α Hα) := _.
 
-  Instance lX_truncated (α: SI) Hlt : OfeTruncated (X α Hlt) α.
+  Instance lX_truncated (α: index) Hlt : OfeTruncated (X α Hlt) α.
   Proof. eapply approx_X_truncated, IH. Qed.
   Instance Xeq α Hlt Hslt : ofe_eq (X (succ α) Hslt) (FX α Hlt).
   Proof. eapply approx_eq, IH. Defined.
@@ -1611,7 +1611,7 @@ Section limit_case.
       destruct x as [x Hx], y as [y Hy].
       cbn. specialize (Heq γ Hγ).
       cbn in Heq. rewrite ofe_truncated_dist. rewrite index_min_r.
-      2: { transitivity (β : SI); eauto with index. }
+      2: { transitivity (β : index); eauto with index. }
       eapply dist_mono; [apply Heq | by apply limit_index_is_limit, Hγ].
     - intros Heq γ Hγ. eapply dist_mono'; first apply (Heq γ). auto.
   Qed.
@@ -1658,7 +1658,7 @@ Section limit_case.
         reflexivity.
       }
       setoid_rewrite (ofe_trunc_truncate_expand_id _) at 1. cbn.
-      change x with ((λ (γ : SI) (Hγ : γ ≺ β), x) γ' Hγ') at 1.
+      change x with ((λ (γ : index) (Hγ : γ ≺ β), x) γ' Hγ') at 1.
       reflexivity.
     }
     rewrite bcompl_bchain_const; auto.
@@ -1791,7 +1791,7 @@ Section limit_case.
 End limit_case.
 
 Section limit_coherent.
-  Context (β : limit_idx SI) (A0 A1 : bounded_approx (λ γ, γ ≺ β)) (H : approx_agree A0 A1).
+  Context (β : limit_idx) (A0 A1 : bounded_approx (λ γ, γ ≺ β)) (H : approx_agree A0 A1).
 
   Lemma FX_eq γ Hγ: FX β A0 γ Hγ = FX β A1 γ Hγ.
   Proof using H. unfold FX. by rewrite (agree_eq H _ _ _). Qed.
@@ -2248,7 +2248,7 @@ End final_limit.
 
 (** * Mergin an extension to an approximation *)
 Section merge_extension.
-  Context (β: SI).
+  Context (β: index).
   Context (A : bounded_approx (λ γ, γ ≺ β)).
   Context (E : extension A).
 
@@ -2824,7 +2824,7 @@ Section merge_extension.
 
   Lemma extended_approx_agree : approx_agree A extended_approx.
   Proof.
-    assert (Heq : ∀ (γ : SI) (H0 : γ ≺ β) (H1 : γ ⪯ β), bounded_approx_X A γ H0 = bounded_approx_X extended_approx γ H1).
+    assert (Heq : ∀ (γ : index) (H0 : γ ≺ β) (H1 : γ ⪯ β), bounded_approx_X A γ H0 = bounded_approx_X extended_approx γ H1).
     { intros. cbn. unfold X'. destruct le_lt_eq_dec as [H2 | H2]; first by pi_clear.
       subst; index_contra_solve.
     }
@@ -2854,7 +2854,7 @@ Lemma extension_coherent β (A0 A1 : bounded_approx (λ γ, γ ≺ β))
   → approx_agree (extended_approx β A0 E0 succ_or_limit) (extended_approx β A1 E1 succ_or_limit).
 Proof with (unfold fold_transport, unfold_transport; intros x; cbn; clear_transports; equalise_pi).
   intros H Hag.
-  unshelve refine ( let X_eq : ∀ (γ : SI) (H0 H1 : γ ⪯ β), projCOFE _ (X' β A0 E0 γ H0) = projCOFE _ (X' β A1 E1 γ H1) := _  in _).
+  unshelve refine ( let X_eq : ∀ (γ : index) (H0 H1 : γ ⪯ β), projCOFE _ (X' β A0 E0 γ H0) = projCOFE _ (X' β A1 E1 γ H1) := _  in _).
   { intros. unfold X'. pi_clear. destruct le_lt_eq_dec as [H2 | H2]; [apply H | apply Hag]. }
   exists X_eq.
   - intros.
@@ -2889,7 +2889,7 @@ Qed.
 (** * Proving that we can merge approximations in limit cases *)
 
 Section merge.
-  Context (P : SI → Prop).
+  Context (P : index → Prop).
   Context (IH : ∀ α, P α → bounded_approx (λ γ, γ ⪯ α)).
   Context (IH_agree : ∀ α0 α1 Hα0 Hα1, approx_agree (IH α0 Hα0) (IH α1 Hα1)).
 
@@ -3098,7 +3098,7 @@ Section merge.
 
   Lemma merged_agree γ Hγ: approx_agree (IH γ Hγ) merged_approx.
   Proof with (unfold fold_transport, unfold_transport; intros x; cbn; clear_transports; equalise_pi).
-    assert (X_eq : ∀ (γ0 : SI) (H0 : γ0 ⪯ γ) (H1 : P γ0), projCOFE _ (bounded_approx_X (IH γ Hγ) γ0 H0) = projCOFE _ (mX γ0 H1)).
+    assert (X_eq : ∀ (γ0 : index) (H0 : γ0 ⪯ γ) (H1 : P γ0), projCOFE _ (bounded_approx_X (IH γ Hγ) γ0 H0) = projCOFE _ (mX γ0 H1)).
     { intros. unfold mX. apply agree_eq, IH_agree.  }
     exists X_eq; intros; cbn.
     - rewrite (agree_bcompl_nat (IH_agree γ γ0 Hγ H1) _ _ _ _ _ _).
@@ -3112,14 +3112,14 @@ Section merge.
 End merge.
 
 (* we have to show that merging two coherent & agreeing chains of approximations results in two agreeing approximations *)
-Lemma merge_coherent_agree (P : SI → Prop) (IH1 IH2 : ∀ α, P α → bounded_approx (λ γ, γ ⪯ α))
+Lemma merge_coherent_agree (P : index → Prop) (IH1 IH2 : ∀ α, P α → bounded_approx (λ γ, γ ⪯ α))
   (H1 : ∀ α0 α1 Hα0 Hα1, approx_agree (IH1 α0 Hα0) (IH1 α1 Hα1))
   (H2 : ∀ α0 α1 Hα0 Hα1, approx_agree (IH2 α0 Hα0) (IH2 α1 Hα1)):
   (∀ α Hα, approx_agree (IH1 α Hα) (IH2 α Hα))
   → approx_agree (merged_approx P IH1 H1) (merged_approx P IH2 H2).
 Proof with (unfold fold_transport, unfold_transport; intros x; cbn; clear_transports; equalise_pi).
   intros IH_agree.
-  assert (X_eq : ∀ (γ : SI) (H0 H3 : P γ), projCOFE _ (mX P IH1 γ H0) = projCOFE _ (mX P IH2 γ H3)).
+  assert (X_eq : ∀ (γ : index) (H0 H3 : P γ), projCOFE _ (mX P IH1 γ H0) = projCOFE _ (mX P IH2 γ H3)).
   { intros. unfold mX. pi_clear. apply IH_agree. }
   exists X_eq; intros; cbn.
   - repeat pi_clear. rewrite (agree_bcompl_nat (IH_agree γ H3) _ _ _ _ _ _ ).

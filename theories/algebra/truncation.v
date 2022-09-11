@@ -5,14 +5,14 @@ Set Primitive Projections.
 
 
 (** different notions of limit uniqueness *)
-Class BcomplUniqueLim {SI : indexT} (A : ofe SI) `{Cofe SI A} :=
-  cofe_unique_lim (α : SI) Hα (c d : bchain A α) :
+Class BcomplUniqueLim `{SI : indexT} (A : ofe) `{!Cofe A} :=
+  cofe_unique_lim (α : index) Hα (c d : bchain A α) :
     (∀ β (Hβ : β ≺ α), c β Hβ ≡{β}≡ d β Hβ) → lbcompl Hα c ≡{α}≡ lbcompl Hα d.
 Global Hint Mode BcomplUniqueLim - ! ! : typeclass_instances.
 
 Section pi.
   Import ProofIrrelevance.
-  Lemma index_dec_limit_pi {SI : indexT} (α : SI) :
+  Lemma index_dec_limit_pi `{SI : indexT} (α : index) :
     ∀ (Hlim : index_is_limit α), index_dec_limit α = inr Hlim.
   Proof.
     intros Hlim. destruct index_dec_limit as [[β ->] | H].
@@ -20,7 +20,7 @@ Section pi.
     - by rewrite (proof_irrelevance _ H Hlim).
   Qed.
 
-  Lemma cofe_unique_bcompl {SI : indexT} (A : ofe SI) {Hc: Cofe A} {Hunique: BcomplUniqueLim A}:
+  Lemma cofe_unique_bcompl `{SI : indexT} (A : ofe) `{Hc: !Cofe A} {Hunique: BcomplUniqueLim A}:
     ∀ α Hα (c d : bchain A α), index_is_limit α →
       (∀ β (Hβ : β ≺ α), c β Hβ ≡{β}≡ d β Hβ) → bcompl Hα c ≡{α}≡ bcompl Hα d.
   Proof.
@@ -32,16 +32,16 @@ End pi.
 
 (** OFEs truncated at a stepindex α*)
 (* Equality at ordinals above α is fully determined by equality at α *)
-Class Truncated {SI : indexT} {A : ofe SI} (α : SI) (x : A) := truncated y β: α ⪯ β → x ≡{α}≡ y ↔ x ≡{β}≡ y.
+Class Truncated `{SI : indexT} {A : ofe} (α : index) (x : A) := truncated y β: α ⪯ β → x ≡{α}≡ y ↔ x ≡{β}≡ y.
 Global Arguments truncated {_ _} _ _ {_ } _ _ _.
 Global Hint Mode Truncated - + ! ! : typeclass_instances.
 Global Instance : Params (@Truncated) 2 := {}.
 
-Class OfeTruncated {SI : indexT} (A : ofe SI) (α : SI) := ofe_truncated_truncated (x : A) :> Truncated α x.
+Class OfeTruncated `{SI : indexT} (A : ofe) (α : index) := ofe_truncated_truncated (x : A) :> Truncated α x.
 Global Hint Mode OfeTruncated - + - : typeclass_instances.
 Global Arguments OfeTruncated {_} _ _.
 
-Lemma ofe_truncated_equiv {SI : indexT} (A : ofe SI) (α : SI) {H : OfeTruncated A α} :
+Lemma ofe_truncated_equiv `{SI : indexT} (A : ofe) (α : index) {H : OfeTruncated A α} :
   ∀ (x y : A), x ≡ y ↔ x ≡{α}≡ y.
 Proof.
   intros x y. rewrite equiv_dist. split.
@@ -51,7 +51,7 @@ Proof.
     + by eapply dist_mono'.
 Qed.
 
-Lemma ofe_truncated_dist {SI : indexT} (A : ofe SI) (α : SI) {H : OfeTruncated A α}:
+Lemma ofe_truncated_dist `{SI : indexT} (A : ofe) (α : index) `{H : !OfeTruncated A α}:
   ∀ (x y : A) β, x ≡{β}≡ y ↔ x ≡{index_min β α}≡ y.
 Proof.
   intros x y β. split; intros Heq.
@@ -60,13 +60,13 @@ Proof.
     by eapply H.
 Qed.
 
-Global Instance discrete_is_truncated {SI : indexT} (A : ofe SI) (α : SI) (H: OfeDiscrete A) : OfeTruncated A α.
+Global Instance discrete_is_truncated `{SI : indexT} (A : ofe) (α : index) `(H: !OfeDiscrete A) : OfeTruncated A α.
 Proof.
   intros x y β Hα. split; intros H0.
   all: apply equiv_dist, ofe_discrete_discrete; (eapply dist_mono'; [apply H0 | apply index_zero_minimum]).
 Qed.
 
-Global Instance ofe_mor_truncated {SI: indexT} {A B : ofe SI} α {H : OfeTruncated B α} : OfeTruncated (A -n> B) α.
+Global Instance ofe_mor_truncated `{SI: indexT} {A B : ofe} α `{H : !OfeTruncated B α} : OfeTruncated (A -n> B) α.
 Proof.
   intros f g β Hβ. split; intros Heq x.
   - apply ofe_truncated_truncated; auto.
@@ -76,19 +76,19 @@ Qed.
 (** Truncatable OFEs -- an OFE A is truncatable if, for every ordinal α, it admits a truncation [A]_{α} (again an OFE)
   and a bounded isomorphism (equality up to α) between A and [A]_{α}
 *)
-Definition boundedInverse {SI: indexT} {X1 X2: ofe SI} (f : X2 -n> X1) (g : X1 -n> X2) (α : SI) :=
+Definition boundedInverse `{SI: indexT} {X1 X2: ofe} (f : X2 -n> X1) (g : X1 -n> X2) (α : index) :=
   f ◎ g ≡{α}≡ cid ∧ g ◎ f ≡{α}≡ cid.
-Lemma boundedInverse_antimono {SI : indexT} {X1 X2 : ofe SI} (f : X2 -n> X1) (g : X1 -n> X2) (α β : SI) :
+Lemma boundedInverse_antimono `{SI : indexT} {X1 X2 : ofe} (f : X2 -n> X1) (g : X1 -n> X2) (α β : index) :
   α ⪯ β → boundedInverse f g β → boundedInverse f g α.
 Proof. intros Hle [H1 H2]. split; eapply dist_mono'; eauto. Qed.
 
-Class Truncatable {SI : indexT} (A : ofe SI):=
+Class Truncatable `{SI : indexT} (A : ofe):=
   {
-    ofe_trunc_car (α : SI) : ofe SI;
-    ofe_trunc_truncated (α : SI) : OfeTruncated (ofe_trunc_car α) α;
-    ofe_trunc_truncate (α : SI) : A -n> ofe_trunc_car α;
-    ofe_trunc_expand (α : SI) : ofe_trunc_car α -n> A;
-    ofe_trunc_inverse (α : SI) : boundedInverse (ofe_trunc_truncate α) (ofe_trunc_expand α) α;
+    ofe_trunc_car (α : index) : ofe;
+    ofe_trunc_truncated (α : index) : OfeTruncated (ofe_trunc_car α) α;
+    ofe_trunc_truncate (α : index) : A -n> ofe_trunc_car α;
+    ofe_trunc_expand (α : index) : ofe_trunc_car α -n> A;
+    ofe_trunc_inverse (α : index) : boundedInverse (ofe_trunc_truncate α) (ofe_trunc_expand α) α;
   }.
 Global Hint Mode Truncatable - - : typeclass_instances.
 Global Arguments ofe_trunc_car {_ _ _} _.
@@ -100,7 +100,7 @@ Notation "'⌊' a '⌋_{' α '}'" := (ofe_trunc_truncate α a) (format "'⌊' a 
 Notation "'⌈' a '⌉_{' α '}'" := (ofe_trunc_expand α a) (format "'⌈' a '⌉_{' α '}'").
 
 Section truncatable_props.
-  Context {SI : indexT} {A : ofe SI} {Htrunc : Truncatable A}.
+  Context `{SI : indexT} {A : ofe} `{Htrunc : !Truncatable A}.
   Lemma ofe_trunc_truncate_expand_id {α} :
     ofe_trunc_truncate α ◎ ofe_trunc_expand α ≡ cid.
   Proof. intros x. cbn. eapply ofe_truncated_equiv; first apply Htrunc. apply ofe_trunc_inverse. Qed.
@@ -108,11 +108,11 @@ Section truncatable_props.
   Lemma ofe_trunc_expand_truncate_id {α} : ofe_trunc_expand α ◎ ofe_trunc_truncate α ≡{α}≡ cid.
   Proof. apply ofe_trunc_inverse. Qed.
 
-  Global Instance Truncatable_truncated (α : SI) : OfeTruncated (ofe_trunc_car (A := A) α) α
+  Global Instance Truncatable_truncated (α : index) : OfeTruncated (ofe_trunc_car (A := A) α) α
     := (@ofe_trunc_truncated _ A _  α).
 
   Section truncatable_cofe.
-    Context (γ: SI) {Ha : Cofe A}.
+    Context (γ: index) {Ha : Cofe A}.
 
     Program Definition trunc_chain (c : chain ([A]_{γ})) : chain A :=
       mkchain _ A (λ α, ofe_trunc_expand γ (c α)) _.
@@ -155,17 +155,17 @@ Section truncatable_props.
 End truncatable_props.
 
 Section truncatable.
-  Context {SI : indexT} .
+  Context `{SI : indexT} .
 
-  Program Definition trunc_map  {A : ofe SI} {HtruncA : Truncatable A} {B : ofe SI} {HtruncB : Truncatable B}
-  (α β : SI) : (A -n> B) -n> ([A]_{α} -n> [B]_{β}) := λne f, ofe_trunc_truncate β ◎ f ◎ ofe_trunc_expand α.
+  Program Definition trunc_map  {A : ofe} {HtruncA : Truncatable A} {B : ofe} {HtruncB : Truncatable B}
+  (α β : index) : (A -n> B) -n> ([A]_{α} -n> [B]_{β}) := λne f, ofe_trunc_truncate β ◎ f ◎ ofe_trunc_expand α.
   Next Obligation.
     intros A HtrucA B HtruncB α β γ f g Heq.
     apply ccompose_ne; [ |  reflexivity ]. apply ccompose_ne; auto.
   Qed.
 
-  Context {A : ofe SI} {HtruncA : Truncatable A}.
-  Context {B : ofe SI} {HtruncB : Truncatable B}.
+  Context {A : ofe} {HtruncA : Truncatable A}.
+  Context {B : ofe} {HtruncB : Truncatable B}.
   Lemma trunc_map_inv (f : A -n> B) (g : B -n> A) α β:
     α ⪯ β → boundedInverse f g α → boundedInverse (trunc_map α β f) (trunc_map β α g) α.
   Proof.
@@ -183,7 +183,7 @@ Section truncatable.
       apply equiv_dist, ofe_trunc_truncate_expand_id.
   Qed.
 
-  Context {C : ofe SI} {HtruncC : Truncatable C}.
+  Context {C : ofe} {HtruncC : Truncatable C}.
   Lemma trunc_map_compose (f : A -n> B) (g : B -n> C) α β γ :
     trunc_map α β (g ◎ f) ≡{γ}≡ trunc_map γ β g ◎ trunc_map α γ f.
   Proof.
@@ -196,7 +196,7 @@ End truncatable.
 
 
 (** a more elementary property than Truncatable. Essentially, proto_trunc α chooses a unique representative of each equivalence class of ≡{α}≡ *)
-Class ProtoTruncatable {SI : indexT} (A : ofe SI) :=
+Class ProtoTruncatable `{SI : indexT} (A : ofe) :=
   {
     proto_trunc α : A -n> A;
     proto_compat α (x y : A) : x ≡{α}≡ y → proto_trunc α x ≡ proto_trunc α y;
@@ -205,7 +205,7 @@ Class ProtoTruncatable {SI : indexT} (A : ofe SI) :=
 Global Hint Mode ProtoTruncatable - + : typeclass_instances.
 
 Section proto.
-  Context {SI : indexT} (A : ofe SI) {Hcofe : Cofe A} {Htrunc : ProtoTruncatable A}.
+  Context `{SI : indexT} (A : ofe) `{Hcofe : !Cofe A} {Htrunc : ProtoTruncatable A}.
 
   (** basic facts about proto truncatability *)
   Fact proto_trunc_idempotent (a : A) α: proto_trunc α (proto_trunc α a) ≡ proto_trunc α a.
@@ -221,25 +221,25 @@ End proto.
 
 (** We show that ProtoTruncatable implies Truncatable *)
 (* For defining the truncated types, we wrap the OFE A in an inductive in order to not confuse typeclass inference when defining a different equivalence on it. *)
-Inductive trunc_truncation {SI : indexT} (A : ofe SI) (β : SI) := trunc_truncationC (a : A).
+Inductive trunc_truncation `{SI : indexT} (A : ofe) (β : index) := trunc_truncationC (a : A).
 Section proto_truncatable.
-  Context {SI : indexT} (A : ofe SI) (Htrunc : ProtoTruncatable A).
+  Context `{SI : indexT} (A : ofe) (Htrunc : ProtoTruncatable A).
 
   Section trunc_def.
-    Context (α : SI).
+    Context (α : index).
     Local Definition truncembed (a : trunc_truncation A α): A := match a with trunc_truncationC _ _ a => a end.
 
     Instance trunc_truncation_equiv : Equiv (trunc_truncation A α) := λ a b, proto_trunc α (truncembed a) ≡ proto_trunc α (truncembed b).
     Lemma trunc_truncation_equiv_unfold a b : a ≡ b ↔ proto_trunc α (truncembed a) ≡ proto_trunc α (truncembed b).
     Proof. tauto. Qed.
 
-    Instance trunc_truncation_dist : Dist SI (trunc_truncation A α) :=
+    Instance trunc_truncation_dist : Dist (trunc_truncation A α) :=
       λ n a b, proto_trunc α (truncembed a) ≡{n}≡ proto_trunc α (truncembed b).
 
     Lemma trunc_truncation_dist_unfold a b n : a ≡{n}≡ b ↔ proto_trunc α (truncembed a) ≡{n}≡ proto_trunc α (truncembed b).
     Proof. tauto. Qed.
 
-    Definition trunc_truncation_ofe_mixin : OfeMixin SI (trunc_truncation A α).
+    Definition trunc_truncation_ofe_mixin : OfeMixin (trunc_truncation A α).
     Proof.
       split.
       - setoid_rewrite trunc_truncation_dist_unfold. setoid_rewrite trunc_truncation_equiv_unfold.
@@ -250,7 +250,7 @@ Section proto_truncatable.
         intros a b c -> ->. auto.
       - setoid_rewrite trunc_truncation_dist_unfold. intros α' β x y Heq Hlt. eauto using dist_mono.
     Qed.
-    Canonical Structure tcar_truncO : ofe SI := Ofe (trunc_truncation A α) trunc_truncation_ofe_mixin.
+    Canonical Structure tcar_truncO : ofe := Ofe (trunc_truncation A α) trunc_truncation_ofe_mixin.
 
     Program Definition tcar_trunc : A -n> tcar_truncO := λne a, trunc_truncationC A α a.
     Next Obligation.
@@ -296,8 +296,8 @@ Require Coq.Logic.Classical.
 Require Coq.Logic.FunctionalExtensionality.
 Require Coq.Logic.PropExtensionality.
 Section classical_truncation.
-  Context {SI : indexT}.
-  Context (A : ofe SI).
+  Context `{SI : indexT}.
+  Context (A : ofe).
 
   (** First we show that we can get a "truncation" operation for arbitrary decidable equivalence relations.
     We later instantiate this with dist and dist_later *)
@@ -366,7 +366,7 @@ Section classical_truncation.
   Lemma dec_dist α (x y : A) : { x ≡{α}≡ y} + {~ x ≡{α}≡ y}.
   Proof. apply binary_choice. apply classic. Qed.
 
-  Program Definition trunc (α : SI) := λne a, choose_witness (dist α) (dec_dist α) a.
+  Program Definition trunc (α : index) := λne a, choose_witness (dist α) (dec_dist α) a.
   Next Obligation.
     intros α β a b Heq.
     destruct (index_le_lt_dec α β) as [H1 | H1].
@@ -389,7 +389,7 @@ Section classical_truncation.
   Lemma dec_dist_later α (x y : A) : { dist_later α x y} + {¬ dist_later α x y}.
   Proof. apply binary_choice. apply classic. Qed.
 
-  Program Definition trunc_dist_later (α : SI) := λne a, choose_witness (dist_later α) (dec_dist_later α) a.
+  Program Definition trunc_dist_later (α : index) := λne a, choose_witness (dist_later α) (dec_dist_later α) a.
   Next Obligation.
     intros α β a b Heq.
     destruct (index_le_lt_dec α β) as [H1 | H1].

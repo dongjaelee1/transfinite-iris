@@ -14,89 +14,88 @@ Structure IndexMixin {A} {R: A → A → Prop} {zero: A} {succ: A → A} :=
   }.
 Arguments IndexMixin : clear implicits.
 
-Structure indexT :=
+Class indexT :=
   IndexT {
-    index_car :> Type;
-    index_lt : relation index_car;
-    index_zero : index_car;
-    index_succ : index_car → index_car;
-    index_mixin :> IndexMixin index_car index_lt index_zero index_succ;
+    index : Type;
+    index_lt : relation index;
+    index_zero : index;
+    index_succ : index → index;
+    index_mixin : IndexMixin index index_lt index_zero index_succ;
   }.
 
-Notation "(≺)" := (index_lt _).
-Notation "(≻)" := (flip (index_lt _)).
+Notation "(≺)" := (index_lt).
+Notation "(≻)" := (flip (index_lt)).
 
-Notation zero := (index_zero _).
-Notation succ α := (index_succ _ α).
-Notation "α ≺ β" := (index_lt _ α β) (at level 80).
+Notation zero := (index_zero).
+Notation succ α := (index_succ α).
+Notation "α ≺ β" := (index_lt α β) (at level 80).
 
-Polymorphic Definition index_le (SI : indexT) : relation SI := rc (index_lt SI).
-Notation "(⪯)" := (index_le _).
-Notation "α ⪯ β" := (index_le _ α β) (at level 80).
+Polymorphic Definition index_le `{SI : indexT} : relation index := rc (index_lt).
+Notation "(⪯)" := (index_le).
+Notation "α ⪯ β" := (index_le α β) (at level 80).
 
-Instance index_le_refl {SI : indexT} : Reflexive (@index_le SI) := _.
-Instance index_lt_le_subrel {SI : indexT}: subrelation (@index_lt SI) (@index_le SI) := _.
-Lemma index_le_refl_auto {SI : indexT} (α β : SI) (H : α = β): α ⪯ β.
+Global Instance index_le_refl `{SI : indexT} : Reflexive (index_le) := _.
+Global Instance index_lt_le_subrel `{SI : indexT}: subrelation (index_lt) (index_le) := _.
+Lemma index_le_refl_auto `{SI : indexT} (α β : index) (H : α = β): α ⪯ β.
 Proof. rewrite H. apply index_le_refl. Qed.
 Global Hint Extern 1 (?a ⪯ ?a) => apply index_le_refl : core.
 Global Hint Extern 2 (?a ⪯ ?b) => apply index_le_refl_auto : core.
 Global Hint Extern 1 (?a ⪯ ?b) => apply index_lt_le_subrel : core.
 
-Lemma index_le_eq_or_lt {SI : indexT} (α β : SI) : α ⪯ β → α = β ∨ α ≺ β.
+Lemma index_le_eq_or_lt `{SI : indexT} (α β : index) : α ⪯ β → α = β ∨ α ≺ β.
 Proof. intros [H | H]; auto. Qed.
 
 Section index_laws.
-  Context {SI : indexT}.
-  Global Instance index_lt_trans : Transitive (index_lt SI).
-  Proof. eapply index_mixin_lt_trans, SI. Qed.
-  Lemma index_lt_wf : wf (index_lt SI).
-  Proof. eapply index_mixin_lt_wf, SI. Qed.
-  Lemma index_lt_eq_lt_dec (α β : SI) : (α ≺ β) + (α = β) + (β ≺ α).
-  Proof. eapply index_mixin_lt_strict_total, SI. Qed.
-  Lemma index_zero_least : nf (flip (index_lt SI)) zero.
-  Proof. eapply index_mixin_zero_least, SI. Qed.
-  Lemma index_succ_greater (α : SI) : α ≺ succ α.
-  Proof. eapply index_mixin_succ_greater, SI. Qed.
-  Lemma index_succ_least (α β : SI) : α ≺ β → succ α ⪯ β.
-  Proof. eapply index_mixin_succ_least, SI. Qed.
-  Lemma index_dec_limit (α: SI) : { β | α = succ β } + (∀ β, β ≺ α → succ β ≺ α).
-  Proof. eapply index_mixin_dec_limit, SI. Qed.
+  Context `{SI : indexT}.
+  Global Instance index_lt_trans : Transitive (index_lt).
+  Proof. eapply index_mixin_lt_trans, index_mixin. Qed.
+  Lemma index_lt_wf : wf (index_lt).
+  Proof. eapply index_mixin_lt_wf, index_mixin. Qed.
+  Lemma index_lt_eq_lt_dec (α β : index) : (α ≺ β) + (α = β) + (β ≺ α).
+  Proof. eapply index_mixin_lt_strict_total, index_mixin. Qed.
+  Lemma index_zero_least : nf (flip (index_lt)) zero.
+  Proof. eapply index_mixin_zero_least, index_mixin. Qed.
+  Lemma index_succ_greater (α : index) : α ≺ succ α.
+  Proof. eapply index_mixin_succ_greater, index_mixin. Qed.
+  Lemma index_succ_least (α β : index) : α ≺ β → succ α ⪯ β.
+  Proof. eapply index_mixin_succ_least, index_mixin. Qed.
+  Lemma index_dec_limit (α: index) : { β | α = succ β } + (∀ β, β ≺ α → succ β ≺ α).
+  Proof. eapply index_mixin_dec_limit, index_mixin. Qed.
 End index_laws.
-Arguments index_zero_least : clear implicits.
-Arguments index_lt_wf : clear implicits.
+(* Arguments index_zero_least : clear implicits.
+Arguments index_lt_wf : clear implicits. *)
 
-Definition index_is_limit {SI : indexT} (α : SI) := ∀ β, β ≺ α → succ β ≺ α. 
+Definition index_is_limit {SI : indexT} (α : index) := ∀ β, β ≺ α → succ β ≺ α.
 (* proper limit indices that are not zero*)
-Record index_is_proper_limit {SI : indexT} (α : SI) := mkproperlim {
+Record index_is_proper_limit {SI : indexT} (α : index) := mkproperlim {
   proper_limit_is_limit : index_is_limit α;
   proper_limit_not_zero : zero ≺ α;
 }.
-Arguments mkproperlim {_}. 
-Arguments proper_limit_not_zero {_ _}.
-Arguments proper_limit_is_limit {_ _}. 
+Arguments mkproperlim {_} _ _ _.
+Arguments proper_limit_not_zero {_ _} _.
+Arguments proper_limit_is_limit {_ _} _.
 
 Record limit_idx {SI: indexT} := _mklimitidx {
-  limit_index :> SI;
+  limit_index :> index;
   limit_index_is_proper :> index_is_proper_limit limit_index;
 }.
-Arguments limit_idx : clear implicits.
-Arguments _mklimitidx {_}. 
-Definition mklimitidx {SI : indexT} (α : SI) Hlim Hz := _mklimitidx α (mkproperlim α Hlim Hz). 
+Arguments _mklimitidx {_}.
+Definition mklimitidx {SI : indexT} (α : index) Hlim Hz := _mklimitidx α (mkproperlim α Hlim Hz).
 
-Lemma limit_index_is_limit {SI: indexT} (α : limit_idx SI) : index_is_limit α. 
+Lemma limit_index_is_limit {SI: indexT} (α : limit_idx) : index_is_limit α.
 Proof. apply limit_index_is_proper. Qed.
-Lemma limit_index_not_zero {SI : indexT} (α : limit_idx SI) : zero ≺ α. 
+Lemma limit_index_not_zero {SI : indexT} (α : limit_idx) : zero ≺ α.
 Proof. apply limit_index_is_proper. Qed.
 
 
 Section StepIndexProperties.
   Context {SI: indexT}.
-  Implicit Type (α β γ : SI).
+  Implicit Type (α β γ : index).
 
-  Global Instance: Inhabited SI.
+  Global Instance: Inhabited index.
   Proof. constructor. exact zero. Qed.
 
-  Global Instance: PreOrder (@index_le SI).
+  Global Instance: PreOrder (index_le).
   Proof.
     split; [by constructor|].
     intros ??? [] []; subst; eauto.
@@ -121,7 +120,7 @@ Section StepIndexProperties.
 
   Lemma index_lt_zero_is_normal α: ¬ (α ≺ zero).
   Proof.
-    specialize (index_zero_least SI) as H.
+    specialize (index_zero_least) as H.
     intros R; apply H; unfold red, flip; eauto.
   Qed.
 
@@ -147,7 +146,7 @@ Section StepIndexProperties.
 
   Lemma index_lt_irrefl α: ¬ (α ≺ α).
   Proof.
-    induction α using (well_founded_ind (index_lt_wf SI)).
+    induction α using (well_founded_ind (index_lt_wf)).
     intros H1; apply H in H1 as H2; eauto.
   Qed.
 
@@ -275,7 +274,7 @@ Section StepIndexProperties.
     intros H. eapply index_lt_irrefl, H. apply index_succ_greater.
   Qed.
 
-  Lemma index_limit_not_succ (β : SI) : index_is_limit β → ∀ α, β ≠ succ α.
+  Lemma index_limit_not_succ β  : index_is_limit β → ∀ α, β ≠ succ α.
   Proof.
     intros H α Hα. specialize (H α). rewrite Hα in H. eapply index_lt_irrefl. apply H, index_succ_greater.
   Qed.
@@ -331,7 +330,7 @@ Global Hint Resolve <- index_succ_iff : core.
 
 Section ordinal_match.
   Context {SI : indexT}.
-  Definition ord_match (P : SI → Type) : P zero → (∀ α, P (succ α)) → (∀ α : limit_idx SI, P α) → ∀ α, P α :=
+  Definition ord_match (P : index → Type) : P zero → (∀ α, P (succ α)) → (∀ α : limit_idx, P α) → ∀ α, P α :=
     λ s f lim α,
       match index_is_zero α with
       | left EQ => eq_rect_r P s EQ
@@ -346,8 +345,8 @@ End ordinal_match.
 Section ordinal_recursor.
   Context {SI: indexT}.
 
-  Definition index_rec (P: SI → Type): P zero → (∀ α, P α → P (succ α)) → (∀ α: limit_idx SI, (∀ β, β ≺ α → P β) → P α) → ∀ α, P α :=
-    λ s f lim, Fix (index_lt_wf SI) _ (λ α IH,
+  Definition index_rec (P: index → Type): P zero → (∀ α, P α → P (succ α)) → (∀ α: limit_idx, (∀ β, β ≺ α → P β) → P α) → ∀ α, P α :=
+    λ s f lim, Fix (index_lt_wf) _ (λ α IH,
         match index_is_zero α with
         | left EQ => eq_rect_r P s EQ
         | right NZ =>
@@ -358,7 +357,7 @@ Section ordinal_recursor.
         end
       ).
 
-  Lemma index_type_dec (α : SI) :
+  Lemma index_type_dec (α : index) :
     (α = zero) + { α' | α = succ α'} + ( index_is_limit α).
   Proof.
     revert α. apply index_rec.
@@ -367,7 +366,7 @@ Section ordinal_recursor.
     - intros α _. right. apply limit_index_is_limit.
   Defined.
 
-  Class index_rec_lim_ext {P: SI → Type} (lim: ∀ α: limit_idx SI, (∀ β, β ≺ α → P β) → P α) := {
+  Class index_rec_lim_ext {P: index → Type} (lim: ∀ α: limit_idx, (∀ β, β ≺ α → P β) → P α) := {
     index_rec_lim_ext_proofs α H1 H2 f: lim α f = lim (mklimitidx α H2 H1) f;
     index_rec_lim_ext_function α f g: (∀ β Hβ, f β Hβ = g β Hβ) → lim α f = lim α g
   }.
@@ -409,7 +408,7 @@ Section ordinal_recursor.
     - exfalso. eapply index_lt_irrefl, Hlim, index_succ_greater.
   Qed.
 
-  Lemma index_rec_lim P s f lim `{index_rec_lim_ext P lim} (α: limit_idx SI):
+  Lemma index_rec_lim P s f lim `{index_rec_lim_ext P lim} (α: limit_idx):
     index_rec P s f lim α = lim α (λ β _, index_rec P s f lim β).
   Proof.
     rewrite index_rec_unfold; eauto.
@@ -424,14 +423,14 @@ End ordinal_recursor.
 Section ordinal_cumulative_recursor.
 
   Context {SI: indexT}.
-  Variable (P: SI → Type) (Q: ∀ α, (∀ β, β ≺ α → P β) → Type).
+  Variable (P: index → Type) (Q: ∀ α, (∀ β, β ≺ α → P β) → Type).
 
   Let R α := {f: ∀ β, β ≺ α → P β & Q α f}.
 
   Lemma index_cumulative_rec (F: ∀ α, R α → P α):
     (∀ α G, Q α (λ β Hβ, F β (G β Hβ))) → (∀ α, R α).
   Proof.
-    intros IH. apply (Fix (index_lt_wf SI)).
+    intros IH. apply (Fix (index_lt_wf)).
     intros α G. unfold R. unshelve econstructor.
     - intros β Hβ. by eapply F, G.
     - by apply IH.
@@ -457,7 +456,7 @@ Section ordinal_cumulative_recursor.
     → ∀ β, M β (index_cumulative_rec F step β).
   Proof.
     intros H β. unfold index_cumulative_rec, Fix.
-    pattern β, (index_lt_wf SI β). eapply Acc_inv_dep. clear β.
+    pattern β, (index_lt_wf β). eapply Acc_inv_dep. clear β.
     intros β succs Hβ.
     unfold index_cumulative_rec_dep in H.
     eapply H. apply Hβ.
@@ -469,7 +468,7 @@ End ordinal_cumulative_recursor.
 
 (* finite indicies are exactly the natural numbers *)
 Class FiniteIndex (SI: indexT) :=
-  finite_index (α: SI): α = zero ∨ ∃ β, α = succ β.
+  finite_index (α: index): α = zero ∨ ∃ β, α = succ β.
 
 (* Canonical instances: natural numbers, pairs *)
 Section nat_index.
@@ -494,14 +493,17 @@ Section nat_index.
       + left; by (exists n).
   Qed.
 
-  Canonical Structure natI : indexT := IndexT nat lt 0 S nat_index_mixin.
+  Definition natI : indexT := IndexT nat lt 0 S nat_index_mixin.
   Global Instance nat_finite_index: FiniteIndex natI.
   Proof. intros [|n]; eauto. Qed.
 End nat_index.
 
 
 Section pair_index.
-  Variable (I J: indexT).
+  Variable (SI SJ: indexT).
+
+  Notation I := (@index SI).
+  Notation J := (@index SJ).
 
   Definition pair_zero : I * J := (zero, zero).
 
@@ -519,8 +521,8 @@ Section pair_index.
 
   Lemma pair_lt_wf: wf pair_lt.
   Proof.
-    intros [m n]. revert n; induction m using (well_founded_ind (index_lt_wf I)).
-    intros n; induction n using (well_founded_ind (index_lt_wf J)).
+    intros [m n]. revert n; induction m using (well_founded_ind (index_lt_wf)).
+    intros n; induction n using (well_founded_ind (index_lt_wf)).
     constructor. intros [m' n'] [|[->]]; eauto.
   Qed.
 
@@ -533,7 +535,9 @@ Section pair_index.
       destruct (index_lt_eq_lt_dec m1 m2) as [[]|];
         destruct (index_lt_eq_lt_dec n1 n2) as [[]|].
       all: subst; firstorder.
-    - intros [[m n] [H1 | [_ H1]]]; eapply index_zero_least; eauto.
+    - intros [[m n] [H1 | [_ H1]]].
+      + eapply (@index_zero_least SI); eauto.
+      + eapply (@index_zero_least SJ); eauto.
     - intros [m n]; simpl. right; split; eauto.
     - intros [m1 n1] [m2 n2]; simpl; intros [|[]]; subst.
       + right. by left.
@@ -545,7 +549,7 @@ Section pair_index.
       + right; intros [m' n']; simpl; intros []; firstorder.
   Qed.
 
-  Canonical Structure pairI : indexT := IndexT (I * J) pair_lt pair_zero pair_succ pair_index_mixin.
+  Local Instance pairI : indexT := IndexT (I * J) pair_lt pair_zero pair_succ pair_index_mixin.
 
   Lemma pair_rc_right n m m': (n, m) ⪯ (n, m') ↔ m  ⪯ m'.
   Proof.

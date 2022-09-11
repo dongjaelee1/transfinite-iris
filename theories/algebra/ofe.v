@@ -12,9 +12,9 @@ Set Primitive Projections.
 *)
 
 (** Unbundeled version *)
-Class Dist (SI: indexT) A := dist : SI → relation A.
+Class Dist `{SI: indexT} A := dist : index → relation A.
 
-Instance: Params (@dist) 4 := {}.
+Global Instance: Params (@dist) 4 := {}.
 Notation "x ≡{ n }≡ y" := (dist n x y)
   (at level 70, n at next level, format "x  ≡{ n }≡  y").
 Notation "x ≡{ n }@{ A }≡ y" := (dist (A:=A) n x y)
@@ -38,23 +38,23 @@ Tactic Notation "ofe_subst" :=
   | H:@dist ?SI ?A ?d ?n _ ?x |- _ => symmetry in H;setoid_subst_aux (@dist SI A d n) x
   end.
 
-Record OfeMixin (SI: indexT) A `{Equiv A, Dist SI A} := {
-  mixin_equiv_dist (x y : A) : x ≡ y ↔ ∀ (n: SI), x ≡{n}≡ y;
-  mixin_dist_equivalence (n : SI): Equivalence (dist n);
-  mixin_dist_mono (n m: SI) (x y : A) : x ≡{n}≡ y → m ≺ n → x ≡{m}≡ y
+Record OfeMixin `{SI: indexT} A `{Equiv A, Dist A} := {
+  mixin_equiv_dist (x y : A) : x ≡ y ↔ ∀ (n: index), x ≡{n}≡ y;
+  mixin_dist_equivalence (n : index): Equivalence (dist n);
+  mixin_dist_mono (n m: index) (x y : A) : x ≡{n}≡ y → m ≺ n → x ≡{m}≡ y
 }.
 
 (** Bundled version *)
-Structure ofe (SI: indexT) := Ofe {
+Structure ofe `{SI: indexT} := Ofe {
   ofe_car :> Type;
   ofe_equiv : Equiv ofe_car;
-  ofe_dist : Dist SI ofe_car;
-  ofe_mixin : OfeMixin SI ofe_car
+  ofe_dist : Dist ofe_car;
+  ofe_mixin : OfeMixin ofe_car
 }.
 Global Arguments Ofe {_} _ {_ _} _.
 Add Printing Constructor ofe.
-Global Hint Extern 0 (Equiv _) => eapply (@ofe_equiv _ _) : typeclass_instances.
-Global Hint Extern 0 (Dist _ _) => eapply (@ofe_dist _ _) : typeclass_instances.
+Global Hint Extern 0 (Equiv _) => eapply (ofe_equiv _) : typeclass_instances.
+Global Hint Extern 0 (Dist _) => eapply (ofe_dist _) : typeclass_instances.
 Global Arguments ofe_car : simpl never.
 Global Arguments ofe_equiv : simpl never.
 Global Arguments ofe_dist : simpl never.
@@ -81,45 +81,46 @@ The notation [ofe_mixin_of A] that we define on top of [ofe_mixin_of' A id]
 hides the [id] and normalizes the mixin to head normal form. The latter is to
 ensure that we do not end up with redundant canonical projections to the mixin,
 i.e. them all being of the shape [ofe_mixin_of' A id]. *)
-Definition ofe_mixin_of' SI A {Ac : ofe SI} (f : Ac → A) : OfeMixin SI Ac := ofe_mixin SI Ac.
-Notation ofe_mixin_of SI A :=
-  ltac:(let H := eval hnf in (ofe_mixin_of' SI A id) in exact H) (only parsing).
+Definition ofe_mixin_of' `{SI: indexT} A {Ac : ofe} (f : Ac → A) : OfeMixin Ac := ofe_mixin Ac.
+Notation ofe_mixin_of A :=
+  ltac:(let H := eval hnf in (ofe_mixin_of' A id) in exact H) (only parsing).
 
 (** Lifting properties from the mixin *)
 Section ofe_mixin.
-  Context {SI} {A : ofe SI}.
+  Context `{SI: indexT} {A : ofe}.
   Implicit Types x y : A.
-  Lemma equiv_dist x y : x ≡ y ↔ ∀ (n: SI), x ≡{n}≡ y.
-  Proof. apply (mixin_equiv_dist _ _ (ofe_mixin SI A)). Qed.
+
+  Lemma equiv_dist x y : x ≡ y ↔ ∀ (n: index), x ≡{n}≡ y.
+  Proof. apply (mixin_equiv_dist _ (ofe_mixin A)). Qed.
   Global Instance dist_equivalence n : Equivalence (@dist SI A _ n).
-  Proof. apply (mixin_dist_equivalence _ _ (ofe_mixin SI A)). Qed.
-  Lemma dist_mono (n m: SI) x y : x ≡{n}≡ y → m ≺ n → x ≡{m}≡ y.
-  Proof. apply (mixin_dist_mono _ _ (ofe_mixin SI A)). Qed.
-  Lemma dist_mono' (n m: SI) x y : x ≡{n}≡ y → m ⪯ n → x ≡{m}≡ y.
+  Proof. apply (mixin_dist_equivalence _ (ofe_mixin A)). Qed.
+  Lemma dist_mono (n m: index) x y : x ≡{n}≡ y → m ≺ n → x ≡{m}≡ y.
+  Proof. apply (mixin_dist_mono _ (ofe_mixin A)). Qed.
+  Lemma dist_mono' (n m: index) x y : x ≡{n}≡ y → m ⪯ n → x ≡{m}≡ y.
   Proof. intros H [-> | Hm]; [auto | by eapply dist_mono]. Qed.
 End ofe_mixin.
 
 Global Hint Extern 1 (_ ≡{_}≡ _) => apply equiv_dist; assumption : core.
 
 (** Discrete OFEs and discrete OFE elements *)
-Class Discrete {SI: indexT} {A : ofe SI} (x : A) := discrete y : x ≡{zero}≡ y → x ≡ y.
+Class Discrete `{SI: indexT} {A : ofe} (x : A) := discrete y : x ≡{zero}≡ y → x ≡ y.
 Global Arguments discrete {_ _} _ {_} _ _.
 Global Hint Mode Discrete - + ! : typeclass_instances.
 Global Instance: Params (@Discrete) 2 := {}.
 
-Class OfeDiscrete {SI: indexT} (A : ofe SI) := ofe_discrete_discrete (x : A) :> Discrete x.
+Class OfeDiscrete `{SI: indexT} (A : ofe) := ofe_discrete_discrete (x : A) :> Discrete x.
 Global Hint Mode OfeDiscrete - ! : typeclass_instances.
 
 (** OFEs with a completion *)
-Record chain {SI: indexT} (A : ofe SI) := mkchain {
-  chain_car :> SI → A;
+Record chain `{SI: indexT} (A : ofe) := mkchain {
+  chain_car :> index → A;
   chain_cauchy n m: n ⪯ m → chain_car m ≡{n}≡ chain_car n
 }.
 Global Arguments chain_car {_ _} _ _.
 Global Arguments chain_cauchy {_ _} _ _ _ _.
 
 
-Record bchain {SI: indexT} (A : ofe SI) (n: SI) := mkbchain {
+Record bchain `{SI: indexT} (A : ofe) (n: index) := mkbchain {
   bchain_car :>  ∀ m, m ≺ n → A;
   bchain_cauchy m p Hm Hp: m ⪯ p → bchain_car p Hp ≡{m}≡ bchain_car m Hm
 }.
@@ -127,15 +128,15 @@ Global Arguments bchain_car {_ _} _ _ _.
 Global Arguments bchain_cauchy {_ _} _ _ _ _ _.
 
 
-Program Definition chain_map  {SI: indexT} {A B : ofe SI} (f : A → B) `{NonExpansive f} (c : chain A) : chain B :=
+Program Definition chain_map `{SI: indexT} {A B : ofe} (f : A → B) `{NonExpansive f} (c : chain A) : chain B :=
   {| chain_car n := f (c n) |}.
 Next Obligation. by intros SI A B f Hf c n i ?; apply Hf, chain_cauchy. Qed.
 
-Program Definition bchain_map  {SI: indexT} {A B : ofe SI} (f : A → B) `{NonExpansive f} {n} (c: bchain A n) : bchain B n :=
+Program Definition bchain_map `{SI: indexT} {A B : ofe} (f : A → B) `{NonExpansive f} {n} (c: bchain A n) : bchain B n :=
   {| bchain_car m Hm := f (c m Hm) |}.
 Next Obligation. by intros SI A B f Hf n c m p ? Hm Hp; apply Hf, bchain_cauchy. Qed.
 
-Class Cofe {SI: indexT} (A : ofe SI) :=
+Class Cofe `{SI: indexT} (A : ofe) :=
   {
     compl : chain A → A;
     (** We only require a bounded limit operation for proper limit indices *)
@@ -150,7 +151,7 @@ Global Hint Mode Cofe - ! : typeclass_instances.
 
 (** But we can derive bounded limits for all non-zero indices. *)
 Section bcompl.
-  Context {SI : indexT} `{Cofe SI A}.
+  Context `{SI : indexT} `{!Cofe A}.
   Local Unset Program Cases.
   Program Definition bcompl {α} (Hz : zero ≺ α) (b : bchain A α) : A :=
     match index_dec_limit α with
@@ -179,31 +180,31 @@ End bcompl.
 
 
 (* TODO: remove these lemmas *)
-Lemma chain_conv_compl {SI: indexT} `{Cofe SI A} (c: chain A) n : compl c ≡{n}≡ c n.
+Lemma chain_conv_compl `{SI: indexT} `{!Cofe A} (c: chain A) n : compl c ≡{n}≡ c n.
 Proof. rewrite conv_compl; eauto using chain_cauchy. Qed.
 
-Lemma bchain_conv_bcompl {SI: indexT} `{Cofe SI A} n Hn (c: bchain A n) m Hm: bcompl Hn c ≡{m}≡ c m Hm.
+Lemma bchain_conv_bcompl `{SI: indexT} `{!Cofe A} n Hn (c: bchain A n) m Hm: bcompl Hn c ≡{m}≡ c m Hm.
 Proof. rewrite conv_bcompl; eauto using bchain_cauchy. Qed.
 
-Lemma compl_chain_map {SI: indexT} `{Cofe SI A, Cofe SI B} (f : A → B) (c: chain A) `(NonExpansive f) :
+Lemma compl_chain_map `{SI: indexT} `{!Cofe A, !Cofe B} (f : A → B) (c: chain A) `(NonExpansive f) :
   compl (chain_map f c) ≡ f (compl c).
 Proof. apply equiv_dist=>n. by rewrite !chain_conv_compl. Qed.
 
-Program Definition chain_const {SI: indexT} {A : ofe SI} (a : A) : chain A :=
+Program Definition chain_const `{SI: indexT} {A : ofe} (a : A) : chain A :=
   {| chain_car n := a |}.
 Next Obligation. by intros ??????. Qed.
 
-Lemma compl_chain_const {SI: indexT} {A : ofe SI} `{!Cofe A} (a : A) :
+Lemma compl_chain_const `{SI: indexT} {A : ofe} `{!Cofe A} (a : A) :
   compl (chain_const a) ≡ a.
 Proof. apply equiv_dist=>n. by rewrite chain_conv_compl. Qed.
 
-Program Definition bchain_const {SI : indexT} {A : ofe SI} (a : A) n : bchain A n :=
+Program Definition bchain_const `{SI : indexT} {A : ofe} (a : A) n : bchain A n :=
   {| bchain_car m _ := a |}.
 Next Obligation.
   by intros ????????.
 Qed.
 
-Lemma bcompl_bchain_const {SI: indexT} {A : ofe SI} `{!Cofe A} (a : A) (n : SI) Hn:
+Lemma bcompl_bchain_const `{SI: indexT} {A : ofe} `{!Cofe A} (a : A) (n : index) Hn:
   ∀ p, p ≺ n → bcompl Hn (bchain_const a n) ≡{p}≡ a.
 Proof.
   intros p Hp. by unshelve rewrite bchain_conv_bcompl.
@@ -211,7 +212,7 @@ Qed.
 
 (** General properties *)
 Section ofe.
-  Context {SI: indexT} {A : ofe SI}.
+  Context `{SI: indexT} {A : ofe}.
   Implicit Types x y : A.
   Global Instance ofe_equivalence : Equivalence ((≡) : relation A).
   Proof.
@@ -243,17 +244,17 @@ Section ofe.
   type class search during setoid rewriting.
   Local Instances of [NonExpansive{,2}] are hence accompanied by instances of
   [Proper] built using these lemmas. *)
-  Lemma ne_proper {B : ofe SI} (f : A → B) `{!NonExpansive f} :
+  Lemma ne_proper {B : ofe} (f : A → B) `{!NonExpansive f} :
     Proper ((≡) ==> (≡)) f.
   Proof. by intros x1 x2; rewrite !equiv_dist; intros Hx n; rewrite (Hx n). Qed.
-  Lemma ne_proper_2 {B C : ofe SI} (f : A → B → C) `{!NonExpansive2 f} :
+  Lemma ne_proper_2 {B C : ofe} (f : A → B → C) `{!NonExpansive2 f} :
     Proper ((≡) ==> (≡) ==> (≡)) f.
   Proof.
      unfold Proper, respectful; setoid_rewrite equiv_dist.
      by intros x1 x2 Hx y1 y2 Hy n; rewrite (Hx n) (Hy n).
   Qed.
 
-  Lemma conv_compl' `{!Cofe A} (n m: SI) (c: chain A) : n ⪯ m → compl c ≡{n}≡ c m.
+  Lemma conv_compl' `{!Cofe A} (n m: index) (c: chain A) : n ⪯ m → compl c ≡{n}≡ c m.
   Proof.
     transitivity (c n); first by apply chain_conv_compl. symmetry. by rewrite chain_cauchy.
   Qed.
@@ -267,12 +268,12 @@ Section ofe.
 End ofe.
 
 (** Contractive functions *)
-Definition dist_later {SI: indexT} `{Dist SI A} (n : SI) (x y : A) : Prop :=
+Definition dist_later {SI: indexT} `{!Dist A} (n : index) (x y : A) : Prop :=
   ∀ m, m ≺ n → x ≡{m}≡ y.
 
 Global Arguments dist_later _ _ _ !_ _ _ /.
 
-Global Instance dist_later_equivalence {SI} (A : ofe SI) n : Equivalence (@dist_later SI A _ n).
+Global Instance dist_later_equivalence `{SI: indexT} (A : ofe) n : Equivalence (@dist_later SI A _ n).
 Proof.
   split.
   - now intros ???.
@@ -280,38 +281,38 @@ Proof.
   - unfold dist_later; intros ??? H1 H2 ??; now rewrite H1 ?H2.
 Qed.
 
-Lemma dist_dist_later {SI: indexT} {A : ofe SI} n (x y : A) : dist n x y → dist_later n x y.
+Lemma dist_dist_later `{SI: indexT} {A : ofe} n (x y : A) : dist n x y → dist_later n x y.
 Proof. intros Heq ??; eapply dist_mono; eauto. Qed.
 
-Lemma dist_later_dist {SI: indexT} {A : ofe SI} n m (x y : A) : m ≺ n → dist_later n x y → dist m x y.
-Proof. intros ? H; by apply H.  Qed.
+Lemma dist_later_dist `{SI: indexT} {A : ofe} n m (x y : A) : m ≺ n → dist_later n x y → dist m x y.
+Proof. intros ? H; by apply H. Qed.
 (* We don't actually need this lemma (as our tactics deal with this through
    other means), but technically speaking, this is the reason why
    pre-composing a non-expansive function to a contractive function
    preserves contractivity. *)
-Lemma ne_dist_later {SI} {A B : ofe SI} (f : A → B) :
+Lemma ne_dist_later `{SI: indexT} {A B : ofe} (f : A → B) :
   NonExpansive f → ∀ n, Proper (dist_later n ==> dist_later n) f.
 Proof. intros Hf ??????; by eapply Hf, H. Qed.
 
-Lemma dist_later_zero {SI: indexT} {A : ofe SI} (x y : A): dist_later zero x y.
+Lemma dist_later_zero `{SI: indexT} {A : ofe} (x y : A): dist_later zero x y.
 Proof. intros ? [] % index_lt_zero_is_normal. Qed.
 
-Global Instance ne2_dist_later_l {SI} {A B C: ofe SI} (f : A → B → C) :
+Global Instance ne2_dist_later_l `{SI: indexT} {A B C: ofe} (f : A → B → C) :
   NonExpansive2 f → ∀ n, Proper (dist_later n ==> dist n ==> dist_later n) f.
 Proof. intros H n a b H1 c d H2 m Hm. apply H; by eauto using dist_mono. Qed.
-Global Instance ne2_dist_later_r {SI} {A B C: ofe SI} (f : A → B → C) :
+Global Instance ne2_dist_later_r `{SI: indexT} {A B C: ofe} (f : A → B → C) :
   NonExpansive2 f → ∀ n, Proper (dist n ==> dist_later n ==> dist_later n) f.
 Proof. intros H n a b H1 c d H2 m Hm. apply H; by eauto using dist_mono. Qed.
 
 
 Notation Contractive f := (∀ n, Proper (dist_later n ==> dist n) f).
 
-Instance const_contractive {SI: indexT} {A B : ofe SI} (x : A) : Contractive (@const A B x).
+Global Instance const_contractive `{SI: indexT} {A B : ofe} (x : A) : Contractive (@const A B x).
 Proof. by intros n y1 y2. Qed.
 
 Section contractive.
   Local Set Default Proof Using "Type*".
-  Context {SI: indexT} {A B : ofe SI} (f : A → B) `{!Contractive f}.
+  Context `{SI: indexT} {A B : ofe} (f : A → B) `{!Contractive f}.
   Implicit Types x y : A.
 
   Lemma contractive_0 x y : f x ≡{zero}≡ f y.
@@ -352,19 +353,19 @@ Ltac solve_contractive :=
       end]).
 
 (* without smoothness, we only get uniqueness at ≺ n *)
-Lemma cofe_bcompl_weakly_unique {SI : indexT} (A : ofe SI) (HA : Cofe A) (n: SI) Hn (c d : bchain A n):
+Lemma cofe_bcompl_weakly_unique `{SI : indexT} (A : ofe) (HA : Cofe A) (n: index) Hn (c d : bchain A n):
  (∀ p (Hp : p ≺ n), c p Hp ≡{p}≡ d p Hp) → dist_later n (bcompl Hn c) (bcompl Hn d).
 Proof.
   intros H p Hp. unshelve rewrite !conv_bcompl; [assumption | assumption | apply H].
 Qed.
 
 (** Limit preserving predicates *)
-Class LimitPreserving {SI: indexT} {A: ofe SI} `{!Cofe A} (P : A → Prop) : Prop :=
+Class LimitPreserving `{SI: indexT} {A: ofe} `{!Cofe A} (P : A → Prop) : Prop :=
   limit_preserving (c : chain A) : (∀ n, P (c n)) → P (compl c).
 Global Hint Mode LimitPreserving - + + ! : typeclass_instances.
 
 Section limit_preserving.
-  Context {SI: indexT} {A: ofe SI}`{!Cofe A}.
+  Context {SI: indexT} {A: ofe}`{!Cofe A}.
   (* These are not instances as they will never fire automatically...
      but they can still be helpful in proving things to be limit preserving. *)
 
@@ -408,12 +409,12 @@ End limit_preserving.
 
 
 (** Bounded limit preserving predicates *)
-Class BoundedLimitPreserving {SI: indexT} `{Cofe SI A} (P : A → Prop) : Prop :=
+Class BoundedLimitPreserving {SI: indexT} `{!Cofe A} (P : A → Prop) : Prop :=
   bounded_limit_preserving n Hn (c: bchain A n) : (∀ m Hm, P (c m Hm)) → P (lbcompl Hn c).
 Global Hint Mode BoundedLimitPreserving - + + ! : typeclass_instances.
 
 Section bounded_limit_preserving.
-  Context {SI: indexT} `{Cofe SI A}.
+  Context {SI: indexT} `{!Cofe A}.
   (* These are not instances as they will never fire automatically...
      but they can still be helpful in proving things to be limit preserving. *)
 
@@ -451,7 +452,7 @@ End bounded_limit_preserving.
 (** Fixpoint *)
 Section fixpoint.
 
-  Context {SI: indexT} `{Cofe SI A} (f: A → A) `{C: Contractive f} `{In: Inhabited A}.
+  Context {SI: indexT} `{!Cofe A} (f: A → A) `{C: Contractive f} `{In: Inhabited A}.
 
   Record is_bounded_fixpoint_chain n (ch : ∀ m, m ≺ n → A) := mk_is_bounded_fixpoint_chain
     {
@@ -495,8 +496,8 @@ Section fixpoint.
 
   Lemma bounded_fixpoint_chain_unique n (Hn: zero ≺ n) (c: bounded_fixpoint_chain n) m (Hm: zero ≺ m) (Hmn: m ⪯ n) (d: bounded_fixpoint_chain m) :
     dist_later m (bcompl Hn c) (bcompl Hm d).
-  Proof using A C H SI f.
-  revert Hmn d. induction (index_lt_wf SI m) as [m _ IH]. intros Hmn d p Hp.
+  Proof using A C SI f.
+  revert Hmn d. induction (index_lt_wf m) as [m _ IH]. intros Hmn d p Hp.
   rewrite -(fp_chain_is_fp _ d Hm p Hp). rewrite -(fp_chain_is_fp _ c Hn p _); eauto using index_lt_le_trans.
   destruct (index_is_zero p) as [->|NT].
   - by apply contractive_0.
@@ -512,13 +513,13 @@ Section fixpoint.
   Section inductive_step.
 
 
-    Local Definition patch_base_case {n: SI} (g: zero ≺ n → A) : A :=
+    Local Definition patch_base_case {n: index} (g: zero ≺ n → A) : A :=
       match index_is_zero n with
       | left H => inhabitant
       | right NT => g NT
       end.
 
-    Program Definition bfpc : ∀ (n: SI), bounded_fixpoint_chain n :=
+    Program Definition bfpc : ∀ (n: index), bounded_fixpoint_chain n :=
       index_cumulative_rec (fun _ => A) is_bounded_fixpoint_chain
         (fun n IH => f (patch_base_case (fun NT => bcompl NT (get_chain n IH)))) _.
     Next Obligation.
@@ -556,24 +557,24 @@ Section fixpoint.
     erewrite !conv_compl. unfold fixpoint_chain; simpl.
     unfold patch_base_case; destruct index_is_zero; subst.
     - by apply contractive_0.
-    - eapply contractive_mono; eauto.  symmetry. eapply is_fp.
+    - eapply contractive_mono; eauto. symmetry. eapply is_fp.
   Qed.
 
 End fixpoint.
 
 Section fixpoint.
-  Context {SI: indexT} `{Cofe SI A} (f : A → A) `{!Contractive f} `{Inhabited A}.
+  Context {SI: indexT} `{!Cofe A} (f : A → A) `{!Contractive f} `{Inhabited A}.
 
   Lemma fixpoint_unique (x : A) : x ≡ f x → x ≡ fixpoint f.
   Proof.
-    rewrite !equiv_dist=> Hx n. induction (index_lt_wf SI n) as [n _ IH].
+    rewrite !equiv_dist=> Hx n. induction (index_lt_wf n) as [n _ IH].
     rewrite Hx fixpoint_unfold. eapply contractive_mono; eauto.
   Qed.
 
   Lemma fixpoint_ne (g : A → A) `{!Contractive g} n :
     (∀ z, f z ≡{n}≡ g z) → fixpoint f ≡{n}≡ fixpoint g.
   Proof.
-    intros Hfg. induction (index_lt_wf SI n) as [n _ IH].
+    intros Hfg. induction (index_lt_wf n) as [n _ IH].
     do 2 (rewrite fixpoint_unfold; symmetry). etransitivity; last by eapply Hfg.
     eapply contractive_mono; eauto.
     intros ??; eapply IH; eauto.
@@ -609,12 +610,12 @@ Global Arguments fixpoint {_ A _} f {_ _}.
 
 
 (** Fixpoint of f when f^k is contractive. **)
-Definition fixpointK {SI} {A: ofe SI} `{!Cofe A, Inhabited A} k (f : A → A)
+Definition fixpointK `{SI: indexT} {A: ofe} `{!Cofe A, Inhabited A} k (f : A → A)
   `{!Contractive (Nat.iter k f)} := fixpoint (Nat.iter k f).
 
 Section fixpointK.
   Local Set Default Proof Using "Type*".
-  Context {SI} {A: ofe SI} `{!Cofe A, Inhabited A} (f : A → A) (k : nat).
+  Context `{SI: indexT} {A: ofe} `{!Cofe A, Inhabited A} (f : A → A) (k : nat).
   Context {f_contractive : Contractive (Nat.iter k f)} {f_ne : NonExpansive f}.
   (* Note than f_ne is crucial here:  there are functions f such that f^2 is contractive,
      but f is not non-expansive.
@@ -683,7 +684,7 @@ End fixpointK.
 
 (** Mutual fixpoints *)
 Section fixpointAB.
-  Context {SI} {A B: ofe SI}`{!Cofe A, !Cofe B, !Inhabited A, !Inhabited B}.
+  Context `{SI: indexT} {A B: ofe}`{!Cofe A, !Cofe B, !Inhabited A, !Inhabited B}.
   Context (fA : A → B → A).
   Context (fB : A → B → B).
   Context {fA_contractive : ∀ n, Proper (dist_later n ==> dist n ==> dist n) fA}.
@@ -727,7 +728,7 @@ Section fixpointAB.
 End fixpointAB.
 
 Section fixpointAB_ne.
-  Context {SI} {A B: ofe SI} `{!Cofe A, !Cofe B, !Inhabited A, !Inhabited B}.
+  Context `{SI: indexT} {A B: ofe} `{!Cofe A, !Cofe B, !Inhabited A, !Inhabited B}.
   Context (fA fA' : A → B → A).
   Context (fB fB' : A → B → B).
   Context `{∀ n, Proper (dist_later n ==> dist n ==> dist n) fA}.
@@ -761,25 +762,25 @@ Section fixpointAB_ne.
 End fixpointAB_ne.
 
 (** Non-expansive function space *)
-Record ofe_mor {SI} (A B : ofe SI) : Type := OfeMor {
+Record ofe_mor `{SI: indexT} (A B : ofe) : Type := OfeMor {
   ofe_mor_car :> A → B;
   ofe_mor_ne : NonExpansive ofe_mor_car
 }.
 Global Arguments OfeMor {_ _ _} _ {_}.
 Add Printing Constructor ofe_mor.
-Existing Instance ofe_mor_ne.
+Global Existing Instance ofe_mor_ne.
 
 Notation "'λne' x .. y , t" :=
   (@OfeMor _ _ _ (λ x, .. (@OfeMor _ _ _ (λ y, t) _) ..) _)
   (at level 200, x binder, y binder, right associativity).
 
 Section ofe_mor.
-  Context {SI: indexT} {A B : ofe SI}.
+  Context `{SI: indexT} {A B : ofe}.
   Global Instance ofe_mor_proper (f : ofe_mor A B) : Proper ((≡) ==> (≡)) f.
   Proof. apply ne_proper, ofe_mor_ne. Qed.
   Local Instance ofe_mor_equiv : Equiv (ofe_mor A B) := λ f g, ∀ x, f x ≡ g x.
-  Local Instance ofe_mor_dist : Dist SI (ofe_mor A B) := λ n f g, ∀ x, f x ≡{n}≡ g x.
-  Definition ofe_mor_ofe_mixin : OfeMixin SI (ofe_mor A B).
+  Local Instance ofe_mor_dist : Dist (ofe_mor A B) := λ n f g, ∀ x, f x ≡{n}≡ g x.
+  Definition ofe_mor_ofe_mixin : OfeMixin (ofe_mor A B).
   Proof.
     split.
     - intros f g; split; [intros Hfg n k; apply equiv_dist, Hfg|].
@@ -805,7 +806,7 @@ Section ofe_mor.
   Program Definition ofe_mor_bchain {n} (c : bchain ofe_morO n) (x : A) : bchain B n :=
     {| bchain_car n Hn := c n Hn x |}.
   Next Obligation. intros n c x m Hm i ??. by apply (bchain_cauchy n c). Qed.
-  Program Definition ofe_mor_lbcompl `{Cofe SI B} n : index_is_proper_limit n → bchain ofe_morO n → ofe_morO := λ Hn c,
+  Program Definition ofe_mor_lbcompl `{!Cofe B} n : index_is_proper_limit n → bchain ofe_morO n → ofe_morO := λ Hn c,
     {| ofe_mor_car x := lbcompl Hn (ofe_mor_bchain c x) |}.
   Next Obligation.
     intros ? n Hn c m x y Hx. eapply lbcompl_ne.
@@ -813,7 +814,7 @@ Section ofe_mor.
   Qed.
 
 
-  Global Program Instance ofe_mor_cofe `{Cofe SI B} : Cofe  ofe_morO :=
+  Global Program Instance ofe_mor_cofe `{!Cofe B} : Cofe  ofe_morO :=
     {| compl := ofe_mor_compl; lbcompl := ofe_mor_lbcompl |}.
   Next Obligation.
     intros ? n c x; cbn. rewrite conv_compl //=.
@@ -835,48 +836,47 @@ Section ofe_mor.
   Proof. done. Qed.
 End ofe_mor.
 
-Global Arguments ofe_morO : clear implicits.
+Global Arguments ofe_morO {_} _ _.
 Notation "A -n> B" :=
-  (ofe_morO _ A B) (at level 99, B at level 200, right associativity).
-Global Instance ofe_mor_inhabited {SI: indexT} {A B : ofe SI} `{Inhabited B} :
+  (ofe_morO A B) (at level 99, B at level 200, right associativity).
+Global Instance ofe_mor_inhabited `{SI: indexT} {A B : ofe} `{Inhabited B} :
   Inhabited (A -n> B) := populate (λne _, inhabitant).
 
 (** Identity and composition and constant function *)
-Definition cid {SI} {A: ofe SI} : A -n> A := OfeMor id.
+Definition cid `{SI: indexT} {A: ofe} : A -n> A := OfeMor id.
 Global Instance: Params (@cid) 2 := {}.
-Definition cconst {SI} {A B : ofe SI} (x : B) : A -n> B := OfeMor (const x).
+Definition cconst `{SI: indexT} {A B : ofe} (x : B) : A -n> B := OfeMor (const x).
 Global Instance: Params (@cconst) 3 := {}.
 
-Definition ccompose {SI: indexT} {A B C: ofe SI}
+Definition ccompose `{SI: indexT} {A B C: ofe}
   (f : B -n> C) (g : A -n> B) : A -n> C := OfeMor (f ∘ g).
 Global Instance: Params (@ccompose) 4 := {}.
 
 Infix "◎" := ccompose (at level 40, left associativity).
-Global Instance ccompose_ne SI {A B C: ofe SI} :
+Global Instance ccompose_ne `{SI: indexT} {A B C: ofe} :
   NonExpansive2 (@ccompose SI A B C).
 Proof. intros n ?? Hf g1 g2 Hg x. rewrite /= (Hg x) (Hf (g2 x)) //. Qed.
 
-(* TODO: is this used anywhere? LG: yes, COFE solver. may move there*)
-Lemma ccompose_assoc {SI : indexT} {A B C D : ofe SI} (f : C -n> D) (g : B -n> C) (h : A -n> B) :
+Lemma ccompose_assoc `{SI : indexT} {A B C D : ofe} (f : C -n> D) (g : B -n> C) (h : A -n> B) :
   (f ◎ g) ◎ h ≡ f ◎ (g ◎ h).
 Proof. intros x. by cbn. Qed.
 
-Lemma ccompose_cid_l {SI : indexT} {A B : ofe SI} (f : A -n> B ) : cid ◎ f ≡ f.
+Lemma ccompose_cid_l `{SI : indexT} {A B : ofe} (f : A -n> B ) : cid ◎ f ≡ f.
 Proof. intros x. by cbn. Qed.
 
-Lemma ccompose_cid_r {SI : indexT} {A B : ofe SI} (f : A -n> B ) :  f ◎ cid ≡ f.
+Lemma ccompose_cid_r `{SI : indexT} {A B : ofe} (f : A -n> B ) :  f ◎ cid ≡ f.
 Proof. intros x. by cbn. Qed.
 
 (* Function space maps *)
-Definition ofe_mor_map {SI: indexT} {A A' B B': ofe SI} (f : A' -n> A) (g : B -n> B')
+Definition ofe_mor_map `{SI: indexT} {A A' B B': ofe} (f : A' -n> A) (g : B -n> B')
   (h : A -n> B) : A' -n> B' := g ◎ h ◎ f.
-Instance ofe_mor_map_ne SI {A A' B B': ofe SI} n :
+Global Instance ofe_mor_map_ne SI {A A' B B': ofe} n :
   Proper (dist n ==> dist n ==> dist n ==> dist n) (@ofe_mor_map SI A A' B B').
 Proof. intros ??? ??? ???. by repeat apply ccompose_ne. Qed.
 
-Definition ofe_morO_map {SI: indexT} {A A' B B': ofe SI} (f : A' -n> A) (g : B -n> B') :
+Definition ofe_morO_map `{SI: indexT} {A A' B B': ofe} (f : A' -n> A) (g : B -n> B') :
   (A -n> B) -n> (A' -n>  B') := OfeMor (ofe_mor_map f g).
-Instance ofe_morO_map_ne {SI: indexT} {A A' B B': ofe SI} :
+Global Instance ofe_morO_map_ne `{SI: indexT} {A A' B B': ofe} :
   NonExpansive2 (@ofe_morO_map SI A A' B B').
 Proof.
   intros n f f' Hf g g' Hg ?. rewrite /= /ofe_mor_map.
@@ -885,11 +885,11 @@ Qed.
 
 (** * Unit type *)
 Section unit.
-  Context {SI: indexT}.
-  Local Instance unit_dist : Dist SI unit := λ _ _ _, True.
-  Definition unit_ofe_mixin : OfeMixin SI unit.
+  Context `{SI: indexT}.
+  Local Instance unit_dist : Dist unit := λ _ _ _, True.
+  Definition unit_ofe_mixin : OfeMixin unit.
   Proof. by repeat split. Qed.
-  Canonical Structure unitO : ofe SI := Ofe unit unit_ofe_mixin.
+  Canonical Structure unitO : ofe := Ofe unit unit_ofe_mixin.
 
   Global Program Instance unit_cofe : Cofe unitO := { compl x := () }.
   Solve All Obligations with by repeat split.
@@ -897,15 +897,14 @@ Section unit.
   Global Instance unit_ofe_discrete : OfeDiscrete unitO.
   Proof. done. Qed.
 End unit.
-Global Arguments unitO : clear implicits.
 
 (** * Empty type *)
 Section empty.
-  Context {SI: indexT}.
-  Local Instance Empty_set_dist : Dist SI Empty_set := λ _ _ _, True.
-  Definition Empty_set_ofe_mixin : OfeMixin SI Empty_set.
+  Context `{SI: indexT}.
+  Local Instance Empty_set_dist : Dist Empty_set := λ _ _ _, True.
+  Definition Empty_set_ofe_mixin : OfeMixin Empty_set.
   Proof. by repeat split; try exists zero. Qed.
-  Canonical Structure Empty_setO : ofe SI := Ofe Empty_set Empty_set_ofe_mixin.
+  Canonical Structure Empty_setO : ofe := Ofe Empty_set Empty_set_ofe_mixin.
 
   Global Program Instance Empty_set_cofe : Cofe Empty_setO :=
     { compl x := x zero; lbcompl n Hn c := c zero (proper_limit_not_zero Hn) }.
@@ -914,18 +913,17 @@ Section empty.
   Global Instance Empty_set_ofe_discrete : OfeDiscrete Empty_setO.
   Proof. done. Qed.
 End empty.
-Global Arguments Empty_setO : clear implicits.
 
 (** * Product type *)
 Section product.
-  Context {SI: indexT} {A B : ofe SI}.
+  Context `{SI: indexT} {A B : ofe}.
 
-  Local Instance prod_dist : Dist SI (A * B) := λ n, prod_relation (dist n) (dist n).
+  Local Instance prod_dist : Dist (A * B) := λ n, prod_relation (dist n) (dist n).
   Global Instance pair_ne :
     NonExpansive2 (@pair A B) := _.
   Global Instance fst_ne : NonExpansive (@fst A B) := _.
   Global Instance snd_ne : NonExpansive (@snd A B) := _.
-  Definition prod_ofe_mixin : OfeMixin SI (A * B).
+  Definition prod_ofe_mixin : OfeMixin (A * B).
   Proof.
     split.
     - intros x y; unfold dist, prod_dist, equiv, prod_equiv, prod_relation.
@@ -933,9 +931,9 @@ Section product.
     - apply _.
     - by intros n m [x1 y1] [x2 y2] [??]; split; eapply dist_mono.
   Qed.
-  Canonical Structure prodO : ofe SI := Ofe (A * B) prod_ofe_mixin.
+  Canonical Structure prodO : ofe := Ofe (A * B) prod_ofe_mixin.
 
-  Global Program Instance prod_cofe `{Cofe SI A, Cofe SI B} : Cofe prodO :=
+  Global Program Instance prod_cofe `{!Cofe A, !Cofe B} : Cofe prodO :=
     { compl c := (compl (chain_map fst c), compl (chain_map snd c));
       lbcompl n Hn c := (lbcompl Hn (bchain_map fst c), lbcompl Hn (bchain_map snd c)) }.
   Next Obligation.
@@ -957,21 +955,21 @@ Section product.
 End product.
 
 Global Arguments prodO {_} _ _.
-Typeclasses Opaque prod_dist.
+Global Typeclasses Opaque prod_dist.
 
-Global Instance prod_map_ne {SI: indexT} {A A' B B' : ofe SI} n :
+Global Instance prod_map_ne `{SI: indexT} {A A' B B' : ofe} n :
   Proper ((dist n ==> dist n) ==> (dist n ==> dist n) ==>
            dist n ==> dist n) (@prod_map A A' B B').
 Proof. by intros f f' Hf g g' Hg ?? [??]; split; [apply Hf|apply Hg]. Qed.
-Definition prodO_map {SI: indexT} {A A' B B': ofe SI} (f : A -n> A') (g : B -n> B') :
+Definition prodO_map `{SI: indexT} {A A' B B': ofe} (f : A -n> A') (g : B -n> B') :
   prodO A B -n> prodO A' B' := OfeMor (prod_map f g).
-Global Instance prodO_map_ne {SI: indexT} {A A' B B': ofe SI} :
+Global Instance prodO_map_ne `{SI: indexT} {A A' B B': ofe} :
   NonExpansive2 (@prodO_map SI A A' B B').
 Proof. intros n f f' Hf g g' Hg [??]; split; [apply Hf|apply Hg]. Qed.
 
 (** * OFE → OFE Functors *)
-Record oFunctor {SI} := OFunctor {
-  oFunctor_car : ∀ A B, ofe SI;
+Record oFunctor `{SI: indexT} := OFunctor {
+  oFunctor_car : ∀ A B, ofe;
   oFunctor_map  {A1 A2 B1 B2}:
     ((A2 -n> A1) * (B1 -n> B2)) → oFunctor_car A1 B1 -n> oFunctor_car A2 B2;
   oFunctor_map_ne {A1 A2 B1 B2}:
@@ -982,37 +980,36 @@ Record oFunctor {SI} := OFunctor {
       (f : A2 -n> A1) (g : A3 -n> A2) (f' : B1 -n> B2) (g' : B2 -n> B3) x :
     oFunctor_map (f◎g, g'◎f') x ≡ oFunctor_map (g,g') (oFunctor_map (f,f') x)
 }.
-Existing Instance oFunctor_map_ne.
-Instance: Params (@oFunctor_map) 6 := {}.
-Arguments oFunctor : clear implicits.
+Global Existing Instance oFunctor_map_ne.
+Global Instance: Params (@oFunctor_map) 6 := {}.
 
 Declare Scope oFunctor_scope.
 Delimit Scope oFunctor_scope with OF.
 Bind Scope oFunctor_scope with oFunctor.
 
-Class oFunctorContractive {SI: indexT} (F : oFunctor SI) :=
-  oFunctor_map_contractive `{A1 : ofe SI} `{A2 : ofe SI} `{B1 : ofe SI} `{B2 : ofe SI} :>
+Class oFunctorContractive `{SI: indexT} (F : oFunctor) :=
+  oFunctor_map_contractive `{A1 : ofe} `{A2 : ofe} `{B1 : ofe} `{B2 : ofe} :>
     Contractive  (@oFunctor_map SI F A1 A2 B1 B2).
 Global Hint Mode oFunctorContractive - ! : typeclass_instances.
 
 (** We add the coercion because there is no more Cofe argument *)
-Definition oFunctor_apply {SI: indexT} (F: oFunctor SI) (A: ofe SI) : ofe SI := oFunctor_car F A A.
+Definition oFunctor_apply `{SI: indexT} (F: oFunctor) (A: ofe) : ofe := oFunctor_car F A A.
 Coercion oFunctor_apply : oFunctor >-> Funclass.
 
-Program Definition constOF {SI} (B : ofe SI) : oFunctor SI :=
+Program Definition constOF `{SI: indexT} (B : ofe) : oFunctor :=
   {| oFunctor_car A1 A2 := B; oFunctor_map A1 A2 B1 B2 f := cid |}.
 Solve Obligations with done.
 Coercion constOF : ofe >-> oFunctor.
 
-Global Instance constOF_contractive {SI}  B : @oFunctorContractive SI (constOF B).
+Global Instance constOF_contractive `{SI: indexT} B : oFunctorContractive (constOF B).
 Proof. rewrite /oFunctorContractive; apply _. Qed.
 
-Program Definition idOF SI : oFunctor SI :=
+Program Definition idOF `{SI: indexT} : oFunctor :=
   {| oFunctor_car A1 A2 := A2; oFunctor_map A1 A2 B1 B2 f := f.2 |}.
 Solve Obligations with done.
 Notation "∙" := idOF : oFunctor_scope.
 
-Program Definition prodOF {SI} (F1 F2 : oFunctor SI) : oFunctor SI := {|
+Program Definition prodOF `{SI: indexT} (F1 F2 : oFunctor) : oFunctor := {|
   oFunctor_car A B := prodO (oFunctor_car F1 A B) (oFunctor_car F2 A B);
   oFunctor_map A1 A2 B1 B2 fg :=
     prodO_map (oFunctor_map F1 fg) (oFunctor_map F2 fg)
@@ -1027,7 +1024,7 @@ Next Obligation.
 Qed.
 Notation "F1 * F2" := (prodOF F1%OF F2%OF) : oFunctor_scope.
 
-Instance prodOF_contractive {SI} {F1 F2 : ofe SI}:
+Global Instance prodOF_contractive `{SI: indexT} {F1 F2 : ofe}:
   oFunctorContractive F1 → oFunctorContractive F2 →
   oFunctorContractive (prodOF F1 F2).
 Proof.
@@ -1035,7 +1032,7 @@ Proof.
     by apply prodO_map_ne; apply oFunctor_map_contractive.
 Qed.
 
-Program Definition ofe_morOF {SI: indexT} (F1 F2 : oFunctor SI) : oFunctor SI := {|
+Program Definition ofe_morOF `{SI: indexT} (F1 F2 : oFunctor) : oFunctor := {|
   oFunctor_car A B := oFunctor_car F1 B A -n> oFunctor_car F2 A B;
   oFunctor_map A1 A2 B1 B2 fg :=
     ofe_morO_map (oFunctor_map F1 (fg.2, fg.1)) (oFunctor_map F2 fg)
@@ -1054,7 +1051,7 @@ Next Obligation.
 Qed.
 Notation "F1 -n> F2" := (ofe_morOF F1%OF F2%OF) : oFunctor_scope.
 
-Global Instance ofe_morOF_Contractive {SI: indexT}  (F1 F2 : oFunctor SI):
+Global Instance ofe_morOF_Contractive `{SI: indexT}  (F1 F2 : oFunctor):
   oFunctorContractive F1 → oFunctorContractive F2 →
   oFunctorContractive (ofe_morOF F1 F2).
 Proof.
@@ -1065,15 +1062,15 @@ Qed.
 
 (** * Sum type *)
 Section sum.
-  Context {SI: indexT} {A B : ofe SI}.
+  Context `{SI: indexT} {A B : ofe}.
 
-  Local Instance sum_dist : Dist SI (A + B) := λ n, sum_relation (dist n) (dist n).
+  Local Instance sum_dist : Dist (A + B) := λ n, sum_relation (dist n) (dist n).
   Global Instance inl_ne : NonExpansive (@inl A B) := _.
   Global Instance inr_ne : NonExpansive (@inr A B) := _.
   Global Instance inl_ne_inj n : Inj (dist n) (dist n) (@inl A B) := _.
   Global Instance inr_ne_inj n : Inj (dist n) (dist n) (@inr A B) := _.
 
-  Definition sum_ofe_mixin : OfeMixin SI (A + B).
+  Definition sum_ofe_mixin : OfeMixin (A + B).
   Proof.
     split.
     - intros x y; split=> Hx.
@@ -1083,7 +1080,7 @@ Section sum.
     - destruct 1; constructor; eapply dist_mono; eauto.
   Qed.
 
-  Canonical Structure sumO : ofe SI := Ofe (A + B) sum_ofe_mixin.
+  Canonical Structure sumO : ofe := Ofe (A + B) sum_ofe_mixin.
 
   Program Definition inl_chain (c : chain sumO) (a : A) : chain A :=
     {| chain_car n := match c n return _ with inl a' => a' | _ => a end |}.
@@ -1103,7 +1100,7 @@ Section sum.
   Program Definition inr_bchain {n} (c : bchain sumO n) (b : B) : bchain B n :=
     {| bchain_car n Hn := match c n Hn return _ with inr b' => b' | _ => b end |}.
   Next Obligation. intros n c b m p Hm Hp Hmp; simpl. by destruct (bchain_cauchy n c m p Hm Hp Hmp). Qed.
-  Definition sum_lbcompl `{Cofe SI A, Cofe SI B} n : index_is_proper_limit n → bchain sumO n → sumO :=
+  Definition sum_lbcompl `{!Cofe A, !Cofe B} n : index_is_proper_limit n → bchain sumO n → sumO :=
     λ Hn c,
     match c zero (proper_limit_not_zero Hn) with
     | inl a => inl (lbcompl Hn (inl_bchain c a))
@@ -1142,21 +1139,21 @@ Section sum.
 End sum.
 
 Global Arguments sumO {_} _ _.
-Typeclasses Opaque sum_dist.
+Global Typeclasses Opaque sum_dist.
 
-Global Instance sum_map_ne {SI: indexT} {A A' B B' : ofe SI} n :
+Global Instance sum_map_ne `{SI: indexT} {A A' B B' : ofe} n :
   Proper ((dist n ==> dist n) ==> (dist n ==> dist n) ==>
            dist n ==> dist n) (@sum_map A A' B B').
 Proof.
   intros f f' Hf g g' Hg ??; destruct 1; constructor; [by apply Hf|by apply Hg].
 Qed.
-Definition sumO_map {SI: indexT} {A A' B B': ofe SI} (f : A -n> A') (g : B -n> B') :
+Definition sumO_map `{SI: indexT} {A A' B B': ofe} (f : A -n> A') (g : B -n> B') :
   sumO A B -n> sumO A' B' := OfeMor (sum_map f g).
-Global Instance sumO_map_ne {SI} {A A' B B'} :
+Global Instance sumO_map_ne `{SI: indexT} {A A' B B'} :
   NonExpansive2 (@sumO_map SI A A' B B').
 Proof. intros n f f' Hf g g' Hg [?|?]; constructor; [apply Hf|apply Hg]. Qed.
 
-Program Definition sumOF {SI: indexT} (F1 F2 : oFunctor SI) : oFunctor SI := {|
+Program Definition sumOF `{SI: indexT} (F1 F2 : oFunctor) : oFunctor := {|
   oFunctor_car A B := sumO (oFunctor_car F1 A B) (oFunctor_car F2 A B);
   oFunctor_map A1 A2 B1 B2 fg :=
     sumO_map (oFunctor_map F1 fg) (oFunctor_map F2 fg)
@@ -1171,7 +1168,7 @@ Next Obligation.
 Qed.
 Notation "F1 + F2" := (sumOF F1%OF F2%OF) : oFunctor_scope.
 
-Global Instance sumOF_contractive {SI: indexT} (F1 F2 : oFunctor SI):
+Global Instance sumOF_contractive `{SI: indexT} (F1 F2 : oFunctor):
   oFunctorContractive F1 → oFunctorContractive F2 →
   oFunctorContractive (sumOF F1 F2).
 Proof.
@@ -1181,10 +1178,10 @@ Qed.
 
 (** * Discrete OFEs *)
 Section discrete_ofe.
-  Context {SI: indexT} {A: Type} `{Equiv A} (Heq : @Equivalence A (≡)).
+  Context `{SI: indexT} {A: Type} `{Equiv A} (Heq : @Equivalence A (≡)).
 
-  Local Instance discrete_dist : Dist SI A := λ n x y, x ≡ y.
-  Definition discrete_ofe_mixin : OfeMixin SI A.
+  Local Instance discrete_dist : Dist A := λ n x y, x ≡ y.
+  Definition discrete_ofe_mixin : OfeMixin A.
   Proof using Type*.
     split.
     - intros x y; split; [done|intros Hn; apply (Hn zero)].
@@ -1215,11 +1212,11 @@ Section discrete_ofe.
 
 End discrete_ofe.
 
-Notation discreteO SI A := (Ofe A (discrete_ofe_mixin _): ofe SI).
+Notation discreteO A := (Ofe A (discrete_ofe_mixin _)).
 (** Force the [Equivalence] proof to be [eq_equivalence] so that it does not
 find another one, like [ofe_equivalence], in the case of aliases. See also
 https://gitlab.mpi-sws.org/iris/iris/issues/299 *)
-Notation leibnizO SI A := (Ofe A (@discrete_ofe_mixin SI _ equivL eq_equivalence): ofe SI).
+Notation leibnizO A := (Ofe A (@discrete_ofe_mixin _ _ equivL eq_equivalence)).
 
 (** In order to define a discrete CMRA with carrier [A] (in the file [cmra.v])
 we need to determine the [Equivalence A] proof that was used to construct the
@@ -1229,36 +1226,38 @@ via [ofe_equivalence]).
 We obtain the proof of [Equivalence A] by inferring the canonical OFE mixin
 using [ofe_mixin_of A], and then check whether it is indeed a discrete OFE. This
 will fail if no OFE, or an OFE other than the discrete OFE, was registered. *)
-Notation discrete_ofe_equivalence_of SI A := ltac:(
-  match constr:(ofe_mixin_of SI A) with
+Notation discrete_ofe_equivalence_of A := ltac:(
+  match constr:(ofe_mixin_of A) with
   | discrete_ofe_mixin ?H => exact H
   end) (only parsing).
 
-Global Instance leibnizO_leibniz A {SI} : LeibnizEquiv (leibnizO SI A : ofe SI).
+Global Instance leibnizO_leibniz A `{SI: indexT} : LeibnizEquiv (leibnizO A).
 Proof. by intros x y. Qed.
 
 (** * Basic Coq types *)
-Canonical Structure boolO SI : ofe SI := leibnizO SI bool.
-Canonical Structure natO SI : ofe SI := leibnizO SI nat.
-Canonical Structure positiveO SI : ofe SI := leibnizO SI positive.
-Canonical Structure NO SI : ofe SI := leibnizO SI N.
-Canonical Structure ZO SI : ofe SI := leibnizO SI Z.
+Canonical Structure boolO `{SI: indexT} : ofe := leibnizO bool.
+Canonical Structure natO `{SI: indexT} : ofe := leibnizO nat.
+Canonical Structure positiveO `{SI: indexT} : ofe := leibnizO positive.
+Canonical Structure NO `{SI: indexT} : ofe := leibnizO N.
+Canonical Structure ZO `{SI: indexT} : ofe := leibnizO Z.
 
 Section prop.
+  Context `{SI: indexT}.
+
   Local Instance Prop_equiv : Equiv Prop := iff.
   Local Instance Prop_equivalence : Equivalence (≡@{Prop}) := _.
-  Canonical Structure PropO SI := discreteO SI Prop.
+  Canonical Structure PropO := discreteO Prop.
 End prop.
 
 (** * Option type *)
 Section option.
-  Context {SI: indexT} {A : ofe SI}.
+  Context `{SI: indexT} {A : ofe}.
 
-  Local Instance option_dist : Dist SI (option A) := λ n, option_Forall2 (dist n).
+  Local Instance option_dist : Dist (option A) := λ n, option_Forall2 (dist n).
   Lemma dist_option_Forall2 n mx my : mx ≡{n}≡ my ↔ option_Forall2 (dist n) mx my.
   Proof. done. Qed.
 
-  Definition option_ofe_mixin : OfeMixin SI (option A).
+  Definition option_ofe_mixin : OfeMixin (option A).
   Proof.
     split.
     - intros mx my; split; [by destruct 1; constructor; apply equiv_dist|].
@@ -1278,19 +1277,19 @@ Section option.
   Program Definition option_chain (c : chain optionO) (x : A) : chain A :=
     {| chain_car n := default x (c n) |}.
   Next Obligation. intros c x n i ?; simpl. by destruct (chain_cauchy c n i). Qed.
-  Definition option_compl `{Cofe SI A} : (chain optionO) → optionO := λ c,
+  Definition option_compl `{!Cofe A} : (chain optionO) → optionO := λ c,
     match c zero with Some x => Some (compl (option_chain c x)) | None => None end.
 
   Program Definition option_bchain n (c : bchain optionO n) (x : A) : bchain A n :=
     {| bchain_car n Hn := default x (c n Hn) |}.
   Next Obligation. intros n c x m p Hm Hp Hmp; simpl. by destruct (bchain_cauchy n c m p Hm Hp Hmp). Qed.
-  Definition option_lbcompl `{Cofe SI A} n (Hn: index_is_proper_limit n): (bchain optionO n) → optionO := λ c,
+  Definition option_lbcompl `{!Cofe A} n (Hn: index_is_proper_limit n): (bchain optionO n) → optionO := λ c,
     match c zero (proper_limit_not_zero Hn) with
     | Some x => Some (lbcompl Hn (option_bchain n c x))
     | None => None
     end.
 
-  Global Program Instance option_cofe `{Cofe SI A} : Cofe optionO :=
+  Global Program Instance option_cofe `{!Cofe A} : Cofe optionO :=
     { compl := option_compl; lbcompl := option_lbcompl }.
   Next Obligation.
     intros ? n c; rewrite /compl /option_compl.
@@ -1340,33 +1339,33 @@ Section option.
   Proof. intros ?%(dist_Some_inv_r _ _ _ y); naive_solver. Qed.
 End option.
 
-Typeclasses Opaque option_dist.
+Global Typeclasses Opaque option_dist.
 Global Arguments optionO {_} _.
 
-Global Instance option_fmap_ne {SI} {A B : ofe SI} n:
+Global Instance option_fmap_ne `{SI: indexT} {A B : ofe} n:
   Proper ((dist n ==> dist n) ==> dist n ==> dist n) (@fmap option _ A B).
 Proof. intros f f' Hf ?? []; constructor; auto. Qed.
-Global Instance option_mbind_ne {SI} {A B : ofe SI} n:
+Global Instance option_mbind_ne `{SI: indexT} {A B : ofe} n:
   Proper ((dist n ==> dist n) ==> dist n ==> dist n) (@mbind option _ A B).
 Proof. destruct 2; simpl; auto. Qed.
-Global Instance option_mjoin_ne {SI} {A : ofe SI} n:
+Global Instance option_mjoin_ne `{SI: indexT} {A : ofe} n:
   Proper (dist n ==> dist n) (@mjoin option _ A).
 Proof. destruct 1 as [?? []|]; simpl; by constructor. Qed.
 
 (* TODO: why is this here *)
-Lemma fmap_Some_dist {SI} {A B : ofe SI} (f : A → B) (mx : option A) (y : B) n :
+Lemma fmap_Some_dist `{SI: indexT} {A B : ofe} (f : A → B) (mx : option A) (y : B) n :
   f <$> mx ≡{n}≡ Some y ↔ ∃ x : A, mx = Some x ∧ y ≡{n}≡ f x.
 Proof.
   split; [|by intros (x&->&->)].
   intros (?&?%fmap_Some&?)%dist_Some_inv_r'; naive_solver.
 Qed.
 
-Definition optionO_map {SI} {A B: ofe SI} (f : A -n> B) : optionO A -n> optionO B :=
+Definition optionO_map `{SI: indexT} {A B: ofe} (f : A -n> B) : optionO A -n> optionO B :=
   OfeMor (fmap f : optionO A → optionO B).
-Global Instance optionO_map_ne {SI} (A B: ofe SI) : NonExpansive (@optionO_map _ A B).
+Global Instance optionO_map_ne `{SI: indexT} (A B: ofe) : NonExpansive (@optionO_map _ A B).
 Proof. by intros n f f' Hf []; constructor; apply Hf. Qed.
 
-Program Definition optionOF {SI: indexT} (F : oFunctor SI) : oFunctor SI := {|
+Program Definition optionOF `{SI: indexT} (F : oFunctor) : oFunctor := {|
   oFunctor_car A B := optionO (oFunctor_car F A B);
   oFunctor_map A1 A2 B1 B2 fg := optionO_map (oFunctor_map F fg)
 |}.
@@ -1382,7 +1381,7 @@ Next Obligation.
   apply option_fmap_equiv_ext=>y; apply oFunctor_map_compose.
 Qed.
 
-Global Instance optionOF_contractive {SI} (F : oFunctor SI):
+Global Instance optionOF_contractive `{SI: indexT} (F : oFunctor):
   oFunctorContractive F → oFunctorContractive (optionOF F).
 Proof.
   by intros ? ? A1 A2 B1 B2 n f g Hfg; apply optionO_map_ne, oFunctor_map_contractive.
@@ -1400,11 +1399,11 @@ Global Arguments later_car {_} _.
 Global Instance: Params (@Next) 1 := {}.
 
 Section later.
-  Context {SI: indexT} {A : ofe SI}.
+  Context `{SI: indexT} {A : ofe}.
   Local Instance later_equiv : Equiv (later A) := λ x y, later_car x ≡ later_car y.
-  Local Instance later_dist : Dist SI (later A) := λ n x y,
+  Local Instance later_dist : Dist (later A) := λ n x y,
     dist_later n (later_car x) (later_car y).
-  Definition later_ofe_mixin : OfeMixin SI (later A).
+  Definition later_ofe_mixin : OfeMixin (later A).
   Proof.
     split.
     - intros x y; unfold equiv, later_equiv; rewrite !equiv_dist.
@@ -1416,7 +1415,7 @@ Section later.
       + by intros [x] [y] [z] ??; trans y.
     - intros n m [x] [y] H ? p Hp. eapply H; by transitivity m.
   Qed.
-  Canonical Structure laterO : ofe SI := Ofe (later A) later_ofe_mixin.
+  Canonical Structure laterO : ofe := Ofe (later A) later_ofe_mixin.
 
   Lemma later_car_bounded_expansive (a b : laterO) n: a ≡{succ n}≡ b → later_car a ≡{n}≡ later_car b.
   Proof.
@@ -1442,7 +1441,7 @@ Section later.
   Global Instance Next_contractive : Contractive  (@Next A).
   Proof. by intros n x y. Qed.
 
-  Global Program Instance later_cofe `{Cofe SI A} : Cofe laterO :=
+  Global Program Instance later_cofe `{!Cofe A} : Cofe laterO :=
     { compl c := Next (compl (later_chain c));
       lbcompl n Hn c := Next (lbcompl Hn (later_limit_bchain c (proper_limit_is_limit Hn)))
     }.
@@ -1471,7 +1470,7 @@ Section later.
 
   (** [f] is contractive iff it can factored into [Next] and a non-expansive
   function. *)
-  Lemma contractive_alt {B : ofe SI} (f : A → B) :
+  Lemma contractive_alt {B : ofe} (f : A → B) :
     Contractive f ↔ ∃ g : later A → B, NonExpansive g ∧ ∀ x, f x ≡ g (Next x).
   Proof.
     split.
@@ -1484,14 +1483,14 @@ Arguments laterO {_} _.
 
 Definition later_map {A B} (f : A → B) (x : later A) : later B :=
   Next (f (later_car x)).
-Global Instance later_map_ne {SI: indexT} {A B : ofe SI} (f : A → B) n :
+Global Instance later_map_ne {SI: indexT} {A B : ofe} (f : A → B) n :
   Proper (dist_later n ==> dist_later n) f →
   Proper (dist n ==> dist n) (later_map f) | 0.
 Proof. intros P [x] [y] H; rewrite /later_map //=.
        intros m Hm; apply P, Hm. apply H.
 Qed.
 
-Global Instance later_map_ne' {SI: indexT} {A B : ofe SI} (f : A → B) `{NonExpansive  f} : NonExpansive  (later_map f).
+Global Instance later_map_ne' `{SI: indexT} {A B : ofe} (f : A → B) `{NonExpansive  f} : NonExpansive  (later_map f).
 Proof. intros ?[x][y]H. unfold later_map; simpl.
        intros ??; cbn. f_equiv. by eapply H.
 Qed.
@@ -1501,15 +1500,15 @@ Proof. by destruct x. Qed.
 Lemma later_map_compose {A B C} (f : A → B) (g : B → C) (x : later A) :
   later_map (g ∘ f) x = later_map g (later_map f x).
 Proof. by destruct x. Qed.
-Lemma later_map_ext {SI: indexT} {A B : ofe SI} (f g : A → B) x :
+Lemma later_map_ext `{SI: indexT} {A B : ofe} (f g : A → B) x :
   (∀ x, f x ≡ g x) → later_map f x ≡ later_map g x.
 Proof. destruct x; intros Hf; apply Hf. Qed.
-Definition laterO_map {SI: indexT} {A B: ofe SI} (f : A -n> B) : laterO A -n> laterO B :=
+Definition laterO_map `{SI: indexT} {A B: ofe} (f : A -n> B) : laterO A -n> laterO B :=
   OfeMor (later_map f).
-Global Instance laterO_map_contractive {SI: indexT} (A B : ofe SI) : Contractive  (@laterO_map SI A B).
+Global Instance laterO_map_contractive {SI: indexT} (A B : ofe) : Contractive  (@laterO_map SI A B).
 Proof. intros n f g ? [x] ??; simpl. by apply H. Qed.
 
-Program Definition laterOF {SI: indexT} (F : oFunctor SI) : oFunctor SI := {|
+Program Definition laterOF `{SI: indexT} (F : oFunctor) : oFunctor := {|
   oFunctor_car A B := laterO (oFunctor_car F A B);
   oFunctor_map A1 A2 B1 B2 fg := laterO_map (oFunctor_map F fg)
 |}.
@@ -1527,7 +1526,7 @@ Next Obligation.
 Qed.
 Notation "▶ F"  := (laterOF F%OF) (at level 20, right associativity) : oFunctor_scope.
 
-Global Instance laterOF_contractive {SI: indexT} {F :oFunctor SI} : oFunctorContractive (laterOF F).
+Global Instance laterOF_contractive `{SI: indexT} {F :oFunctor} : oFunctorContractive (laterOF F).
 Proof.
   intros A1 A2 B1 B2 n fg fg' Hfg. apply laterO_map_contractive.
   intros ???; simpl.  by eapply oFunctor_map_ne, Hfg.
@@ -1547,15 +1546,15 @@ We make [discrete_fun] a definition so that we can register it as a canonical
 structure.  We do not bundle the [Proper] proof to keep [discrete_fun] easier to
 use. It turns out all the desired OFE and functorial properties do not rely on
 this [Proper] instance. *)
-Definition discrete_fun {SI: indexT} {A} (B : A → ofe SI) := ∀ x : A, B x.
+Definition discrete_fun `{SI: indexT} {A} (B : A → ofe) := ∀ x : A, B x.
 
 Section discrete_fun.
-  Context {SI: indexT} {A : Type} {B : A → ofe SI}.
+  Context `{SI: indexT} {A : Type} {B : A → ofe}.
   Implicit Types f g : discrete_fun B.
 
   Instance discrete_fun_equiv : Equiv (discrete_fun B) := λ f g, ∀ x, f x ≡ g x.
-  Instance discrete_fun_dist : Dist SI (discrete_fun B) := λ n f g, ∀ x, f x ≡{n}≡ g x.
-  Definition discrete_fun_ofe_mixin : OfeMixin SI (discrete_fun B).
+  Instance discrete_fun_dist : Dist (discrete_fun B) := λ n f g, ∀ x, f x ≡{n}≡ g x.
+  Definition discrete_fun_ofe_mixin : OfeMixin (discrete_fun B).
   Proof.
     split.
     - intros f g; split; [intros Hfg n k; apply equiv_dist, Hfg|].
@@ -1576,7 +1575,7 @@ Section discrete_fun.
   Next Obligation. intros n c x m p Hm Hp Hmp. by apply (bchain_cauchy n c _ _  Hm Hp Hmp). Qed.
 
 
-  Global Program Instance discrete_fun_cofe `{∀ x, Cofe (B x)} : Cofe discrete_funO :=
+  Global Program Instance discrete_fun_cofe `{!∀ x, Cofe (B x)} : Cofe discrete_funO :=
     { compl c x := compl (discrete_fun_chain c x); lbcompl n Hn c x := lbcompl Hn (discrete_fun_bchain c x) }.
   Next Obligation.
     intros ? n c x. by apply conv_compl.
@@ -1606,33 +1605,33 @@ Global Arguments discrete_funO {_ _} _.
 Notation "A -d> B" :=
   (@discrete_funO _ A (λ _, B)) (at level 99, B at level 200, right associativity).
 
-Definition discrete_fun_map {SI A} {B1 B2 : A → ofe SI} (f : ∀ x, B1 x → B2 x)
+Definition discrete_fun_map `{SI: indexT} {A} {B1 B2 : A → ofe} (f : ∀ x, B1 x → B2 x)
   (g : discrete_fun B1) : discrete_fun B2 := λ x, f _ (g x).
 
-Lemma discrete_fun_map_ext {SI A} {B1 B2 : A → ofe SI} (f1 f2 : ∀ x, B1 x → B2 x)
+Lemma discrete_fun_map_ext `{SI: indexT} {A} {B1 B2 : A → ofe} (f1 f2 : ∀ x, B1 x → B2 x)
   (g : discrete_fun B1) :
   (∀ x, f1 x (g x) ≡ f2 x (g x)) → discrete_fun_map f1 g ≡ discrete_fun_map f2 g.
 Proof. done. Qed.
-Lemma discrete_fun_map_id {SI A} {B : A → ofe SI} (g : discrete_fun B) :
+Lemma discrete_fun_map_id `{SI: indexT} {A} {B : A → ofe} (g : discrete_fun B) :
   discrete_fun_map (λ _, id) g = g.
 Proof. done. Qed.
-Lemma discrete_fun_map_compose {SI A} {B1 B2 B3 : A → ofe SI}
+Lemma discrete_fun_map_compose `{SI: indexT} {A} {B1 B2 B3 : A → ofe}
     (f1 : ∀ x, B1 x → B2 x) (f2 : ∀ x, B2 x → B3 x) (g : discrete_fun B1) :
   discrete_fun_map (λ x, f2 x ∘ f1 x) g = discrete_fun_map f2 (discrete_fun_map f1 g).
 Proof. done. Qed.
 
-Instance discrete_fun_map_ne {SI A} {B1 B2 : A → ofe SI} (f : ∀ x, B1 x → B2 x) n :
+Global Instance discrete_fun_map_ne `{SI: indexT} {A} {B1 B2 : A → ofe} (f : ∀ x, B1 x → B2 x) n :
   (∀ x, Proper (dist n ==> dist n) (f x)) →
   Proper (dist n ==> dist n) (discrete_fun_map f).
 Proof. by intros ? y1 y2 Hy x; rewrite /discrete_fun_map (Hy x). Qed.
 
-Definition discrete_funO_map {SI A} {B1 B2 : A → ofe SI} (f : discrete_fun (λ x, B1 x -n> B2 x)) :
+Definition discrete_funO_map `{SI: indexT} {A} {B1 B2 : A → ofe} (f : discrete_fun (λ x, B1 x -n> B2 x)) :
   discrete_funO B1 -n> discrete_funO B2 := OfeMor (discrete_fun_map f).
-Instance discrete_funO_map_ne {SI A} {B1 B2 : A → ofe SI} :
+Global Instance discrete_funO_map_ne `{SI: indexT} {A} {B1 B2 : A → ofe} :
   NonExpansive (@discrete_funO_map SI A B1 B2).
 Proof. intros n f1 f2 Hf g x; apply Hf. Qed.
 
-Program Definition discrete_funOF {SI C} (F : C → oFunctor SI) : oFunctor SI := {|
+Program Definition discrete_funOF `{SI: indexT} {C} (F : C → oFunctor) : oFunctor := {|
   oFunctor_car A B := discrete_funO (λ c, oFunctor_car (F c) A B);
   oFunctor_map A1 A2 B1 B2 fg := discrete_funO_map (λ c, oFunctor_map (F c) fg)
 |}.
@@ -1651,7 +1650,7 @@ Qed.
 
 Notation "T -d> F" := (@discrete_funOF _ T%type (λ _, F%OF)) : oFunctor_scope.
 
-Global Instance discrete_funOF_contractive {SI C} (F : C → oFunctor SI) :
+Global Instance discrete_funOF_contractive {SI: indexT} {C} (F : C → oFunctor) :
   (∀ c, oFunctorContractive (F c)) → oFunctorContractive (discrete_funOF F).
 Proof.
   intros ? A1 A2 B1 B2 n ?? g.
@@ -1659,9 +1658,9 @@ Proof.
 Qed.
 
 (** * Constructing isomorphic OFEs *)
-Lemma iso_ofe_mixin {SI} {A : ofe SI} {B: Type} `{!Equiv B, !Dist SI B} (g : B → A)
+Lemma iso_ofe_mixin `{SI: indexT} {A : ofe} {B: Type} `{!Equiv B, !Dist B} (g : B → A)
   (g_equiv : ∀ y1 y2, y1 ≡ y2 ↔ g y1 ≡ g y2)
-  (g_dist : ∀ n y1 y2, y1 ≡{n}≡ y2 ↔ g y1 ≡{n}≡ g y2) : OfeMixin SI B.
+  (g_dist : ∀ n y1 y2, y1 ≡{n}≡ y2 ↔ g y1 ≡{n}≡ g y2) : OfeMixin B.
 Proof.
   split.
   - intros y1 y2. rewrite g_equiv. setoid_rewrite g_dist. apply equiv_dist.
@@ -1673,7 +1672,7 @@ Proof.
 Qed.
 
 Section iso_cofe_subtype.
-  Context {SI} {A B : ofe SI} `{!Cofe A} (P : A → Prop) (f : ∀ x, P x → B) (g : B → A).
+  Context `{SI: indexT} {A B : ofe} `{!Cofe A} (P : A → Prop) (f : ∀ x, P x → B) (g : B → A).
   Context (g_dist : ∀ n y1 y2, y1 ≡{n}≡ y2 ↔ g y1 ≡{n}≡ g y2).
   Let Hgne : NonExpansive g.
   Proof. intros n y1 y2. apply g_dist. Qed.
@@ -1694,7 +1693,7 @@ Section iso_cofe_subtype.
 
 End iso_cofe_subtype.
 
-Lemma iso_cofe_subtype' {SI} {A B : ofe SI} `{Cofe SI A}
+Lemma iso_cofe_subtype' `{SI: indexT} {A B : ofe} `{!Cofe A}
   (P : A → Prop) (f : ∀ x, P x → B) (g : B → A)
   (Pg : ∀ y, P (g y))
   (g_dist : ∀ n y1 y2, y1 ≡{n}≡ y2 ↔ g y1 ≡{n}≡ g y2)
@@ -1703,20 +1702,20 @@ Lemma iso_cofe_subtype' {SI} {A B : ofe SI} `{Cofe SI A}
   (Hblimit : BoundedLimitPreserving P) : Cofe B.
 Proof. apply: (iso_cofe_subtype P f g)=> //; eauto. Qed.
 
-Definition iso_cofe {SI} {A B : ofe SI} `{!Cofe A} (f : A → B) (g : B → A)
+Definition iso_cofe `{SI: indexT} {A B : ofe} `{!Cofe A} (f : A → B) (g : B → A)
   (g_dist : ∀ n y1 y2, y1 ≡{n}≡ y2 ↔ g y1 ≡{n}≡ g y2)
   (gf : ∀ x, g (f x) ≡ x) : Cofe B.
 Proof. by apply (iso_cofe_subtype (λ _, True) (λ x _, f x) g). Qed.
 
 (** * Sigma type *)
 Section sigma.
-  Context {SI} {A : ofe SI} {P : A → Prop}.
+  Context `{SI: indexT} {A : ofe} {P : A → Prop}.
   Implicit Types x : sig P.
 
   (* TODO: Find a better place for this Equiv instance. It also
      should not depend on A being an OFE. *)
   Local Instance sig_equiv : Equiv (sig P) := λ x1 x2, `x1 ≡ `x2.
-  Local Instance sig_dist : Dist SI (sig P) := λ n x1 x2, `x1 ≡{n}≡ `x2.
+  Local Instance sig_dist : Dist (sig P) := λ n x1 x2, `x1 ≡{n}≡ `x2.
 
   Definition sig_equiv_alt x y : x ≡ y ↔ `x ≡ `y := reflexivity _.
   Definition sig_dist_alt n x y : x ≡{n}≡ y ↔ `x ≡{n}≡ `y := reflexivity _.
@@ -1727,9 +1726,9 @@ Section sigma.
 
   Global Instance proj1_sig_ne : NonExpansive (@proj1_sig _ P).
   Proof. by intros n [a Ha] [b Hb] ?. Qed.
-  Definition sig_ofe_mixin : OfeMixin SI (sig P).
+  Definition sig_ofe_mixin : OfeMixin (sig P).
   Proof. by apply (iso_ofe_mixin proj1_sig). Qed.
-  Canonical Structure sigO : ofe SI := Ofe (sig P) sig_ofe_mixin.
+  Canonical Structure sigO : ofe := Ofe (sig P) sig_ofe_mixin.
 
   Global Instance sig_cofe `{!Cofe A, !LimitPreserving P, !BoundedLimitPreserving P} : Cofe sigO.
   Proof. apply (iso_cofe_subtype' P (exist P) proj1_sig)=> //. by intros []. Qed.
@@ -1748,7 +1747,7 @@ equality, while the second component might be any OFE. *)
 Section sigT.
   Import EqNotations.
 
-  Context {SI} {A : Type} {P : A → ofe SI}.
+  Context `{SI: indexT} {A : Type} {P : A → ofe}.
   Implicit Types x : sigT P.
 
   (**
@@ -1758,7 +1757,7 @@ Section sigT.
     Unlike in the topos of trees, with (C)OFEs we cannot use step-indexed equality
     on the first component.
   *)
-  Local Instance sigT_dist : Dist SI (sigT P) := λ n x1 x2,
+  Local Instance sigT_dist : Dist (sigT P) := λ n x1 x2,
     ∃ Heq : projT1 x1 = projT1 x2, rew Heq in projT2 x1 ≡{n}≡ projT2 x2.
 
   (**
@@ -1783,7 +1782,7 @@ Section sigT.
   Definition sigT_dist_proj1 n {x y} : x ≡{n}≡ y → projT1 x = projT1 y := proj1_ex.
   Definition sigT_equiv_proj1 {x y} : x ≡ y → projT1 x = projT1 y := λ H, proj1_ex (H zero).
 
-  Definition sigT_ofe_mixin : OfeMixin SI (sigT P).
+  Definition sigT_ofe_mixin : OfeMixin (sigT P).
   Proof.
     split => // n.
     - split; hnf; setoid_rewrite sigT_dist_eq.
@@ -1798,7 +1797,7 @@ Section sigT.
       exists eq_refl. by eapply dist_dist_later.
   Qed.
 
-  Canonical Structure sigTO : ofe SI := Ofe (sigT P) sigT_ofe_mixin.
+  Canonical Structure sigTO : ofe := Ofe (sigT P) sigT_ofe_mixin.
 
   Lemma sigT_equiv_eq_alt `{!∀ a b : A, ProofIrrel (a = b)} x1 x2 :
     x1 ≡ x2 ↔
@@ -1812,10 +1811,10 @@ Section sigT.
   Qed.
 
   (** [projT1] is non-expansive and proper. *)
-  Global Instance projT1_ne : NonExpansive (projT1 : sigTO → leibnizO SI A).
+  Global Instance projT1_ne : NonExpansive (projT1 : sigTO → leibnizO A).
   Proof. solve_proper. Qed.
 
-  Global Instance projT1_proper : Proper ((≡) ==> (≡)) (projT1 : sigTO → leibnizO SI A).
+  Global Instance projT1_proper : Proper ((≡) ==> (≡)) (projT1 : sigTO → leibnizO A).
   Proof. apply ne_proper, projT1_ne. Qed.
 
   (** [projT2] is "non-expansive"; the properness lemma [projT2_ne] requires UIP. *)
@@ -1945,9 +1944,9 @@ End sigT.
 Global Arguments sigTO {_ _} _.
 
 Section sigTOF.
-  Context {SI: indexT} {A : Type}.
+  Context `{SI: indexT} {A : Type}.
 
-  Program Definition sigT_map {P1 P2 : A → ofe SI} :
+  Program Definition sigT_map {P1 P2 : A → ofe} :
     discrete_funO (λ a, P1 a -n> P2 a) -n>
     sigTO P1 -n> sigTO P2 :=
     λne f xpx, existT _ (f _ (projT2 xpx)).
@@ -1959,7 +1958,7 @@ Section sigTOF.
     move => ?? n f g Heq [x px] /=. exists eq_refl => /=. apply Heq.
   Qed.
 
-  Program Definition sigTOF (F : A → oFunctor SI) : oFunctor SI := {|
+  Program Definition sigTOF (F : A → oFunctor) : oFunctor := {|
     oFunctor_car A B := sigTO (λ a, oFunctor_car (F a) A B);
     oFunctor_map A1 A2 B1 B2 fg := sigT_map (λ a, oFunctor_map (F a) fg)
   |}.
@@ -1982,42 +1981,42 @@ End sigTOF.
 Global Arguments sigTOF {_ _} _%OF.
 
 Notation "{ x  &  P }" := (sigTOF (λ x, P%OF)) : oFunctor_scope.
-Notation "{ x : A &  P }" := (@sigTOF A%type (λ x, P%OF)) : oFunctor_scope.
+Notation "{ x : A &  P }" := (@sigTOF _ A%type (λ x, P%OF)) : oFunctor_scope.
 
 
 (** * Finite COFEs *)
 (** In the special case of natural numbers as step-index type, there are no bounded limits. *)
 (** This case enables us to get additional COFE instances. *)
 (** This is not a class since it should only be used as an easy way of constructing Cofes. *)
-Record FiniteCofe `{FiniteIndex SI} (A : ofe SI) :=
+Record FiniteCofe {SI: indexT} `{!FiniteIndex SI} (A : ofe) :=
   {
     fin_compl : chain A → A;
     conv_fin_compl n c : fin_compl c ≡{n}≡ c n;
   }.
 Global Arguments fin_compl : simpl never.
 
-Lemma FiniteIndex_no_limit `{FiniteIndex SI} (n : SI): ¬ index_is_proper_limit n.
+Lemma FiniteIndex_no_limit {SI: indexT} `{Hfin: !FiniteIndex SI} (n : index): ¬ index_is_proper_limit n.
 Proof.
   intros Hlim.
-  destruct Hlim as [Hlim Hnz]. destruct (H n) as [-> | [β ->]]; first by index_contra_solve.
+  destruct Hlim as [Hlim Hnz]. destruct (Hfin n) as [-> | [β ->]]; first by index_contra_solve.
   by apply index_succ_not_limit in Hlim.
 Qed.
 
-Program Definition FiniteCofe_lbcompl `{FiniteIndex SI} (A : ofe SI) {Hfin : FiniteCofe A}
-  (n : SI) (Hn : index_is_proper_limit n) (c : bchain A n) : A := _.
+Program Definition FiniteCofe_lbcompl `{SI: indexT} `{!FiniteIndex SI} (A : ofe) {Hfin : FiniteCofe A}
+  (n : index) (Hn : index_is_proper_limit n) (c : bchain A n) : A := _.
 Next Obligation. intros ?? A Hfin n Hlim. exfalso. by eapply FiniteIndex_no_limit. Qed.
 
-Program Definition FiniteCofe_is_Cofe `{FiniteIndex SI} {A : ofe SI} (Hfin : FiniteCofe A) : Cofe A :=
+Program Definition FiniteCofe_is_Cofe `{SI: indexT} `{!FiniteIndex SI} {A : ofe} (Hfin : FiniteCofe A) : Cofe A :=
   {| compl := fin_compl A Hfin; lbcompl := @FiniteCofe_lbcompl _ _ A Hfin |}.
 Next Obligation. intros. apply conv_fin_compl. Qed.
 Next Obligation. intros. exfalso. by eapply FiniteIndex_no_limit. Qed.
 Next Obligation. intros. exfalso. by eapply FiniteIndex_no_limit. Qed.
 
-Program Definition Cofe_is_FiniteCofe `{FiniteIndex SI} `{Cofe SI A} : FiniteCofe A := {| fin_compl := compl |}.
+Program Definition Cofe_is_FiniteCofe `{SI: indexT} `{!FiniteIndex SI} `{!Cofe A} : FiniteCofe A := {| fin_compl := compl |}.
 Next Obligation. intros; apply conv_compl. Qed.
 
 Section iso_fin_cofe_subtype.
-  Context {SI} `{!FiniteIndex SI} {A B : ofe SI} `{!Cofe A} (P : A → Prop) (f : ∀ x, P x → B) (g : B → A).
+  Context `{SI: indexT} `{!FiniteIndex SI} {A B : ofe} `{!Cofe A} (P : A → Prop) (f : ∀ x, P x → B) (g : B → A).
   Context (g_dist : ∀ n y1 y2, y1 ≡{n}≡ y2 ↔ g y1 ≡{n}≡ g y2).
   Let Hgne : NonExpansive g.
   Proof. intros n y1 y2. apply g_dist. Qed.
@@ -2030,7 +2029,7 @@ Section iso_fin_cofe_subtype.
   Next Obligation. intros n c; simpl. apply g_dist. by rewrite gf conv_compl. Qed.
 End iso_fin_cofe_subtype.
 
-Lemma iso_finite_cofe_subtype' `{FiniteIndex SI} {A B : ofe SI} `{Cofe SI A}
+Lemma iso_finite_cofe_subtype' `{SI: indexT} `{!FiniteIndex SI} {A B : ofe} `{!Cofe A}
   (P : A → Prop) (f : ∀ x, P x → B) (g : B → A)
   (Pg : ∀ y, P (g y))
   (g_dist : ∀ n y1 y2, y1 ≡{n}≡ y2 ↔ g y1 ≡{n}≡ g y2)
@@ -2038,13 +2037,13 @@ Lemma iso_finite_cofe_subtype' `{FiniteIndex SI} {A B : ofe SI} `{Cofe SI A}
   (Hlimit : LimitPreserving P) : Cofe B.
 Proof. refine (FiniteCofe_is_Cofe _). apply: (iso_finite_cofe_subtype P f g)=> //; eauto. Qed.
 
-Definition iso_finite_cofe `{FiniteIndex SI} {A B : ofe SI} `{!Cofe A} (f : A → B) (g : B → A)
+Definition iso_finite_cofe `{SI: indexT} `{!FiniteIndex SI} {A B : ofe} `{!Cofe A} (f : A → B) (g : B → A)
   (g_dist : ∀ n y1 y2, y1 ≡{n}≡ y2 ↔ g y1 ≡{n}≡ g y2)
   (gf : ∀ x, g (f x) ≡ x) : Cofe B.
 Proof. refine (FiniteCofe_is_Cofe _). by apply (iso_finite_cofe_subtype (λ _, True) (λ x _, f x) g). Qed.
 
 (** * Isomorphisms between OFEs *)
-Record ofe_iso {SI} (A B : ofe SI) := OfeIso {
+Record ofe_iso `{SI: indexT} (A B : ofe) := OfeIso {
   ofe_iso_1 : A -n> B;
   ofe_iso_2 : B -n> A;
   ofe_iso_12 y : ofe_iso_1 (ofe_iso_2 y) ≡ y;
@@ -2057,12 +2056,12 @@ Global Arguments ofe_iso_12 {_ _ _} _ _.
 Global Arguments ofe_iso_21 {_ _ _} _ _.
 
 Section ofe_iso.
-  Context {SI} {A B : ofe SI}.
+  Context `{SI: indexT} {A B : ofe}.
 
   Local Instance ofe_iso_equiv : Equiv (ofe_iso A B) := λ I1 I2,
     ofe_iso_1 I1 ≡ ofe_iso_1 I2 ∧ ofe_iso_2 I1 ≡ ofe_iso_2 I2.
 
-  Local Instance ofe_iso_dist : Dist SI (ofe_iso A B) := λ n I1 I2,
+  Local Instance ofe_iso_dist : Dist (ofe_iso A B) := λ n I1 I2,
     ofe_iso_1 I1 ≡{n}≡ ofe_iso_1 I2 ∧ ofe_iso_2 I1 ≡{n}≡ ofe_iso_2 I2.
 
   Global Instance ofe_iso_1_ne : NonExpansive (ofe_iso_1 (A:=A) (B:=B)).
@@ -2070,9 +2069,9 @@ Section ofe_iso.
   Global Instance ofe_iso_2_ne : NonExpansive (ofe_iso_2 (A:=A) (B:=B)).
   Proof. by destruct 1. Qed.
 
-  Lemma ofe_iso_ofe_mixin : OfeMixin SI (ofe_iso A B).
+  Lemma ofe_iso_ofe_mixin : OfeMixin (ofe_iso A B).
   Proof. by apply (iso_ofe_mixin (λ I, (ofe_iso_1 I, ofe_iso_2 I))). Qed.
-  Canonical Structure ofe_isoO : ofe SI := Ofe (ofe_iso A B) ofe_iso_ofe_mixin.
+  Canonical Structure ofe_isoO : ofe := Ofe (ofe_iso A B) ofe_iso_ofe_mixin.
 
   (* ≡ is not BoundedLimitPreserving, so we do not get this Cofe instance in the general case.
     However, for finite Cofes this works. *)
@@ -2091,25 +2090,25 @@ Section ofe_iso.
   Qed.
 End ofe_iso.
 
-Global Arguments ofe_isoO : clear implicits.
+Global Arguments ofe_isoO {_} _ _.
 
-Program Definition iso_ofe_refl {SI: indexT} {A: ofe SI} : ofe_iso A A := OfeIso cid cid _ _.
+Program Definition iso_ofe_refl `{SI: indexT} {A: ofe} : ofe_iso A A := OfeIso cid cid _ _.
 Solve Obligations with done.
 
-Definition iso_ofe_sym {SI: indexT} {A B : ofe SI} (I : ofe_iso A B) : ofe_iso B A :=
+Definition iso_ofe_sym `{SI: indexT} {A B : ofe} (I : ofe_iso A B) : ofe_iso B A :=
   OfeIso (ofe_iso_2 I) (ofe_iso_1 I) (ofe_iso_21 I) (ofe_iso_12 I).
-Global Instance iso_ofe_sym_ne {SI: indexT}  {A B : ofe SI} : NonExpansive (iso_ofe_sym (A:=A) (B:=B)).
+Global Instance iso_ofe_sym_ne {SI: indexT}  {A B : ofe} : NonExpansive (iso_ofe_sym (A:=A) (B:=B)).
 Proof. intros n I1 I2 []; split; simpl; by f_equiv. Qed.
 
-Program Definition iso_ofe_trans {SI: indexT} {A B C : ofe SI}
+Program Definition iso_ofe_trans `{SI: indexT} {A B C : ofe}
     (I : ofe_iso A B) (J : ofe_iso B C) : ofe_iso A C :=
   OfeIso (ofe_iso_1 J ◎ ofe_iso_1 I) (ofe_iso_2 I ◎ ofe_iso_2 J) _ _.
 Next Obligation. intros SI A B C I J z; simpl. by rewrite !ofe_iso_12. Qed.
 Next Obligation. intros SI A B C I J z; simpl. by rewrite !ofe_iso_21. Qed.
-Global Instance iso_ofe_trans_ne {SI : indexT} {A B C : ofe SI} : NonExpansive2 (iso_ofe_trans (A:=A) (B:=B) (C:=C)).
+Global Instance iso_ofe_trans_ne `{SI : indexT} {A B C : ofe} : NonExpansive2 (iso_ofe_trans (A:=A) (B:=B) (C:=C)).
 Proof. intros n I1 I2 [] J1 J2 []; split; simpl; by f_equiv. Qed.
 
-Program Definition iso_ofe_cong {SI : indexT} (F : oFunctor SI) `{!Cofe A, !Cofe B}
+Program Definition iso_ofe_cong `{SI : indexT} (F : oFunctor) `{!Cofe A, !Cofe B}
     (I : ofe_iso A B) : ofe_iso (oFunctor_apply F A) (oFunctor_apply F B) :=
   OfeIso (oFunctor_map F (ofe_iso_2 I, ofe_iso_1 I))
     (oFunctor_map F (ofe_iso_1 I, ofe_iso_2 I)) _ _.
@@ -2123,10 +2122,10 @@ Next Obligation.
   apply equiv_dist=> n.
   apply oFunctor_map_ne; split=> ? /=; by rewrite ?ofe_iso_12 ?ofe_iso_21.
 Qed.
-Global Instance iso_ofe_cong_ne {SI : indexT} (F : oFunctor SI) `{!Cofe A, !Cofe B} :
+Global Instance iso_ofe_cong_ne `{SI : indexT} (F : oFunctor) `{!Cofe A, !Cofe B} :
   NonExpansive (iso_ofe_cong F (A:=A) (B:=B)).
 Proof. intros n I1 I2 []; split; simpl; by f_equiv. Qed.
-Global Instance iso_ofe_cong_contractive {SI : indexT} (F : oFunctor SI) `{!Cofe A, !Cofe B} :
+Global Instance iso_ofe_cong_contractive `{SI : indexT} (F : oFunctor) `{!Cofe A, !Cofe B} :
   oFunctorContractive F → Contractive (iso_ofe_cong F (A:=A) (B:=B)).
 Proof.
   intros ? n I1 I2 HI; split; simpl.

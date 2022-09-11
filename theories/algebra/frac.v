@@ -13,8 +13,8 @@ From iris.prelude Require Import options.
 Notation frac := Qp (only parsing).
 
 Section frac.
-  Context {SI: indexT}.
-  Canonical Structure fracO := leibnizO SI frac.
+  Context `{SI: indexT}.
+  Canonical Structure fracO := leibnizO frac.
 
   Local Instance frac_valid_instance : Valid frac := λ x, (x ≤ 1)%Qp.
   Local Instance frac_pcore_instance : PCore frac := λ _, None.
@@ -36,7 +36,7 @@ Section frac.
     intros p q. rewrite !frac_valid' frac_op'=> ?.
     trans (p + q)%Qp; last done. apply Qp.le_add_l.
   Qed.
-  Canonical Structure fracR := discreteR SI frac frac_ra_mixin.
+  Canonical Structure fracR := discreteR frac frac_ra_mixin.
 
   Global Instance frac_cmra_discrete : CmraDiscrete fracR.
   Proof. apply discrete_cmra_discrete. Qed.
@@ -54,5 +54,3 @@ Section frac.
   Global Instance is_op_frac q : IsOp' q (q/2)%Qp (q/2)%Qp.
   Proof. by rewrite /IsOp' /IsOp frac_op' Qp.div_2. Qed.
 End frac.
-Arguments fracR : clear implicits.
-Arguments fracO : clear implicits.

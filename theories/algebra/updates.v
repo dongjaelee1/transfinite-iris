@@ -6,18 +6,18 @@ From iris.prelude Require Import options.
    make the following hold:
      x ~~> P → Some c ~~> Some P
 *)
-Definition cmra_updateP {SI: indexT} {A : cmra SI} (x : A) (P : A → Prop) := ∀ n mz,
+Definition cmra_updateP `{SI: indexT} {A : cmra} (x : A) (P : A → Prop) := ∀ n mz,
   ✓{n} (x ⋅? mz) → ∃ y, P y ∧ ✓{n} (y ⋅? mz).
 Global Instance: Params (@cmra_updateP) 1 := {}.
 Infix "~~>:" := cmra_updateP (at level 70).
 
-Definition cmra_update {SI: indexT} {A : cmra SI} (x y : A) := ∀ n mz,
+Definition cmra_update `{SI: indexT} {A : cmra} (x y : A) := ∀ n mz,
   ✓{n} (x ⋅? mz) → ✓{n} (y ⋅? mz).
 Infix "~~>" := cmra_update (at level 70).
 Global Instance: Params (@cmra_update) 1 := {}.
 
 Section updates.
-Context {SI: indexT} {A : cmra SI}.
+Context `{SI: indexT} {A : cmra}.
 Implicit Types x y : A.
 
 Global Instance cmra_updateP_proper :
@@ -129,7 +129,7 @@ End updates.
 
 (** * Transport *)
 Section cmra_transport.
-  Context {SI: indexT} {A B : cmra SI} (H : A = B).
+  Context `{SI: indexT} {A B : cmra} (H : A = B).
   Notation T := (cmra_transport H).
   Lemma cmra_transport_updateP (P : A → Prop) (Q : B → Prop) x :
     x ~~>: P → (∀ y, P y → Q (T y)) → T x ~~>: Q.
@@ -141,7 +141,7 @@ End cmra_transport.
 
 (** * Isomorphism *)
 Section iso_cmra.
-  Context {SI: indexT} {A B : cmra SI} (f : A → B) (g : B → A).
+  Context `{SI: indexT} {A B : cmra} (f : A → B) (g : B → A).
 
   Lemma iso_cmra_updateP (P : B → Prop) (Q : A → Prop) y
       (gf : ∀ x, g (f x) ≡ x)
@@ -171,7 +171,7 @@ End iso_cmra.
 
 (** * Product *)
 Section prod.
-  Context {SI: indexT} {A B : cmra SI}.
+  Context `{SI: indexT} {A B : cmra}.
   Implicit Types x : A * B.
 
   Lemma prod_updateP P1 P2 (Q : A * B → Prop) x :
@@ -194,7 +194,7 @@ End prod.
 
 (** * Option *)
 Section option.
-  Context {SI: indexT} {A : cmra SI}.
+  Context `{SI: indexT} {A : cmra}.
   Implicit Types x y : A.
 
   Lemma option_updateP (P : A → Prop) (Q : option A → Prop) x :

@@ -4,13 +4,13 @@ From iris.algebra Require Import updates local_updates proofmode_classes big_op.
 From iris.prelude Require Import options.
 
 Section ofe.
-Context {K} `{Countable K} {SI} {A : ofe SI}.
+Context `{SI: indexT} {K} `{Countable K} {A : ofe}.
 Implicit Types m : gmap K A.
 Implicit Types i : K.
 
-Local Instance gmap_dist : Dist SI (gmap K A) := λ n m1 m2,
+Local Instance gmap_dist : Dist (gmap K A) := λ n m1 m2,
   ∀ i, m1 !! i ≡{n}≡ m2 !! i.
-Definition gmap_ofe_mixin : OfeMixin SI (gmap K A).
+Definition gmap_ofe_mixin : OfeMixin (gmap K A).
 Proof.
   split.
   - intros m1 m2; split.
@@ -22,7 +22,7 @@ Proof.
     + by intros m1 m2 m3 ?? k; trans (m2 !! k).
   - intros n n' m1 m2 ? k ?; eapply dist_le; eauto.
 Qed.
-Canonical Structure gmapO : ofe SI := Ofe (gmap K A) gmap_ofe_mixin.
+Canonical Structure gmapO : ofe := Ofe (gmap K A) gmap_ofe_mixin.
 
 
 Program Definition gmap_chain (c: chain gmapO) (k: K) : chain (optionO A) :=
@@ -32,12 +32,12 @@ Program Definition gmap_bchain {α} (c: bchain gmapO α) (k: K) : bchain (option
   mkbchain _ _ _ (λ β Hβ, c β Hβ !! k) _.
 Next Obligation. intros α c k β γ Hβγ Hβ Hγ; by apply c. Qed.
 
-Definition gmap_compl `{Cofe SI A} : (chain gmapO) → gmapO := λ c,
+Definition gmap_compl `{!Cofe A} : (chain gmapO) → gmapO := λ c,
   map_imap (λ i _, compl (gmap_chain c i)) (c zero).
-Definition gmap_lbcompl `{Cofe SI A} : ∀ α Hα , (bchain gmapO α) → gmapO := λ α Hα c,
+Definition gmap_lbcompl `{!Cofe A} : ∀ α Hα , (bchain gmapO α) → gmapO := λ α Hα c,
     map_imap (λ i _, lbcompl Hα (gmap_bchain c i)) (c zero (proper_limit_not_zero Hα)).
 
-Global Program Instance gmap_cofe `{Cofe SI A} : Cofe gmapO :=
+Global Program Instance gmap_cofe `{!Cofe A} : Cofe gmapO :=
   {| compl := gmap_compl; lbcompl := gmap_lbcompl |}.
 Next Obligation.
   intros ? n c k. rewrite /gmap_compl map_lookup_imap.
@@ -118,27 +118,27 @@ Proof. intros (y'&?&->)%dist_Some_inv_r'. by rewrite insert_id. Qed.
 (** Internalized properties *)
 End ofe.
 
-Global Arguments gmapO _ {_ _ _} _.
+Global Arguments gmapO {_} _ {_ _} _.
 
 (** Non-expansiveness of higher-order map functions and big-ops *)
-Global Instance merge_ne {SI} `{Countable K} {A B C : ofe SI} n :
+Global Instance merge_ne `{SI: indexT} `{Countable K} {A B C : ofe} n :
   Proper (((dist (A:=option A) n) ==> (dist (A:=option B) n) ==> (dist (A:=option C) n)) ==>
    (dist n) ==> (dist n) ==> (dist n)) (merge (M:=gmap K)).
 Proof.
   intros ?? Hf ?? Hm1 ?? Hm2 i. rewrite !lookup_merge.
   destruct (Hm1 i), (Hm2 i); try apply Hf; by constructor.
 Qed.
-Global Instance union_with_proper {SI} `{Countable K} {A : ofe SI} n :
+Global Instance union_with_proper `{SI: indexT} `{Countable K} {A : ofe} n :
   Proper (((dist n) ==> (dist n) ==> (dist n)) ==>
           (dist n) ==> (dist n) ==>(dist n)) (union_with (M:=gmap K A)).
 Proof.
   intros ?? Hf ?? Hm1 ?? Hm2 i; apply (merge_ne _ _); auto.
   by do 2 destruct 1; first [apply Hf | constructor].
 Qed.
-Global Instance map_fmap_proper {SI} `{Countable K} {A B : ofe SI} (f : A → B) n :
+Global Instance map_fmap_proper `{SI: indexT} `{Countable K} {A B : ofe} (f : A → B) n :
   Proper (dist n ==> dist n) f → Proper (dist n ==> dist n) (fmap (M:=gmap K) f).
 Proof. intros ? m m' ? k; rewrite !lookup_fmap. by repeat f_equiv. Qed.
-Global Instance map_zip_with_proper {SI} `{Countable K} {A B C : ofe SI} (f : A → B → C) n :
+Global Instance map_zip_with_proper `{SI: indexT} `{Countable K} {A B C : ofe} (f : A → B → C) n :
   Proper (dist n ==> dist n ==> dist n) f →
   Proper (dist n ==> dist n ==> dist n) (map_zip_with (M:=gmap K) f).
 Proof.
@@ -146,7 +146,7 @@ Proof.
   destruct 1; destruct 1; repeat f_equiv; constructor || done.
 Qed.
 
-Lemma big_opM_ne_2 {SI} `{Monoid SI M o} `{Countable K} {A : ofe SI} (f g : K → A → M) m1 m2 n :
+Lemma big_opM_ne_2 `{SI: indexT} `{Monoid M o} `{Countable K} {A : ofe} (f g : K → A → M) m1 m2 n :
   m1 ≡{n}≡ m2 →
   (∀ k y1 y2,
     m1 !! k = Some y1 → m2 !! k = Some y2 → y1 ≡{n}≡ y2 → f k y1 ≡{n}≡ g k y2) →
@@ -161,14 +161,14 @@ Qed.
 
 (* CMRA *)
 Section cmra.
-Context `{Countable K} {SI} {A : cmra SI}.
+Context `{SI: indexT} `{Countable K} {A : cmra}.
 Implicit Types m : gmap K A.
 
 Local Instance gmap_unit_instance : Unit (gmap K A) := (∅ : gmap K A).
 Local Instance gmap_op_instance : Op (gmap K A) := merge op.
 Local Instance gmap_pcore_instance : PCore (gmap K A) := λ m, Some (omap pcore m).
 Local Instance gmap_valid_instance : Valid (gmap K A) := λ m, ∀ i, ✓ (m !! i).
-Local Instance gmap_validN_instance : ValidN SI (gmap K A) := λ n m, ∀ i, ✓{n} (m !! i).
+Local Instance gmap_validN_instance : ValidN (gmap K A) := λ n m, ∀ i, ✓{n} (m !! i).
 
 Lemma lookup_op m1 m2 i : (m1 ⋅ m2) !! i = m1 !! i ⋅ m2 !! i.
 Proof. rewrite lookup_merge. by destruct (m1 !! i), (m2 !! i).  Qed.
@@ -209,7 +209,7 @@ Proof.
       lookup_insert_ne // lookup_partial_alter_ne.
 Qed.
 
-Lemma gmap_cmra_mixin : CmraMixin SI (gmap K A).
+Lemma gmap_cmra_mixin : CmraMixin (gmap K A).
 Proof.
   apply cmra_total_mixin.
   - eauto.
@@ -239,27 +239,27 @@ Proof.
     + revert Hz1i. case: (y1!!i)=>[?|] //.
     + revert Hz2i. case: (y2!!i)=>[?|] //.
 Qed.
-Canonical Structure gmapR := Cmra SI (gmap K A) gmap_cmra_mixin.
+Canonical Structure gmapR := Cmra (gmap K A) gmap_cmra_mixin.
 
 Global Instance gmap_cmra_discrete : CmraDiscrete A → CmraDiscrete gmapR.
 Proof. split; [apply _|]. intros m ? i. by apply: cmra_discrete_valid. Qed.
 
-Lemma gmap_ucmra_mixin : UcmraMixin SI (gmap K A).
+Lemma gmap_ucmra_mixin : UcmraMixin (gmap K A).
 Proof.
   split.
   - by intros i; rewrite lookup_empty.
   - by intros m i; rewrite /= lookup_op lookup_empty (left_id_L None _).
   - constructor=> i. by rewrite lookup_omap lookup_empty.
 Qed.
-Canonical Structure gmapUR := Ucmra SI (gmap K A) gmap_ucmra_mixin.
+Canonical Structure gmapUR := Ucmra (gmap K A) gmap_ucmra_mixin.
 
 End cmra.
 
-Global Arguments gmapR _ {_ _ _} _.
-Global Arguments gmapUR _ {_ _ _} _.
+Global Arguments gmapR {_} _ {_ _} _.
+Global Arguments gmapUR {_} _ {_ _} _.
 
 Section properties.
-Context `{Countable K} {SI} {A : cmra SI}.
+Context `{SI: indexT} `{Countable K} {A : cmra}.
 Implicit Types m : gmap K A.
 Implicit Types i : K.
 Implicit Types x y : A.
@@ -617,7 +617,7 @@ Proof.
     [done|by rewrite lookup_singleton].
 Qed.
 
-Lemma gmap_fmap_mono {B : cmra SI} (f : A → B) m1 m2 :
+Lemma gmap_fmap_mono {B : cmra} (f : A → B) m1 m2 :
   Proper ((≡) ==> (≡)) f →
   (∀ x y, x ≼ y → f x ≼ f y) → m1 ≼ m2 → fmap f m1 ≼ fmap f m2.
 Proof.
@@ -643,7 +643,7 @@ Qed.
 End properties.
 
 Section unital_properties.
-Context `{Countable K} {SI} {A : ucmra SI}.
+Context `{SI: indexT} `{Countable K} {A : ucmra}.
 Implicit Types m : gmap K A.
 Implicit Types i : K.
 Implicit Types x y : A.
@@ -666,10 +666,10 @@ Qed.
 End unital_properties.
 
 (** Functor *)
-Global Instance gmap_fmap_ne `{Countable K} {SI} {A B : ofe SI} (f : A → B) n :
+Global Instance gmap_fmap_ne `{SI: indexT} `{Countable K} {A B : ofe} (f : A → B) n :
   Proper (dist n ==> dist n) f → Proper (dist n ==>dist n) (fmap (M:=gmap K) f).
 Proof. by intros ? m m' Hm k; rewrite !lookup_fmap; apply option_fmap_ne. Qed.
-Global Instance gmap_fmap_cmra_morphism `{Countable K} {SI} {A B : cmra SI} (f : A → B)
+Global Instance gmap_fmap_cmra_morphism `{SI: indexT} `{Countable K} {A B : cmra} (f : A → B)
   `{!CmraMorphism f} : CmraMorphism (fmap f : gmap K A → gmap K B).
 Proof.
   split; try apply _.
@@ -678,16 +678,16 @@ Proof.
     case: (m!!i)=>//= ?. apply cmra_morphism_pcore, _.
   - intros m1 m2 i. by rewrite lookup_op !lookup_fmap lookup_op cmra_morphism_op.
 Qed.
-Definition gmapO_map `{Countable K} {SI} {A B: ofe SI} (f: A -n> B) :
+Definition gmapO_map `{SI: indexT} `{Countable K} {A B: ofe} (f: A -n> B) :
   gmapO K A -n> gmapO K B := OfeMor (fmap f : gmapO K A → gmapO K B).
-Global Instance gmapO_map_ne `{Countable K} {SI} {A B: ofe SI} :
-  NonExpansive (@gmapO_map K _ _ SI A B).
+Global Instance gmapO_map_ne `{SI: indexT} `{Countable K} {A B: ofe} :
+  NonExpansive (@gmapO_map _ K _ _ A B).
 Proof.
   intros n f g Hf m k; rewrite /= !lookup_fmap.
   destruct (_ !! k) eqn:?; simpl; constructor; apply Hf.
 Qed.
 
-Program Definition gmapOF K `{Countable K} {SI} (F : oFunctor SI) : oFunctor SI := {|
+Program Definition gmapOF `{SI: indexT} K `{Countable K} (F : oFunctor) : oFunctor := {|
   oFunctor_car A B := gmapO K (oFunctor_car F A B);
   oFunctor_map A1 A2 B1 B2 fg := gmapO_map (oFunctor_map F fg)
 |}.
@@ -702,13 +702,13 @@ Next Obligation.
   intros K SI ?? F A1 A2 A3 B1 B2 B3 f g f' g' x. rewrite /= -map_fmap_compose.
   apply map_fmap_equiv_ext=>y ??; apply oFunctor_map_compose.
 Qed.
-Global Instance gmapOF_contractive K `{Countable K} {SI} (F: oFunctor SI) :
+Global Instance gmapOF_contractive `{SI: indexT} K `{Countable K} (F: oFunctor) :
   oFunctorContractive F → oFunctorContractive (gmapOF K F).
 Proof.
   by intros ? A1 A2 B1 B2 n f g Hfg; apply gmapO_map_ne, oFunctor_map_contractive.
 Qed.
 
-Program Definition gmapURF K `{Countable K} {SI} (F : rFunctor SI) : urFunctor SI := {|
+Program Definition gmapURF `{SI: indexT} K `{Countable K} (F : rFunctor) : urFunctor := {|
   urFunctor_car A B := gmapUR K (rFunctor_car F A B);
   urFunctor_map A1 A2 B1 B2 fg := gmapO_map (rFunctor_map F fg)
 |}.
@@ -723,18 +723,19 @@ Next Obligation.
   intros K SI ?? F A1 A2 A3 B1 B2 B3 f g f' g' x. rewrite /= -map_fmap_compose.
   apply map_fmap_equiv_ext=>y ??; apply rFunctor_map_compose.
 Qed.
-Instance gmapURF_contractive K `{Countable K} {SI} (F: rFunctor SI) :
+Global Instance gmapURF_contractive `{SI: indexT} K `{Countable K} (F: rFunctor) :
   rFunctorContractive F → urFunctorContractive (gmapURF K F).
 Proof.
   by intros ? A1 A2 B1 B2 n f g Hfg; apply gmapO_map_ne, rFunctor_map_contractive.
 Qed.
 
-Program Definition gmapRF K `{Countable K} {SI} (F : rFunctor SI) : rFunctor SI := {|
+Program Definition gmapRF `{SI: indexT} K `{Countable K} (F : rFunctor) : rFunctor := {|
   rFunctor_car A B := gmapR K (rFunctor_car F A B);
   rFunctor_map A1 A2 B1 B2 fg := gmapO_map (rFunctor_map F fg)
 |}.
-Solve Obligations with (intros; apply gmapURF).
+Solve Obligations with (intros SI; intros; apply (@gmapURF SI)).
 
-Global Instance gmapRF_contractive K `{Countable K} {SI} (F : rFunctor SI) :
+
+Global Instance gmapRF_contractive `{SI: indexT} K `{Countable K} (F : rFunctor) :
   rFunctorContractive F → rFunctorContractive (gmapRF K F).
 Proof. apply gmapURF_contractive. Qed.
