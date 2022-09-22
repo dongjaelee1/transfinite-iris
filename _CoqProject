@@ -22,6 +22,7 @@ theories/stepindex/ordinal_arith.v
 theories/algebra/truncation.v
 theories/algebra/wf_IR.v
 theories/algebra/cofe_solver.v
+theories/algebra/ordinals.v
 
 theories/bi/satisfiable.v
 
