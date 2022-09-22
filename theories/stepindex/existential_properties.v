@@ -1,4 +1,5 @@
-From iris.stepindex Require Export stepindex.
+From iris.algebra Require Export stepindex.
+Require Import Coq.Logic.Classical_Prop.
 
 
 Polymorphic Class TypeExistentialProperty@{i} (X: Type@{i}) (SI: indexT) : Type :=
@@ -54,6 +55,10 @@ Proof.
     destruct (Hsome b) as [[] ?]; auto. exfalso. apply HP; eauto.
 Qed.
 
+Global Instance finite_bounded_existential SI: FiniteBoundedExistential SI.
+Proof.
+  eapply classic_finite_bounded_existential, classic.
+Qed.
 
 
 

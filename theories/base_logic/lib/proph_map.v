@@ -1,6 +1,6 @@
 From iris.proofmode Require Import tactics.
 From iris.algebra Require Import gmap_view list.
-From iris.base_logic.lib Require Export own.
+From transfinite.base_logic.lib Require Export own.
 From iris.prelude Require Import options.
 Import uPred.
 
@@ -45,7 +45,7 @@ Section definitions.
   Definition proph_map_interp pvs (ps : gset P) : iProp Σ :=
     (∃ R, ⌜proph_resolves_in_list R pvs ∧
           dom R ⊆ ps⌝ ∗
-          own (proph_map_name pG) (gmap_view_auth (V:=listO $ leibnizO V) 1 R))%I.
+          own (proph_map_name pG) (gmap_view_auth (V:=listO $ leibnizO V) (DfracOwn 1) R))%I.
 
   Definition proph_def (p : P) (vs : list V) : iProp Σ :=
     own (proph_map_name pG) (gmap_view_frag (V:=listO $ leibnizO V) p (DfracOwn 1) vs).
@@ -80,7 +80,7 @@ whereas [proph_map_init] forgets about that relation. *)
 Lemma proph_map_init_names `{SI: indexT} {Σ: gFunctors} `{Countable P, !proph_mapPreG P V Σ} pvs ps :
   ⊢ |==> ∃ γ, let H := ProphMapG SI P V Σ _ _ _ γ in proph_map_interp pvs ps.
 Proof.
-  iMod (own_alloc (gmap_view_auth 1 ∅)) as (γ) "Hh".
+  iMod (own_alloc (gmap_view_auth (DfracOwn 1) ∅)) as (γ) "Hh".
   { apply gmap_view_auth_valid. }
   iModIntro. iExists γ, ∅. iSplit; last by iFrame.
   iPureIntro. done.

@@ -1,4 +1,4 @@
-From iris.stepindex Require Import stepindex.
+From iris.algebra Require Import stepindex.
 From iris.prelude Require Import options.
 From Coq.Logic Require Import Eqdep_dec.
 

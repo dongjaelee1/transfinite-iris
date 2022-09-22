@@ -1,8 +1,8 @@
 From stdpp Require Export namespaces.
 From iris.algebra Require Import gmap.
 From iris.proofmode Require Import tactics.
-From iris.base_logic.lib Require Export fancy_updates.
-From iris.base_logic.lib Require Import wsat.
+From transfinite.base_logic.lib Require Export fancy_updates.
+From transfinite.base_logic.lib Require Import wsat.
 From iris.prelude Require Import options.
 Import uPred.
 
@@ -140,7 +140,7 @@ Section inv.
     rewrite inv_eq. iIntros (??) "#HinvP #HinvQ !>"; iIntros (E ?).
     iMod ("HinvP" with "[%]") as "[$ HcloseP]"; first set_solver.
     iMod ("HinvQ" with "[%]") as "[$ HcloseQ]"; first set_solver.
-    iMod (fupd_intro_mask' _ (E ∖ ↑N)) as "Hclose"; first set_solver.
+    iMod (fupd_mask_subseteq (E ∖ ↑N)) as "Hclose"; first set_solver.
     iIntros "!> [HP HQ]".
     iMod "Hclose" as %_. iMod ("HcloseQ" with "HQ") as %_. by iApply "HcloseP".
   Qed.

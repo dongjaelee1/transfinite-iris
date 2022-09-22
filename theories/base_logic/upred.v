@@ -1,9 +1,9 @@
 From stdpp Require Import finite.
-From iris.stepindex Require Export existential_properties.
 From iris.algebra Require Export cmra updates.
-From iris.algebra Require Import truncation.
 From iris.bi Require Import notation.
 From iris.prelude Require Import options.
+From transfinite.stepindex Require Export existential_properties ofe functors.
+From transfinite.algebra Require Import truncation.
 
 (** The basic definition of the uPred type, its metric and functor laws.
     You probably do not want to import this file. Instead, import
@@ -282,28 +282,28 @@ Proof.
     rewrite /uPred_holds /= (dist_le _ _ _ _(Hfg y)).
 Qed.
 
-Program Definition uPredOF `{SI: indexT} (F : urFunctor) : oFunctor := {|
-  oFunctor_car A B := uPredO (urFunctor_car F B A);
-  oFunctor_map A1 A2 B1 B2 fg := uPredO_map (urFunctor_map F (fg.2, fg.1))
+Program Definition uPredOF `{SI: indexT} (F : turFunctor) : tFunctor := {|
+  tFunctor_car A B := uPredO (turFunctor_car F B A);
+  tFunctor_map A1 A2 B1 B2 fg := uPredO_map (turFunctor_map F (fg.2, fg.1))
 |}.
 Next Obligation.
   intros SI F A1 A2 B1 B2 n P Q HPQ.
-  apply uPredO_map_ne, urFunctor_map_ne; split; by apply HPQ.
+  apply uPredO_map_ne, turFunctor_map_ne; split; by apply HPQ.
 Qed.
 Next Obligation.
   intros SI F A B P; simpl. rewrite -{2}(uPred_map_id P).
-  apply uPred_map_ext=>y. by rewrite urFunctor_map_id.
+  apply uPred_map_ext=>y. by rewrite turFunctor_map_id.
 Qed.
 Next Obligation.
   intros SI F A1 A2 A3 B1 B2 B3 f g f' g' P; simpl. rewrite -uPred_map_compose.
-  apply uPred_map_ext=>y; apply urFunctor_map_compose.
+  apply uPred_map_ext=>y; apply turFunctor_map_compose.
 Qed.
 
-Global Instance uPredOF_contractive `{SI: indexT} (F: urFunctor) :
-  urFunctorContractive F → oFunctorContractive (uPredOF F).
+Global Instance uPredOF_contractive `{SI: indexT} (F: turFunctor) :
+  turFunctorContractive F → tFunctorContractive (uPredOF F).
 Proof.
-  intros ? A1 A2 B1 B2 n P Q HPQ. apply uPredO_map_ne, urFunctor_map_contractive.
-  intros β Hβ; split; by apply HPQ.
+  intros ? A1 A2 B1 B2 n P Q HPQ. apply uPredO_map_ne, turFunctor_map_contractive.
+  split; intros β Hβ; split; by apply HPQ.
 Qed.
 
 (** logical entailement *)
@@ -811,6 +811,16 @@ Proof.
   exists x1, x2; repeat split; eauto using dist_le.
 Qed.
 
+Lemma later_sep_pure φ P: ▷ (⌜φ⌝ ∗ P) ⊢ ▷ ⌜φ⌝ ∗ ▷ P.
+Proof.
+  unseal; split=> n x ? //=. intros Hlt.
+  exists ε, x. rewrite left_id. split; first done.
+  split; intros n' Hn; destruct (Hlt _ Hn) as (x1 & x2 & Heq & Hφ & HP).
+  - done.
+  - eapply uPred_mono; eauto.
+    rewrite Heq. eapply cmra_includedN_r.
+Qed.
+
 Lemma later_false_em P : ▷ P ⊢ ▷ False ∨ (▷ False → P).
 Proof.
   unseal; split=> -n x ? /= HP. destruct (index_lt_dec_minimum n) as [|[n']]; eauto.
@@ -844,9 +854,13 @@ Lemma sig_eq {A : ofe} (P : A → Prop) (x y : sigO P) :
 Proof. by unseal. Qed.
 
 Lemma later_eq_1 {A : ofe} (x y : A) : Next x ≡ Next y ⊢ ▷ (x ≡ y).
-Proof. by unseal. Qed.
+Proof.
+  unseal. split. intros n r Hv; simpl. intros [Hx]; eauto.
+Qed.
 Lemma later_eq_2 {A : ofe} (x y : A) : ▷ (x ≡ y) ⊢ Next x ≡ Next y.
-Proof. by unseal. Qed.
+Proof.
+  unseal. split. intros n r Hv; simpl. intros Hx; split; eauto.
+Qed.
 
 Lemma discrete_eq_1 {A : ofe} (a b : A) : Discrete a → a ≡ b ⊢ ⌜a ≡ b⌝.
 Proof.

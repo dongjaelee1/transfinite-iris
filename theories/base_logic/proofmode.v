@@ -1,6 +1,6 @@
 From iris.algebra Require Import proofmode_classes.
 From iris.proofmode Require Import classes.
-From iris.base_logic Require Export derived.
+From transfinite.base_logic Require Export derived.
 From iris.prelude Require Import options.
 
 Import base_logic.bi.uPred.
@@ -11,11 +11,11 @@ Context `{SI: indexT} {M : ucmra}.
 Implicit Types P Q R : uPred M.
 
 Global Instance into_pure_cmra_valid `{!CmraDiscrete A} (a : A) :
-  @IntoPure SI (uPredI M) (✓ a) (✓ a).
+  @IntoPure _ (uPredI M) (✓ a) (✓ a).
 Proof. by rewrite /IntoPure discrete_valid. Qed.
 
 Global Instance from_pure_cmra_valid {A : cmra} (a : A) :
-  @FromPure SI (uPredI M) false (✓ a) (✓ a).
+  @FromPure _ (uPredI M) false (✓ a) (✓ a).
 Proof.
   rewrite /FromPure /=. eapply bi.pure_elim=> // ?.
   rewrite -uPred.cmra_valid_intro //.

@@ -1,5 +1,8 @@
 
-From iris.stepindex Require Export ordinals.
+From iris.prelude Require Import options.
+From transfinite.prelude Require Import prelude.
+From iris.algebra Require Import stepindex.
+From transfinite.stepindex Require Export ordinals.
 
 
 (* Natural Addition, also called Hessenberg Addition *)
@@ -7,7 +10,7 @@ Polymorphic Class NaturalAddition (A : Type) := nadd : A → A → A.
 Global Hint Mode NaturalAddition ! : typeclass_instances.
 Infix "⊕" := nadd (at level 60) : stdpp_scope.
 Notation "(⊕)" := nadd (only parsing) : stdpp_scope.
-Instance: Params (@nadd) 1 := {}.
+Global Instance: Params (@nadd) 1 := {}.
 
 
 
@@ -422,8 +425,9 @@ Section ordinals.
         eapply succ_mono_leq. eapply succ_inj_leq in Hδα.
         by eapply natural_addition_compat.
       + eapply ord_lt_leq; eauto.
-        eapply succ_mono_leq. etransitivity. eapply IHβ; auto.
-        by eapply succ_least_greater, natural_addition_strict_compat'.
+        eapply succ_mono_leq. etransitivity.
+        * eapply IHβ; auto.
+        * by eapply succ_least_greater, natural_addition_strict_compat'.
     Qed.
 
     Lemma natural_addition_succ_2 α β: succ (α ⊕ β) ⪯ succ α ⊕ β.
@@ -456,9 +460,10 @@ Section ordinals.
           eapply ord_leq_lt; first eapply IHβ.
           eapply natural_addition_strict_compat'.
           by eapply natural_addition_strict_compat.
-      - etransitivity. eapply succ_mono_leq, IHγ; auto; apply ordinals_lt.
-        apply succ_least_greater.
-        do 2 eapply natural_addition_strict_compat'; auto using ordinals_lt.
+      - etransitivity.
+        + eapply succ_mono_leq, IHγ; auto; apply ordinals_lt.
+        + apply succ_least_greater.
+          do 2 eapply natural_addition_strict_compat'; auto using ordinals_lt.
     Qed.
 
     Lemma natural_addition_assoc_2 α β γ: α ⊕ (β ⊕ γ) ⪯ (α ⊕ β) ⊕ γ.

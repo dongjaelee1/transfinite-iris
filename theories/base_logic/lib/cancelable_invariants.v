@@ -1,7 +1,7 @@
 From iris.algebra Require Export frac.
 From iris.bi.lib Require Import fractional.
 From iris.proofmode Require Import tactics.
-From iris.base_logic.lib Require Export invariants.
+From transfinite.base_logic.lib Require Export invariants.
 From iris.prelude Require Import options.
 Import uPred.
 
@@ -108,7 +108,7 @@ Section proofs.
   Qed.
 
   (*** Accessors *)
-  Lemma cinv_acc_strong `{!FiniteBoundedExistential SI}  E N γ p P :
+  Lemma cinv_acc_strong  E N γ p P :
     ↑N ⊆ E →
     cinv N γ P -∗ (cinv_own γ p ={E,E∖↑N}=∗
     ▷ P ∗ cinv_own γ p ∗ (∀ E' : coPset, ▷ P ∨ cinv_own γ 1 ={E',↑N ∪ E'}=∗ True)).
@@ -125,7 +125,7 @@ Section proofs.
     - iDestruct (cinv_own_1_l with "Hown' Hown") as %[].
   Qed.
 
-  Lemma cinv_acc `{!FiniteBoundedExistential SI} E N γ p P :
+  Lemma cinv_acc E N γ p P :
     ↑N ⊆ E →
     cinv N γ P -∗ cinv_own γ p ={E,E∖↑N}=∗ ▷ P ∗ cinv_own γ p ∗ (▷ P ={E∖↑N,E}=∗ True).
   Proof.
@@ -137,7 +137,7 @@ Section proofs.
   Qed.
 
   (*** Other *)
-  Lemma cinv_cancel `{!FiniteBoundedExistential SI} E N γ P : ↑N ⊆ E → cinv N γ P -∗ cinv_own γ 1 ={E}=∗ ▷ P.
+  Lemma cinv_cancel E N γ P : ↑N ⊆ E → cinv N γ P -∗ cinv_own γ 1 ={E}=∗ ▷ P.
   Proof.
     iIntros (?) "#Hinv Hγ".
     iMod (cinv_acc_strong with "Hinv Hγ") as "($ & Hγ & H)"; first done.
@@ -147,7 +147,7 @@ Section proofs.
 
   Global Instance into_inv_cinv N γ P : IntoInv (cinv N γ P) N := {}.
 
-  Global Instance into_acc_cinv `{!FiniteBoundedExistential SI} E N γ P p :
+  Global Instance into_acc_cinv E N γ P p :
     IntoAcc (X:=unit) (cinv N γ P)
             (↑N ⊆ E) (cinv_own γ p) (fupd E (E∖↑N)) (fupd (E∖↑N) E)
             (λ _, ▷ P ∗ cinv_own γ p)%I (λ _, ▷ P)%I (λ _, None)%I.

@@ -1,6 +1,7 @@
 From iris.algebra Require Import gmap.
-From iris.algebra Require cofe_solver.
-From iris.base_logic Require Export base_logic.
+From transfinite.stepindex Require Import ofe functors.
+From transfinite.algebra Require cofe_solver.
+From transfinite.base_logic Require Export base_logic.
 From iris.prelude Require Import options.
 
 (** In this file we construct the type [iProp] of propositions of the Iris
@@ -22,11 +23,11 @@ the agreement CMRA. *)
 
 
 (** * Locally contractive functors *)
-(** The type [gFunctor] bundles a functor from the category of COFEs to the
+(** The type [gFunctor] bundles a functor from the category of OFEs to the
 category of CMRAs with a proof that it is locally contractive. *)
 Structure gFunctor `{SI: indexT} := GFunctor {
-  gFunctor_F :> rFunctor;
-  gFunctor_map_contractive : rFunctorContractive gFunctor_F;
+  gFunctor_F :> trFunctor;
+  gFunctor_map_contractive : trFunctorContractive gFunctor_F;
 }.
 Global Arguments GFunctor {_} _ {_}.
 Global Existing Instance gFunctor_map_contractive.
@@ -47,8 +48,8 @@ Definition gname := positive.
 Canonical Structure gnameO `{SI: indexT} := leibnizO gname.
 
 (** The resources functor [iResF Σ A := ∀ i : gid, gname -fin-> (Σ i) A]. *)
-Definition iResF `{SI: indexT} (Σ : gFunctors) : urFunctor :=
-  discrete_funURF (λ i, gmapURF gname (gFunctors_lookup Σ i)).
+Definition iResF `{SI: indexT} (Σ : gFunctors) : turFunctor :=
+  discrete_funTURF (λ i, gmapTURF gname (gFunctors_lookup Σ i)).
 
 
 (** We define functions for the empty list of functors, the singleton list of
@@ -120,8 +121,7 @@ Module Type iProp_solution_sig.
   Global Declare Instance iPreProp_cofe `{SI: indexT} {Σ: gFunctors} : Cofe (iPrePropO Σ).
 
   Definition iResUR `{SI: indexT} (Σ : gFunctors) : ucmra :=
-    discrete_funUR (λ i,
-      gmapUR gname (rFunctor_apply (gFunctors_lookup Σ i) (iPrePropO Σ))).
+    discrete_funUR (λ i, gmapUR gname (trFunctor_apply (gFunctors_lookup Σ i) (iPrePropO Σ))).
   Notation iProp Σ := (uPred (iResUR Σ)).
   Notation iPropO Σ := (uPredO (iResUR Σ)).
   Notation iPropI Σ := (uPredI (iResUR Σ)).
@@ -144,7 +144,7 @@ Module Export iProp_solution : iProp_solution_sig.
 
   Definition iResUR `{SI: indexT} (Σ : gFunctors) : ucmra :=
     discrete_funUR (λ i,
-      gmapUR gname (rFunctor_apply (gFunctors_lookup Σ i) (iPrePropO Σ))).
+      gmapUR gname (trFunctor_apply (gFunctors_lookup Σ i) (iPrePropO Σ))).
   Notation iProp Σ := (uPred (iResUR Σ)).
   Notation iPropO Σ := (uPredO (iResUR Σ)).
 

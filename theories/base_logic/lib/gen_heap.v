@@ -3,7 +3,7 @@ From iris.algebra Require Import gmap_view reservation_map agree frac.
 From iris.algebra Require Export dfrac.
 From iris.bi.lib Require Import fractional.
 From iris.proofmode Require Import tactics.
-From iris.base_logic.lib Require Export own.
+From transfinite.base_logic.lib Require Export own.
 From iris.prelude Require Import options.
 Import uPred.
 
@@ -96,8 +96,8 @@ Section definitions.
     (* The [⊆] is used to avoid assigning ghost information to the locations in
     the initial heap (see [gen_heap_init]). *)
     ⌜ dom m ⊆ dom σ ⌝ ∧
-    own (gen_heap_name hG) (gmap_view_auth 1 (σ : gmap L (leibnizO V))) ∗
-    own (gen_meta_name hG) (gmap_view_auth 1 (m : gmap L (gnameO))).
+    own (gen_heap_name hG) (gmap_view_auth (DfracOwn 1) (σ : gmap L (leibnizO V))) ∗
+    own (gen_meta_name hG) (gmap_view_auth (DfracOwn 1) (m : gmap L (gnameO))).
 
   Definition mapsto_def (l : L) (dq : dfrac) (v: V) : iProp Σ :=
     own (gen_heap_name hG) (gmap_view_frag l dq (v : leibnizO V)).
@@ -194,7 +194,7 @@ Section gen_heap.
   (** Permanently turn any points-to predicate into a persistent
       points-to predicate. *)
   Lemma mapsto_persist l dq v : l ↦{dq} v ==∗ l ↦□ v.
-  Proof. rewrite mapsto_eq. apply own_update, gmap_view_persist. Qed.
+  Proof. rewrite mapsto_eq. apply own_update, gmap_view_frag_persist. Qed.
 
   (** General properties of [meta] and [meta_token] *)
   Global Instance meta_token_timeless l N : Timeless (meta_token l N).
@@ -320,9 +320,9 @@ Lemma gen_heap_init_names `{SI: indexT} {Σ: gFunctors} `{Countable L, !gen_heap
     let hG := GenHeapG L V Σ γh γm in
     gen_heap_interp σ ∗ ([∗ map] l ↦ v ∈ σ, l ↦ v) ∗ ([∗ map] l ↦ _ ∈ σ, meta_token l ⊤).
 Proof.
-  iMod (own_alloc (gmap_view_auth 1 (∅ : gmap L (leibnizO V)))) as (γh) "Hh".
+  iMod (own_alloc (gmap_view_auth (DfracOwn 1) (∅ : gmap L (leibnizO V)))) as (γh) "Hh".
   { exact: gmap_view_auth_valid. }
-  iMod (own_alloc (gmap_view_auth 1 (∅ : gmap L (gnameO)))) as (γm) "Hm".
+  iMod (own_alloc (gmap_view_auth (DfracOwn 1) (∅ : gmap L (gnameO)))) as (γm) "Hm".
   { exact: gmap_view_auth_valid. }
   iExists γh, γm.
   iAssert (gen_heap_interp (hG:=GenHeapG _ _ _ γh γm) ∅) with "[Hh Hm]" as "Hinterp".

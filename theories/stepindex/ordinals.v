@@ -10,8 +10,10 @@
   - "Set theory and the continuum problem" by Smullyan, R. M. and Fitting, M, Dover Publications 2010
 *)
 
-From iris.prelude Require Export prelude.
-From iris.prelude Require Import classical.
+From iris.prelude Require Import options.
+From iris.algebra Require Import stepindex.
+From transfinite.prelude Require Import prelude.
+From transfinite.stepindex Require Import existential_properties.
 Require Import Coq.Logic.PropExtensionality.
 Require Import Coq.Logic.Classical_Prop.
 Require Import Coq.Logic.Epsilon.
@@ -718,9 +720,6 @@ Section existential_property.
   Qed.
 End existential_property.
 
-
-(* step-indices *)
-From iris.stepindex Require Export stepindex existential_properties.
 
 Section ordinal_instance.
 

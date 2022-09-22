@@ -1,7 +1,7 @@
 From stdpp Require Export coPset.
 From iris.algebra Require Import gmap_view gset coPset.
 From iris.proofmode Require Import tactics.
-From iris.base_logic.lib Require Export own.
+From transfinite.base_logic.lib Require Export own.
 From iris.prelude Require Import options.
 
 (** All definitions in this file are internal to [fancy_updates] with the
@@ -22,7 +22,7 @@ Module invG.
   }.
 
   Definition invΣ `{SI : indexT} : gFunctors :=
-    #[GFunctor (gmap_viewRF positive (laterOF idOF));
+    #[GFunctor (gmap_viewTRF positive (laterTF idTF));
       GFunctor (coPset_disjR);
       GFunctor (gset_disjR positive)].
 
@@ -52,7 +52,7 @@ Global Instance: Params (@ownD) 4 := {}.
 
 Definition wsat `{SI : indexT} {Σ: gFunctors} `{!invG Σ} : iProp Σ :=
   locked (∃ I : gmap positive (iProp Σ),
-    own invariant_name (gmap_view_auth 1 (invariant_unfold <$> I)) ∗
+    own invariant_name (gmap_view_auth (DfracOwn 1) (invariant_unfold <$> I)) ∗
     [∗ map] i ↦ Q ∈ I, ▷ Q ∗ ownD {[i]} ∨ ownE {[i]})%I.
 
 Section wsat.
@@ -104,7 +104,7 @@ Lemma ownD_singleton_twice i : ownD {[i]} ∗ ownD {[i]} ⊢ False.
 Proof. rewrite ownD_disjoint. iIntros (?); set_solver. Qed.
 
 Lemma invariant_lookup (I : gmap positive (iProp Σ)) i P :
-  own invariant_name (gmap_view_auth 1 (invariant_unfold <$> I)) ∗
+  own invariant_name (gmap_view_auth (DfracOwn 1) (invariant_unfold <$> I)) ∗
   own invariant_name (gmap_view_frag i DfracDiscarded (invariant_unfold P)) ⊢
   ∃ Q, ⌜I !! i = Some Q⌝ ∗ ▷ (Q ≡ P).
 Proof.
@@ -187,7 +187,7 @@ Lemma wsat_alloc_strong {SI: indexT} {Σ: gFunctors} `{!invPreG Σ} :
   ⊢ |==> ∃ γI γE γD : gname, let H := InvG _ _ _ γI γE γD in wsat ∗ ownE ⊤.
 Proof.
   iIntros.
-  iMod (own_alloc (gmap_view_auth 1 ∅)) as (γI) "HI";
+  iMod (own_alloc (gmap_view_auth (DfracOwn 1) ∅)) as (γI) "HI";
     first by apply gmap_view_auth_valid.
   iMod (own_alloc (CoPset ⊤)) as (γE) "HE"; first done.
   iMod (own_alloc (GSet ∅)) as (γD) "HD"; first done.

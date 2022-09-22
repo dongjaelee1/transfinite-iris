@@ -1,5 +1,6 @@
 From iris.algebra Require Export ofe.
 From iris.prelude Require Import options.
+From transfinite.stepindex Require Import ofe.
 Require Coq.Logic.ProofIrrelevance.
 Set Primitive Projections.
 
@@ -394,10 +395,12 @@ Section classical_truncation.
     intros α β a b Heq.
     destruct (index_le_lt_dec α β) as [H1 | H1].
     - unshelve erewrite (choose_witness_choice _ _ a b _).
-      { intros γ H. eapply dist_mono; first apply Heq. eapply index_lt_le_trans; eauto. }
+      { split. intros γ H. eapply dist_mono; first apply Heq. eapply index_lt_le_trans; eauto. }
       reflexivity.
-    - rewrite <- (@witness_P (dist_later α) _ _ a β H1).
-      rewrite <- (@witness_P (dist_later α) _ _ b β H1).
+    - specialize (@witness_P (dist_later α) (dec_dist_later α) _ a) as [Ha].
+      rewrite -(Ha β H1).
+      specialize (@witness_P (dist_later α) (dec_dist_later α) _ b) as [Hb].
+      rewrite -(Hb β H1).
       assumption.
   Qed.
 
@@ -421,21 +424,24 @@ Section classical_truncation.
     intros α Hα c β Hβ. unfold classical_strict_lbcompl.
     rewrite ofe_mor_ne.
     2: { rewrite conv_lbcompl. cbn. reflexivity. }
-    rewrite <- (trunc_dist_later_eq α (c _ _) β); first reflexivity. apply Hβ.
+    specialize (trunc_dist_later_eq α (c β Hβ)) as [Hc].
+    rewrite Hc //.
   Qed.
   Next Obligation.
     intros. unfold classical_strict_lbcompl.
     destruct (index_le_lt_dec n m) as [H1 | H1].
     - apply ofe_mor_ne. apply lbcompl_ne, H.
-    - rewrite <- (trunc_dist_later_eq n _ m H1).
-      rewrite <- (trunc_dist_later_eq n _ m H1).
+    - specialize (trunc_dist_later_eq n (lbcompl Hn c)) as [Hc].
+      rewrite -Hc //.
+      specialize (trunc_dist_later_eq n (lbcompl Hn d)) as [Hd].
+      rewrite -Hd //.
       apply lbcompl_ne, H.
   Qed.
 
   Instance classical_LimUnique : @BcomplUniqueLim _ A classical_strict_cofe.
   Proof.
     intros α Hα c d H1. unfold classical_strict_cofe, lbcompl, classical_strict_lbcompl.
-    apply equiv_dist. apply trunc_dist_later_pre. intros β Hβ.
+    apply equiv_dist. apply trunc_dist_later_pre. split. intros β Hβ.
     unshelve rewrite !conv_lbcompl; last apply H1. apply Hβ.
   Qed.
 End classical_truncation.

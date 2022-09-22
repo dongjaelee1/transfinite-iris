@@ -1,8 +1,8 @@
 From stdpp Require Export coPset.
 From iris.algebra Require Import gmap auth agree gset coPset.
 From iris.proofmode Require Import tactics.
-From iris.base_logic.lib Require Export own.
-From iris.base_logic.lib Require Import wsat.
+From transfinite.base_logic.lib Require Export own.
+From transfinite.base_logic.lib Require Import wsat.
 From iris.prelude Require Import options.
 Export invG.
 Import uPred.
@@ -19,9 +19,9 @@ Lemma uPred_fupd_mixin `{SI : indexT} {Σ: gFunctors} `{!invG Σ} : BiFUpdMixin 
 Proof.
   split.
   - rewrite uPred_fupd_eq. solve_proper.
-  - intros E1 E2 P (E1''&->&?)%subseteq_disjoint_union_L.
+  - intros E1 E2 (E1''&->&?)%subseteq_disjoint_union_L.
     rewrite uPred_fupd_eq /uPred_fupd_def ownE_op //.
-    by iIntros "$ ($ & $ & HE) !> !> [$ $] !> !>" .
+    by iIntros "($ & $ & HE) !> !> [$ $] !> !>" .
   - rewrite uPred_fupd_eq. iIntros (E1 E2 P) ">H [Hw HE]". iApply "H"; by iFrame.
   - rewrite uPred_fupd_eq. iIntros (E1 E2 P Q HPQ) "HP HwE". rewrite -HPQ. by iApply "HP".
   - rewrite uPred_fupd_eq. iIntros (E1 E2 E3 P) "HP HwE".
@@ -65,7 +65,7 @@ Lemma fupd_plain_soundness `{SI : indexT} {Σ: gFunctors}  `{!invPreG Σ} E1 E2 
 Proof.
   iIntros (Hfupd). apply later_soundness. iMod wsat_alloc as (Hinv) "[Hw HE]".
   iAssert (|={⊤,E2}=> P)%I as "H".
-  { iMod fupd_intro_mask'; last iApply Hfupd. done. }
+  { iMod (fupd_mask_subseteq E1); first by set_solver. iApply Hfupd. }
   rewrite uPred_fupd_eq /uPred_fupd_def.
   iMod ("H" with "[$]") as "[Hw [HE >H']]"; iFrame.
 Qed.
@@ -94,5 +94,5 @@ Lemma step_fupdN_soundness' `{SI : indexT} {Σ: gFunctors}  `{!invPreG Σ} φ n 
 Proof.
   iIntros (Hiter). eapply (step_fupdN_soundness _ n).
   iIntros (Hinv). iPoseProof (Hiter Hinv) as "Hiter".
-  iApply (step_fupdN_wand with "Hiter"). by iApply (fupd_mask_weaken).
+  iApply (step_fupdN_wand with "Hiter"). by iApply (fupd_mask_intro_discard).
 Qed.

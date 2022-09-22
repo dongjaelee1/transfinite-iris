@@ -1,7 +1,8 @@
 From stdpp Require Export sets coPset.
 From iris.algebra Require Import functions gmap proofmode_classes.
+From transfinite.stepindex Require Import functors.
 From iris.proofmode Require Import classes.
-From iris.base_logic.lib Require Export iprop.
+From transfinite.base_logic.lib Require Export iprop.
 From iris.prelude Require Import options.
 Import uPred.
 
@@ -12,7 +13,7 @@ needed because Coq is otherwise unable to solve type class constraints due to
 higher-order unification problems. *)
 Class inG `{SI: indexT} (Σ : gFunctors) (A : cmra) := InG {
   inG_id : gid Σ;
-  inG_apply := rFunctor_apply (gFunctors_lookup Σ inG_id);
+  inG_apply := trFunctor_apply (gFunctors_lookup Σ inG_id);
   inG_prf : A = inG_apply (iPropO Σ) _;
 }.
 Global Arguments inG_id {_ _ _} _.
@@ -23,7 +24,7 @@ mode [!] for [A] since we can have multiple [inG]s for different [A]s, so we do
 not want Coq to pick one arbitrarily. *)
 Global Hint Mode inG - - ! : typeclass_instances.
 
-Lemma subG_inG `{SI: indexT} Σ (F : gFunctor) : subG F Σ → inG Σ (rFunctor_apply F (iPropO Σ)).
+Lemma subG_inG `{SI: indexT} Σ (F : gFunctor) : subG F Σ → inG Σ (trFunctor_apply F (iPropO Σ)).
 Proof. move=> /(_ 0%fin) /= [j ->]. by exists j. Qed.
 
 (** This tactic solves the usual obligations "subG ? Σ → {in,?}G ? Σ" *)
@@ -60,10 +61,10 @@ Ltac solve_inG :=
 (** * Definition of the connective [own] *)
 Local Definition inG_unfold `{SI: indexT} {Σ: gFunctors} {A} {i : inG Σ A} :
     inG_apply i (iPropO Σ) -n> inG_apply i (iPrePropO Σ) :=
-  rFunctor_map _ (iProp_fold, iProp_unfold).
+  trFunctor_map _ (iProp_fold, iProp_unfold).
 Local Definition inG_fold `{SI: indexT} {Σ: gFunctors} {A} {i : inG Σ A} :
     inG_apply i (iPrePropO Σ) -n> inG_apply i (iPropO Σ) :=
-  rFunctor_map _ (iProp_unfold, iProp_fold).
+  trFunctor_map _ (iProp_unfold, iProp_fold).
 
 Local Definition iRes_singleton `{SI: indexT} {Σ: gFunctors} {A} {i : inG Σ A} (γ : gname) (a : A) : iResUR Σ :=
   discrete_fun_singleton (inG_id i)
@@ -86,14 +87,14 @@ Implicit Types a : A.
 Local Lemma inG_unfold_fold (x : inG_apply i (iPrePropO Σ)) :
   inG_unfold (inG_fold x) ≡ x.
 Proof.
-  rewrite /inG_unfold /inG_fold -rFunctor_map_compose -{2}[x]rFunctor_map_id.
-  apply (ne_proper (rFunctor_map _)); split=> ?; apply iProp_unfold_fold.
+  rewrite /inG_unfold /inG_fold -trFunctor_map_compose -{2}[x]trFunctor_map_id.
+  apply (ne_proper (trFunctor_map _)); split=> ?; apply iProp_unfold_fold.
 Qed.
 Local Lemma inG_fold_unfold (x : inG_apply i (iPropO Σ)) :
   inG_fold (inG_unfold x) ≡ x.
 Proof.
-  rewrite /inG_unfold /inG_fold -rFunctor_map_compose -{2}[x]rFunctor_map_id.
-  apply (ne_proper (rFunctor_map _)); split=> ?; apply iProp_fold_unfold.
+  rewrite /inG_unfold /inG_fold -trFunctor_map_compose -{2}[x]trFunctor_map_id.
+  apply (ne_proper (trFunctor_map _)); split=> ?; apply iProp_fold_unfold.
 Qed.
 Local Lemma inG_unfold_validN n (x : inG_apply i (iPropO Σ)) :
   ✓{n} (inG_unfold x) ↔ ✓{n} x.

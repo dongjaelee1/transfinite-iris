@@ -1,8 +1,8 @@
-From iris.stepindex Require Export existential_properties.
+From transfinite.stepindex Require Export existential_properties.
 From iris.algebra Require Import functions gmap gmap_view gset coPset.
-From iris.base_logic Require Import upred.
-From iris.bi Require Export satisfiable.
-From iris.base_logic.lib Require Import iprop own wsat fancy_updates.
+From transfinite.base_logic Require Import upred.
+From transfinite.bi Require Export satisfiable.
+From transfinite.base_logic.lib Require Import iprop own wsat fancy_updates.
 From iris.proofmode Require Import tactics.
 Import uPred.
 
@@ -169,7 +169,7 @@ Section alloc.
 
   Global Instance alloc_mono_iff: Proper ((≡) ==> iff) (@alloc SI Σ).
   Proof.
-    intros P Q [? ?] % equiv_spec; split; by eapply alloc_mono.
+    intros P Q [? ?] % equiv_entails; split; by eapply alloc_mono.
   Qed.
 
   Lemma alloc_iProp_sat (P: iProp Σ): alloc P → iProp_sat P.
@@ -187,7 +187,7 @@ Section alloc.
     Alloc (invG Σ) (λ _, wsat ∗ ownE ⊤)%I True.
   Proof.
     intros P _ HP.
-    eapply (can_alloc (λ γ, own γ (gmap_view_auth 1 ∅))) in HP as [γI HP];
+    eapply (can_alloc (λ γ, own γ (gmap_view_auth (DfracOwn 1) ∅))) in HP as [γI HP];
       last by apply gmap_view_auth_valid.
     eapply (can_alloc (λ γ, own γ (CoPset ⊤))) in HP as [γE HP];
       last by done.
@@ -224,7 +224,7 @@ Section canonical_sat_at.
 
   Global Instance sat_at_satisfiable_at_fupd:
     SatisfiableAtFupd sat_at.
-  Proof.
+  Proof using Type*.
     split; unfold sat_at, sat_frame; intros E1 E2 P Hs; eapply sat_later, sat_bupd, sat_mono, Hs.
     iIntros "((W & O) & P)". rewrite uPred_fupd_eq /uPred_fupd_def.
     iSpecialize ("P" with "[W O]"); first by iFrame.
@@ -233,7 +233,7 @@ Section canonical_sat_at.
   Qed.
 
   Global Instance sat_at_satisfiable_at: SatisfiableAt sat_at.
-  Proof.
+  Proof using Type*.
     split; apply _.
   Qed.
 

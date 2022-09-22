@@ -1,6 +1,6 @@
 From iris.algebra Require Import gset coPset.
 From iris.proofmode Require Import tactics.
-From iris.base_logic.lib Require Export invariants.
+From transfinite.base_logic.lib Require Export invariants.
 From iris.prelude Require Import options.
 Import uPred.
 
@@ -11,7 +11,7 @@ Definition na_inv_pool_name := gname.
 Class na_invG `{SI: indexT} Σ :=
   na_inv_inG :> inG Σ (prodR coPset_disjR (gset_disjR positive)).
 Definition na_invΣ `{SI: indexT} : gFunctors :=
-  #[ GFunctor (constRF (prodR coPset_disjR (gset_disjR positive))) ].
+  #[ GFunctor (constTRF (prodR coPset_disjR (gset_disjR positive))) ].
 Global Instance subG_na_invG `{SI: indexT} {Σ: gFunctors} : subG na_invΣ Σ → na_invG Σ.
 Proof. solve_inG. Qed.
 
@@ -162,7 +162,7 @@ Section proofs.
     intros ???. iIntros "HI Hna". iApply (na_inv_acc_open_timeless_weakening with "HI Hna"); auto.
   Qed.
 
-  Lemma na_inv_acc_open `{!FiniteBoundedExistential SI} p E F N P :
+  Lemma na_inv_acc_open p E F N P :
     ↑N ⊆ E → ↑N ⊆ F →
     na_inv p N P -∗ na_own p F ={E}=∗ ▷ (P ∗ na_own p (F∖↑N)
                     ∗ (▷ P ∗ na_own p (F∖↑N) -∗ |={E}=> na_own p F)).
