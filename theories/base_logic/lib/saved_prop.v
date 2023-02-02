@@ -26,7 +26,7 @@ Proof. solve_inG. Qed.
 Definition saved_anything_own `{SI: indexT} `{!savedAnythingG Σ F}
     (γ : gname) (dq : dfrac) (x : tFunctor_apply F (iPropO Σ)) : iProp Σ :=
   own γ (to_dfrac_agree dq x).
-Typeclasses Opaque saved_anything_own.
+Global Typeclasses Opaque saved_anything_own.
 Global Instance: Params (@saved_anything_own) 4 := {}.
 
 Section saved_anything.
