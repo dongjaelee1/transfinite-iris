@@ -717,15 +717,16 @@ Section base_case.
     intros α Hα. eapply index_le_zero in Hα as Hβ; by subst.
   Defined.
   Next Obligation.
-Admitted.
-    (* unshelve econstructor.
-    (* FIXME: this proof is now broken *)
+    unshelve econstructor.
     all: try (intros; subst; index_contra_solve).
-    3: { intros; destruct Hα as [-> | []%index_lt_zero_is_normal]. apply _. }
-    all: intros; destruct Hα as [-> | Hα]; [ | exfalso; by apply index_lt_zero_is_normal in Hα]; cbn -[trunc_map].
-    { rewrite ofe_truncated_equiv; apply bounded_inverse_ϕ0_ψ0. }
-    all: apply bounded_inverse_ϕ0_ψ0.
-  Qed. *)
+    3: { intros ? Hα. apply index_le_zero in Hα. subst. apply _. }
+    all: intros ? Hα; specialize (index_le_zero _ Hα); intros; subst.
+    all: generalize (approx_base_obligation_4 zero Hα) => Ha;
+      generalize (approx_base_obligation_3 zero Hα) => Hb; simpl.
+    all: rewrite (UIP_refl _ _ Ha) (UIP_refl _ _ Hb); simpl.
+    - rewrite ofe_truncated_equiv. apply bounded_inverse_ϕ0_ψ0.
+    - apply bounded_inverse_ϕ0_ψ0.
+  Qed.
 End base_case.
 
 (* program mode does insert quite nasty matches, we'd rather not have them as we have to reason about the functions defined in program mode *)

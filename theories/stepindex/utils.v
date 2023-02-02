@@ -179,7 +179,7 @@ Ltac index_contra_solve_core cont :=
         apply index_lt_irrefl in H1 as []
   | [H : succ ?a ≺ᵢ succ ?b |- _ ] => normalise_hypot H; cont
   | [H : succ ?a = succ ?b |- _ ] => normalise_hypot H; cont
-  | [H : succ ?a ⪯ᵢ ?b |- _] => destruct H; cont
+  | [H : succ ?a ⪯ᵢ ?b |- _] => apply index_succ_le_lt in H; cont
   end.
 (* infer by transitivity -- might be very expensive when many inferences can be done or even diverge *)
 Ltac index_contra_solve_infer cont :=
@@ -189,6 +189,7 @@ Ltac index_contra_solve_infer cont :=
         specialize (index_lt_trans _ _ _ H1 H2) as H; normalise_hypot H;
         tryif (hypot_exists H) then fail else cont
   end.
+
 Ltac index_contra_solve :=
   exfalso;
   index_contra_solve_core index_contra_solve + index_contra_solve_infer index_contra_solve.
