@@ -1,6 +1,6 @@
 From iris.algebra Require Export ofe.
 From iris.prelude Require Import options.
-From transfinite.stepindex Require Import ofe.
+From transfinite.stepindex Require Import ofe utils.
 Require Coq.Logic.ProofIrrelevance.
 Set Primitive Projections.
 
@@ -8,7 +8,7 @@ Set Primitive Projections.
 (** different notions of limit uniqueness *)
 Class BcomplUniqueLim `{SI : indexT} (A : ofe) `{!Cofe A} :=
   cofe_unique_lim (α : index) Hα (c d : bchain A α) :
-    (∀ β (Hβ : β ≺ α), c β Hβ ≡{β}≡ d β Hβ) → lbcompl Hα c ≡{α}≡ lbcompl Hα d.
+    (∀ β (Hβ : β ≺ᵢ α), c β Hβ ≡{β}≡ d β Hβ) → lbcompl Hα c ≡{α}≡ lbcompl Hα d.
 Global Hint Mode BcomplUniqueLim - ! ! : typeclass_instances.
 
 Section pi.
@@ -23,7 +23,7 @@ Section pi.
 
   Lemma cofe_unique_bcompl `{SI : indexT} (A : ofe) `{Hc: !Cofe A} {Hunique: BcomplUniqueLim A}:
     ∀ α Hα (c d : bchain A α), index_is_limit α →
-      (∀ β (Hβ : β ≺ α), c β Hβ ≡{β}≡ d β Hβ) → bcompl Hα c ≡{α}≡ bcompl Hα d.
+      (∀ β (Hβ : β ≺ᵢ α), c β Hβ ≡{β}≡ d β Hβ) → bcompl Hα c ≡{α}≡ bcompl Hα d.
   Proof.
     intros ???? Hlim Hl.
     rewrite /bcompl. rewrite (index_dec_limit_pi _ Hlim).
@@ -33,7 +33,7 @@ End pi.
 
 (** OFEs truncated at a stepindex α*)
 (* Equality at ordinals above α is fully determined by equality at α *)
-Class Truncated `{SI : indexT} {A : ofe} (α : index) (x : A) := truncated y β: α ⪯ β → x ≡{α}≡ y ↔ x ≡{β}≡ y.
+Class Truncated `{SI : indexT} {A : ofe} (α : index) (x : A) := truncated y β: α ⪯ᵢ β → x ≡{α}≡ y ↔ x ≡{β}≡ y.
 Global Arguments truncated {_ _} _ _ {_ } _ _ _.
 Global Hint Mode Truncated - + ! ! : typeclass_instances.
 Global Instance : Params (@Truncated) 2 := {}.
@@ -80,7 +80,7 @@ Qed.
 Definition boundedInverse `{SI: indexT} {X1 X2: ofe} (f : X2 -n> X1) (g : X1 -n> X2) (α : index) :=
   f ◎ g ≡{α}≡ cid ∧ g ◎ f ≡{α}≡ cid.
 Lemma boundedInverse_antimono `{SI : indexT} {X1 X2 : ofe} (f : X2 -n> X1) (g : X1 -n> X2) (α β : index) :
-  α ⪯ β → boundedInverse f g β → boundedInverse f g α.
+  α ⪯ᵢ β → boundedInverse f g β → boundedInverse f g α.
 Proof. intros Hle [H1 H2]. split; eapply dist_mono'; eauto. Qed.
 
 Class Truncatable `{SI : indexT} (A : ofe):=
@@ -168,7 +168,7 @@ Section truncatable.
   Context {A : ofe} {HtruncA : Truncatable A}.
   Context {B : ofe} {HtruncB : Truncatable B}.
   Lemma trunc_map_inv (f : A -n> B) (g : B -n> A) α β:
-    α ⪯ β → boundedInverse f g α → boundedInverse (trunc_map α β f) (trunc_map β α g) α.
+    α ⪯ᵢ β → boundedInverse f g α → boundedInverse (trunc_map α β f) (trunc_map β α g) α.
   Proof.
     intros Hle [H1 H2]. split; intros x.
     - unfold trunc_map. cbn.
@@ -190,7 +190,7 @@ Section truncatable.
   Proof.
     cbn. setoid_rewrite ccompose_assoc at 2. setoid_rewrite (proj1 (equiv_dist _ _) (ccompose_assoc _ _ _)) at 3.
     setoid_rewrite <- (proj1 (equiv_dist _ _) (ccompose_assoc _ _ _)) at 3.
-    setoid_rewrite (dist_mono' _ _ _ _ (ofe_trunc_expand_truncate_id)); [ | auto].
+    setoid_rewrite (dist_mono' _ _ _ _ (ofe_trunc_expand_truncate_id)); [ | auto with stepindex].
     by intros x.
   Qed.
 End truncatable.

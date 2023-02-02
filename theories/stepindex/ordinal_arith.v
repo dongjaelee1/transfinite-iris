@@ -2,7 +2,7 @@
 From iris.prelude Require Import options.
 From transfinite.prelude Require Import prelude.
 From iris.algebra Require Import stepindex.
-From transfinite.stepindex Require Export ordinals.
+From transfinite.stepindex Require Export ordinals utils.
 
 
 (* Natural Addition, also called Hessenberg Addition *)

@@ -14,6 +14,7 @@
 theories/prelude/prelude.v
 
 theories/stepindex/ofe.v
+theories/stepindex/utils.v
 theories/stepindex/functors.v
 theories/stepindex/existential_properties.v
 theories/stepindex/ordinals.v
