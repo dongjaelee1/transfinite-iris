@@ -239,7 +239,7 @@ End set_theory.
 
 (* shorthands hiding the normalizer and the aczel trees *)
 Definition setof {X: Type} (f: X → set): set := aset (Asup X (λ x, set_tree (f x))).
-Notation "{{ f | x : X }}" := (@setof X (λ x, f)) (x pattern, at level 60).
+Notation "{{ f | x : X } }" := (@setof X (λ x, f)) (x pattern, at level 60).
 
 Definition typeof (s: set) : Type := atypeof s.
 Definition elements (s: set): typeof s → set := λ x, aset (aelements s x).
