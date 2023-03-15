@@ -27,3 +27,17 @@ Proof. intros x. by cbn. Qed.
 
 Lemma ccompose_cid_r `{SI : indexT} {A B : ofe} (f : A -n> B ) :  f ◎ cid ≡ f.
 Proof. intros x. by cbn. Qed.
+
+
+(* FIXME: this lemma should be moved to Iris master *)
+Section bounded_limit_preservation.
+  Context `{SI: indexT}.
+
+  Lemma bounded_limit_preserving_fun_app {A: ofe} `{!Cofe A} (P: A → Prop) X (x: X) :
+    BoundedLimitPreserving P → BoundedLimitPreserving (λ f: X -d> A, P (f x)).
+  Proof.
+    rewrite /BoundedLimitPreserving. intros Hbound n Hn Hval Hent.
+    eapply Hbound; eauto.
+  Qed.
+
+End bounded_limit_preservation.

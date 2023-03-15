@@ -1151,5 +1151,16 @@ Proof.
   right. eapply cmra_included_includedN, cmra_discrete_included_l; eauto using cmra_validN_le with stepindex.
 Qed.
 
+
+(* persistency is bounded limit preserving *)
+Lemma bounded_limit_preserving_persistency:
+  BoundedLimitPreserving (λ P, P ⊢ □ P).
+Proof.
+  intros n Hn ch. unseal. intros Hbound; split=>m x Hv HP. rewrite /uPred_persistently_def /=.
+  eapply lbcompl_unfold. intros k Hk Hle Hv'.
+  destruct (Hbound k Hk) as [Hm]. eapply Hm; first by eapply cmra_validN_le.
+  rewrite lbcompl_unfold in HP. eapply HP; eauto using cmra_validN_le.
+Qed.
+
 End primitive.
 End uPred_primitive.

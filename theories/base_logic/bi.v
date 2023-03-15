@@ -278,6 +278,12 @@ Proof. exact: uPred_primitive.valid_entails. Qed.
 Global Instance ownM_timeless (a : M) : Discrete a → Timeless (uPred_ownM a).
 Proof. apply: uPred_primitive.uPred_ownM_timeless. Qed.
 
+Global Instance bounded_limit_preserving_persistency:
+  BoundedLimitPreserving (@Persistent _ (uPred M)).
+Proof.
+  exact: bounded_limit_preserving_persistency.
+Qed.
+
 (** Consistency/soundness statement *)
 Lemma pure_soundness φ : (⊢@{uPredI M} ⌜ φ ⌝) → φ.
 Proof. apply pure_soundness. Qed.
