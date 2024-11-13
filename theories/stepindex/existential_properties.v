@@ -9,7 +9,7 @@ Polymorphic Class TypeExistentialProperty@{i} (X: Type@{i}) (SI: indexT) : Type 
   → ∃ x, ∀ a, P x a.
 
 Polymorphic Class ExistentialProperty@{i} (SI: indexT) : Type :=
-  existential_properties (X : Type@{i}) :> TypeExistentialProperty X SI.
+  #[global] existential_properties (X : Type@{i}) :: TypeExistentialProperty X SI.
 
 
 Notation FiniteExistential := (TypeExistentialProperty bool).
@@ -59,12 +59,3 @@ Global Instance finite_bounded_existential SI: FiniteBoundedExistential SI.
 Proof.
   eapply classic_finite_bounded_existential, classic.
 Qed.
-
-
-
-
-
-
-
-
-

@@ -27,7 +27,7 @@ Delimit Scope tFunctor_scope with TF.
 Bind Scope tFunctor_scope with tFunctor.
 
 Class tFunctorContractive `{SI: indexT} (F : tFunctor) :=
-  tFunctor_map_contractive `{A1 : ofe} `{A2 : ofe} `{B1 : ofe} `{B2 : ofe} :>
+  #[export] tFunctor_map_contractive `{A1 : ofe} `{A2 : ofe} `{B1 : ofe} `{B2 : ofe} ::
     Contractive  (@tFunctor_map SI F A1 A2 B1 B2).
 Global Hint Mode tFunctorContractive - ! : typeclass_instances.
 
@@ -67,7 +67,7 @@ Delimit Scope trFunctor_scope with TRF.
 Bind Scope trFunctor_scope with trFunctor.
 
 Class trFunctorContractive `{SI: indexT} (F : trFunctor) :=
-  trFunctor_map_contractive A1 A2 B1 B2 :>
+  #[export] trFunctor_map_contractive A1 A2 B1 B2 ::
     Contractive (@trFunctor_map SI F A1 A2 B1 B2).
 
 Definition trFunctor_apply `{SI: indexT} (F: trFunctor) (A: ofe) `{!Cofe A} : cmra :=
@@ -156,7 +156,7 @@ Delimit Scope turFunctor_scope with TURF.
 Bind Scope turFunctor_scope with turFunctor.
 
 Class turFunctorContractive `{SI: indexT} (F : turFunctor) :=
-  turFunctor_map_contractive A1 A2 B1 B2 :>
+  #[export] turFunctor_map_contractive A1 A2 B1 B2 ::
     Contractive (@turFunctor_map SI F A1 A2 B1 B2).
 
 Definition turFunctor_apply `{SI: indexT} (F: turFunctor) (A: ofe) `{!Cofe A} : ucmra :=
@@ -399,7 +399,7 @@ Program Definition sigTTF (F : A → tFunctor) : tFunctor := {|
     repeat intro. apply sigT_map => a. exact: tFunctor_map_contractive.
   Qed.
 End sigTTF.
-Global Arguments sigTTF {_ _} _%TF.
+Global Arguments sigTTF {_ _} _%_TF.
 
 Notation "{ x  &  P }" := (sigTTF (λ x, P%TF)) : tFunctor_scope.
 Notation "{ x : A &  P }" := (@sigTTF _ A%type (λ x, P%TF)) : tFunctor_scope.
@@ -659,85 +659,92 @@ Proof.
   by intros ?? A1 A2 B1 B2 n ???; apply vecO_map_ne; first apply tFunctor_map_contractive.
 Qed.
 
-Program Definition gmap_viewTURF `{SI: indexT} (K : Type) `{Countable K} (F : tFunctor) : turFunctor := {|
-  turFunctor_car A B := gmap_viewUR K (tFunctor_car F A B);
+(* Definition of gmap_viewUR changed to cmra -> ucmra (was ofe -> ucmra) *)
+Program Definition gmap_viewTURF `{SI: indexT} (K : Type) `{Countable K} (F : trFunctor) : turFunctor := {|
+  turFunctor_car A B := gmap_viewUR K (trFunctor_car F A B);
   turFunctor_map A1 A2 B1 B2 fg :=
-    viewO_map (rel:=gmap_view.gmap_view_rel K (tFunctor_car F A1 B1))
-              (rel':=gmap_view.gmap_view_rel K (tFunctor_car F A2 B2))
-              (gmapO_map (K:=K) (tFunctor_map F fg))
-              (gmapO_map (K:=K) (prodO_map cid (agreeO_map (tFunctor_map F fg))))
+    viewO_map (rel:=gmap_view.gmap_view_rel K (trFunctor_car F A1 B1))
+              (rel':=gmap_view.gmap_view_rel K (trFunctor_car F A2 B2))
+              (gmapO_map (K:=K) (trFunctor_map F fg))
+              (gmapO_map (K:=K) (prodO_map cid (trFunctor_map F fg)))
 |}.
 Next Obligation.
-  intros SI K ?? F A1 A2 B1 B2 n f g Hfg.
+  intros ? K ?? F A1 A2 B1 B2 n f g Hfg.
   apply viewO_map_ne.
-  - apply gmapO_map_ne, tFunctor_map_ne. done.
+  - apply gmapO_map_ne, trFunctor_map_ne. done.
   - apply gmapO_map_ne. apply prodO_map_ne; first done.
-    apply agreeO_map_ne, tFunctor_map_ne. done.
+    apply trFunctor_map_ne. done.
 Qed.
 Next Obligation.
-  intros SI K ?? F A B x; simpl in *. rewrite -{2}(view_map_id x).
+  intros ? K ?? F A B x; simpl in *. rewrite -{2}(view_map_id x).
   apply (view_map_ext _ _ _ _)=> y.
   - rewrite /= -{2}(map_fmap_id y).
-    apply map_fmap_equiv_ext=>k ??.
-    apply tFunctor_map_id.
+    apply: map_fmap_equiv_ext=>k ??.
+    apply trFunctor_map_id.
   - rewrite /= -{2}(map_fmap_id y).
-    apply map_fmap_equiv_ext=>k [df va] ?.
+    apply: map_fmap_equiv_ext=>k [df va] ?.
     split; first done. simpl.
-    rewrite -{2}(agree_map_id va).
-    eapply agree_map_ext; first by apply _.
-    apply tFunctor_map_id.
+    apply trFunctor_map_id.
 Qed.
 Next Obligation.
-  intros SI K ?? F A1 A2 A3 B1 B2 B3 f g f' g' x; simpl in *.
+  intros ? K ?? F A1 A2 A3 B1 B2 B3 f g f' g' x; simpl in *.
   rewrite -view_map_compose.
   apply (view_map_ext _ _ _ _)=> y.
   - rewrite /= -map_fmap_compose.
-    apply map_fmap_equiv_ext=>k ??.
-    apply tFunctor_map_compose.
+    apply: map_fmap_equiv_ext=>k ??.
+    apply trFunctor_map_compose.
   - rewrite /= -map_fmap_compose.
-    apply map_fmap_equiv_ext=>k [df va] ?.
+    apply: map_fmap_equiv_ext=>k [df va] ?.
     split; first done. simpl.
-    rewrite -agree_map_compose.
-    eapply agree_map_ext; first by apply _.
-    apply tFunctor_map_compose.
+    apply trFunctor_map_compose.
 Qed.
 Next Obligation.
-  intros SI K ?? F A1 A2 B1 B2 fg; simpl.
+  intros ? K ?? F A1 A2 B1 B2 fg; simpl.
   (* [apply] does not work, probably the usual unification probem (Coq #6294) *)
-  eapply (@view_map_cmra_morphism SI); [apply _..|]=> n m f.
+  apply @view_map_cmra_morphism; [apply _..|]=> n m f.
   intros Hrel k [df va] Hf. move: Hf.
   rewrite !lookup_fmap.
   destruct (f !! k) as [[df' va']|] eqn:Hfk; rewrite Hfk; last done.
   simpl=>[= <- <-].
-  specialize (Hrel _ _ Hfk). simpl in Hrel. destruct Hrel as (v & Hagree & Hdval & Hm).
-  exists (tFunctor_map F fg v).
-  rewrite Hm. split; last by auto.
-  rewrite Hagree. rewrite agree_map_to_agree. done.
+  specialize (Hrel _ _ Hfk). simpl in Hrel.
+  destruct Hrel as (v & dq & Hlookup & Hval & Hincl).
+  eexists (trFunctor_map F fg v), dq.
+  rewrite Hlookup. split; first done. split.
+  - split; first by apply Hval. simpl. apply: cmra_morphism_validN. apply Hval.
+  - destruct Hincl as [[[fdq fv]|] Hincl].
+    + apply: Some_includedN_mono. rewrite -Some_op in Hincl.
+      apply (inj _) in Hincl. rewrite -pair_op in Hincl.
+      exists (fdq, trFunctor_map F fg fv). rewrite -pair_op.
+      split; first apply Hincl. rewrite -cmra_morphism_op.
+      simpl. f_equiv. apply Hincl.
+    + exists None. rewrite right_id in Hincl. apply (inj _) in Hincl.
+      rewrite right_id. f_equiv. split; first apply Hincl.
+      simpl. f_equiv. apply Hincl.
 Qed.
 
-Global Instance gmap_viewTURF_contractive `{SI: indexT} (K : Type) `{Countable K} (F: tFunctor) :
-  tFunctorContractive F → turFunctorContractive (gmap_viewTURF K F).
+Global Instance gmap_viewTURF_contractive `{SI: indexT} (K : Type) `{Countable K} (F: trFunctor) :
+  trFunctorContractive F → turFunctorContractive (gmap_viewTURF K F).
 Proof.
   intros ? A1 A2 B1 B2 n f g Hfg.
   apply viewO_map_ne.
-  - apply gmapO_map_ne. apply tFunctor_map_contractive. done.
+  - apply gmapO_map_ne. apply trFunctor_map_contractive. done.
   - apply gmapO_map_ne. apply prodO_map_ne; first done.
-    apply agreeO_map_ne, tFunctor_map_contractive. done.
+    apply trFunctor_map_contractive. done.
 Qed.
 
-Program Definition gmap_viewTRF `{SI: indexT} (K : Type) `{Countable K} (F : tFunctor) : trFunctor := {|
-  trFunctor_car A B := gmap_viewR K (tFunctor_car F A B);
+Program Definition gmap_viewTRF `{SI: indexT} (K : Type) `{Countable K} (F : trFunctor) : trFunctor := {|
+  trFunctor_car A B := gmap_viewR K (trFunctor_car F A B);
   trFunctor_map A1 A2 B1 B2 fg :=
-    viewO_map (rel:=gmap_view.gmap_view_rel K (tFunctor_car F A1 B1))
-              (rel':=gmap_view.gmap_view_rel K (tFunctor_car F A2 B2))
-              (gmapO_map (K:=K) (tFunctor_map F fg))
-              (gmapO_map (K:=K) (prodO_map cid (agreeO_map (tFunctor_map F fg))))
+    viewO_map (rel:=gmap_view.gmap_view_rel K (trFunctor_car F A1 B1))
+              (rel':=gmap_view.gmap_view_rel K (trFunctor_car F A2 B2))
+              (gmapO_map (K:=K) (trFunctor_map F fg))
+              (gmapO_map (K:=K) (prodO_map cid (trFunctor_map F fg)))
 |}.
 Solve Obligations with apply @gmap_viewTURF.
 
 
-Global Instance gmap_viewTRF_contractive `{SI: indexT} (K : Type) `{Countable K} (F: tFunctor) :
-  tFunctorContractive F → trFunctorContractive (gmap_viewTRF K F).
+Global Instance gmap_viewTRF_contractive `{SI: indexT} (K : Type) `{Countable K} (F: trFunctor) :
+  trFunctorContractive F → trFunctorContractive (gmap_viewTRF K F).
 Proof. apply gmap_viewTURF_contractive. Qed.
 
 
