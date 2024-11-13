@@ -146,7 +146,7 @@ Proof.
   - apply H2. apply ain_Asup.
 Qed.
 
-Lemma ain_wf: wf ain.
+Lemma ain_wf: well_founded ain.
 Proof.
   intros s; induction s as [A f IH].
   constructor. intros t [a H].
@@ -226,7 +226,7 @@ Section set_theory.
       intros Hsub Hsub'; eapply aeq_eq, aeq_ext; by eapply asubs_subseteq.
     Qed.
 
-    Lemma el_wf: wf el.
+    Lemma el_wf: well_founded el.
     Proof.
       intros x. destruct x as [s NX].
       induction (ain_wf s) as [s _ IH].
@@ -560,7 +560,7 @@ Proof.
   eapply IH, Hlt.
 Qed.
 
-Lemma wf_ord_lt: wf ord_lt.
+Lemma wf_ord_lt: well_founded ord_lt.
 Proof.
   intros α. induction α using ord_ind.
   by constructor.

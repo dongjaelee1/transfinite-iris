@@ -75,7 +75,7 @@ Proof.
 Qed.
 
 Lemma classic_find_least {X: Type} (R: X → X → Prop) (P: X → Prop) x:
-  wf R →
+  well_founded R →
   (∀ x y, R x y → P x → P y) →
   P x →
   ∃ y, P y ∧ ∀ x, R x y → ¬ P x.

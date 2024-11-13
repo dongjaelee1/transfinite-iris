@@ -142,7 +142,7 @@ Section ordinals.
     Qed.
 
     (* A single ordinal for an entire well-founded relation *)
-    Definition wf_ord (wf: wf R) := limit (λ x, succ (acc_ord (wf x))).
+    Definition wf_ord (wf: well_founded R) := limit (λ x, succ (acc_ord (wf x))).
 
     Lemma wf_ord_is_larger (wf: well_founded R) x:
       acc_ord (wf x) ≺ wf_ord wf.
@@ -194,7 +194,7 @@ Section ordinals.
       - eapply acc_ord_lt; auto.
     Qed.
 
-    Lemma wf_ord_embed (wfS: wf S) (wfR: wf R): (∀ x, ∃ y, sim x y) → wf_ord wfR ⪯ wf_ord wfS.
+    Lemma wf_ord_embed (wfS: well_founded S) (wfR: well_founded R): (∀ x, ∃ y, sim x y) → wf_ord wfR ⪯ wf_ord wfS.
     Proof using R S X Y embed sim.
       intros Hsim. eapply limit_mono_strong. intros x. destruct (Hsim x) as [y Hsim']. exists y.
       by eapply succ_mono_leq, acc_ord_embed.
@@ -221,7 +221,7 @@ Section ordinals.
   | interleave_L (x x': X) (y: Y): R x x' → interleave R S (x, y) (x', y)
   | interleave_R x y y': S y y' → interleave R S (x, y) (x, y').
 
-  Lemma interleave_wf {X Y} (R: X → X → Prop) (S: Y → Y → Prop): wf R → wf S → wf (interleave R S).
+  Lemma interleave_wf {X Y} (R: X → X → Prop) (S: Y → Y → Prop): well_founded R → well_founded S → well_founded (interleave R S).
   Proof.
     intros wfR wfS. intros [x y].
     revert y; induction (wfR x) as [x _ IHx]; intros y.
@@ -253,14 +253,14 @@ Section ordinals.
     econstructor 2; eauto using tc_once.
   Qed.
 
-  Lemma tc_wf {X} (R: X → X → Prop): wf R → wf (tc R).
+  Lemma tc_wf {X} (R: X → X → Prop): well_founded R → well_founded (tc R).
   Proof.
     intros H x. specialize (H x). induction H as [x H IH].
     constructor. intros y [z [Hrtc Hr]] % tc_inv_rtc.
     eapply rtc_acc; last apply IH; eauto. by eapply rtc_embed_tc.
   Qed.
 
-  Lemma interleave_tc_wf {X Y} (R: X → X → Prop) (S: Y → Y → Prop): wf R → wf S → wf (tc (interleave R S)).
+  Lemma interleave_tc_wf {X Y} (R: X → X → Prop) (S: Y → Y → Prop): well_founded R → well_founded S → well_founded (tc (interleave R S)).
   Proof.
     intros wfR wfS. by apply tc_wf, interleave_wf.
   Qed.
