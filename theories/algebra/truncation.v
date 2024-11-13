@@ -38,7 +38,7 @@ Global Arguments truncated {_ _} _ _ {_ } _ _ _.
 Global Hint Mode Truncated - + ! ! : typeclass_instances.
 Global Instance : Params (@Truncated) 2 := {}.
 
-Class OfeTruncated `{SI : indexT} (A : ofe) (α : index) := ofe_truncated_truncated (x : A) :> Truncated α x.
+Class OfeTruncated `{SI : indexT} (A : ofe) (α : index) := #[export] ofe_truncated_truncated (x : A) :: Truncated α x.
 Global Hint Mode OfeTruncated - + - : typeclass_instances.
 Global Arguments OfeTruncated {_} _ _.
 
@@ -282,7 +282,7 @@ Section proto_truncatable.
   Next Obligation.
     intros α x y β Hle. split.
     - rewrite !trunc_truncation_dist_unfold. destruct x, y. cbn. intros H. apply equiv_dist. apply proto_compat.
-      rewrite <- proto_ne. setoid_rewrite <- proto_ne at 3. apply H.
+      setoid_rewrite <- proto_ne. apply H.
     - intros H. eapply dist_mono'; first apply H. apply Hle.
   Qed.
   Next Obligation.

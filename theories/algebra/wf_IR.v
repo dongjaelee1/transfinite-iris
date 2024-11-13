@@ -9,13 +9,13 @@ Section IR.
   (** In the most general setting we consider, we have a well-founded decidable partial order *)
   Variable (X : Type).  (* the type of indices *)
   Variable (lt : X → X → Prop).
-  Variable (le: X → X → Prop).
+  Variable (le : X → X → Prop).
   Notation "a ≺ᵢ b" := (lt a b).
   Notation "a ⪯ᵢ b" := (le a b).
 
 
   Variable (rel_le_lt_iff : ∀ x y, x ⪯ᵢ y ↔ (x = y ∨ x ≺ᵢ y)).
-  Variable (rel_wf : wf lt).
+  Variable (rel_wf : well_founded lt).
   Variable (rel_transitive : Transitive lt).
   Variable (existT_X_inj2 : ∀ (p : X → Type) (x : X) (H1 H2 : p x),  existT x H1 = existT x H2 → H1 = H2).
   Variable (rel_rc_total : ∀ x1 x2, {x1 ⪯ᵢ x2} + {x2 ⪯ᵢ x1}).
