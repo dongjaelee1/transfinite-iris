@@ -465,7 +465,7 @@ Arguments bounded_approx _ : clear implicits.
   We implement this by requiring actual Leibniz equality between the OFEs and wrapping this equality in fold_transport, unfold_transport for easier handling.
   That way, we can use the type cast like isomorphisms (without nasty eq_rect stuff), but can still prove properties using the information that the transports are just typecasts.
 *)
-Inductive approx_agree {P0 P1 : index → Prop} {A0 : bounded_approx P0} {A1 : bounded_approx P1} : Type :=
+Inductive approx_agree {P0 P1 : index → Prop} {A0 : bounded_approx P0} {A1 : bounded_approx P1} : Prop :=
   {
     agree_eq : ∀ γ (H0 : P0 γ) (H1 : P1 γ), projCOFE _ (bounded_approx_X A0 γ H0) = projCOFE _ (bounded_approx_X A1 γ H1);
 
@@ -766,36 +766,36 @@ Section succ_case_X.
   Let fold α Hα Hsα := fold_transport (Xsucc_eq α Hα Hsα).
 
   Let ϕ_ψ_id : ∀ α (Hα : α ≺ᵢ succ β), ϕ α Hα ◎ ψ α Hα ≡{α}≡ cid.
-  Proof. eapply approx_ϕ_ψ_id, IH. Qed.
+  Proof. eapply approx_ϕ_ψ_id, IH. Defined.
   Let ψ_ϕ_id : ∀ α (Hα : α ≺ᵢ succ β), ψ α Hα ◎ ϕ α Hα ≡ cid.
-  Proof. eapply approx_ψ_ϕ_id, IH. Qed.
+  Proof. eapply approx_ψ_ϕ_id, IH. Defined.
   Let p_e_id : ∀ α1 α2 (Hα1 : α1 ≺ᵢ succ β) (Hα2 : α2 ≺ᵢ succ β) (Hlt : α1 ≺ᵢ α2), p α1 α2 Hα1 Hα2 Hlt ◎ e α1 α2 Hα1 Hα2 Hlt≡ cid.
-  Proof. eapply approx_p_e_id, IH. Qed.
+  Proof. eapply approx_p_e_id, IH. Defined.
   Let e_p_id : ∀ α1 α2 (Hα1 : α1 ≺ᵢ succ β) (Hα2 : α2 ≺ᵢ succ β) (Hlt : α1 ≺ᵢ α2), e α1 α2 Hα1 Hα2 Hlt ◎ p α1 α2 Hα1 Hα2 Hlt ≡{α1}≡ cid.
-  Proof. eapply approx_e_p_id, IH. Qed.
+  Proof. eapply approx_e_p_id, IH. Defined.
   Let e_funct : ∀ α1 α2 α3 (Hα1 : α1 ≺ᵢ succ β) (Hα2 : α2 ≺ᵢ succ β) (Hα3 : α3 ≺ᵢ succ β) (Hlt1 : α1 ≺ᵢ α2) (Hlt2 : α2 ≺ᵢ α3) (Hlt3 : α1 ≺ᵢ α3), e α2 α3 Hα2 Hα3 Hlt2 ◎ e α1 α2 Hα1 Hα2 Hlt1 ≡ e α1 α3 Hα1 Hα3 Hlt3.
-  Proof. eapply approx_e_funct, IH. Qed.
+  Proof. eapply approx_e_funct, IH. Defined.
   Let p_funct : ∀ α1 α2 α3 (Hα1 : α1 ≺ᵢ succ β) (Hα2 : α2 ≺ᵢ succ β) (Hα3 : α3 ≺ᵢ succ β) (Hlt1 : α1 ≺ᵢ α2) (Hlt2 : α2 ≺ᵢ α3) (Hlt3 : α1 ≺ᵢ α3), p α1 α2 Hα1 Hα2 Hlt1 ◎ p α2 α3 Hα2 Hα3 Hlt2  ≡ p α1 α3 Hα1 Hα3 Hlt3.
-  Proof. eapply approx_p_funct, IH. Qed.
+  Proof. eapply approx_p_funct, IH. Defined.
   Let X_truncated : ∀ α Hα, OfeTruncated (X α Hα) α.
-  Proof. eapply approx_X_truncated, IH. Qed.
+  Proof. eapply approx_X_truncated, IH. Defined.
   Existing Instance X_truncated.
   Let ϕ_succ_id : ∀ γ Hle Hsle, ϕ (succ γ) Hsle ≡ trunc_map (succ γ) (succ (succ γ)) (map (ψ γ Hle ◎ unfold γ Hle Hsle, fold γ Hle Hsle ◎ ϕ γ Hle)) ◎ unfold γ Hle Hsle.
-  Proof. eapply (approx_ϕ_succ_id (P:= λ γ, γ ≺ᵢ succ β)). Qed.
+  Proof. eapply (approx_ϕ_succ_id (P:= λ γ, γ ≺ᵢ succ β)). Defined.
   Let ψ_succ_id : ∀ γ Hle Hsle, ψ (succ γ) Hsle ≡ fold γ Hle Hsle ◎ trunc_map (succ (succ γ)) (succ γ) (map (fold γ Hle Hsle ◎ ϕ γ Hle, ψ γ Hle ◎ unfold γ Hle Hsle)).
-  Proof. eapply (approx_ψ_succ_id (P:= λ γ, γ ≺ᵢ succ β)). Qed.
+  Proof. eapply (approx_ψ_succ_id (P:= λ γ, γ ≺ᵢ succ β)). Defined.
   Let Fep_p : ∀ γ0 γ1 Hγ0 Hγ1 Hsγ0 Hsγ1 Hlt Hlts,
     fold γ0 Hγ0 Hsγ0 ◎ trunc_map (succ γ1) (succ γ0) (map (e γ0 γ1 Hγ0 Hγ1 Hlt, p γ0 γ1 Hγ0 Hγ1 Hlt)) ◎ unfold γ1 Hγ1 Hsγ1
     ≡ p (succ γ0) (succ γ1) Hsγ0 Hsγ1 Hlts.
-  Proof. eapply (approx_Fep_p (P := λ γ, γ ≺ᵢ succ β)). Qed.
+  Proof. eapply (approx_Fep_p (P := λ γ, γ ≺ᵢ succ β)). Defined.
   Let Fep_p_limit : ∀ γ0 γ1 (Hlim: index_is_limit γ1) Hγ0 Hsγ0 Hγ1 Hlt Hslt,
     fold γ0 Hγ0 Hsγ0 ◎ trunc_map (succ γ1) (succ γ0) (map (e γ0 γ1 Hγ0 Hγ1 Hlt, p γ0 γ1 Hγ0 Hγ1 Hlt))
     ≡ p (succ γ0) γ1 Hsγ0 Hγ1 Hslt ◎ ψ γ1 Hγ1.
-  Proof. eapply (approx_Fep_p_limit (P := λ γ, γ ≺ᵢ succ β)). Qed.
+  Proof. eapply (approx_Fep_p_limit (P := λ γ, γ ≺ᵢ succ β)). Defined.
   Let e_fold_ϕ : ∀ γ Hγ Hsγ Hlt, e γ (succ γ) Hγ Hsγ Hlt ≡ fold γ Hγ Hsγ ◎ ϕ γ Hγ.
-  Proof. eapply (approx_e_fold_ϕ (P := λ γ, γ ≺ᵢ succ β)). Qed.
+  Proof. eapply (approx_e_fold_ϕ (P := λ γ, γ ≺ᵢ succ β)). Defined.
   Let p_ψ_unfold : ∀ γ Hγ Hsγ Hlt, p γ (succ γ) Hγ Hsγ Hlt ≡ ψ γ Hγ ◎ unfold γ Hγ Hsγ.
-  Proof. eapply (approx_p_ψ_unfold (P := λ γ, γ ≺ᵢ succ β)). Qed.
+  Proof. eapply (approx_p_ψ_unfold (P := λ γ, γ ≺ᵢ succ β)). Defined.
 
   Fact succ_le_gt_eq γ : γ ⪯ᵢ succ β → β ≺ᵢ γ → γ = succ β.
   Proof. intros [-> | Hlt]%index_le_eq_or_lt ?; [reflexivity | index_contra_solve]. Qed.
@@ -1247,26 +1247,26 @@ Section limit_case.
   (* restating the fold/unfolds from the IH *)
   Let p_functorial α₁ α₂ α₃ Hα₁ Hα₂ Hα₃ Hlt1 Hlt2 Hlt3 :
     (p α₁ α₂ Hα₁ Hα₂ Hlt1) ◎ (p α₂ α₃ Hα₂ Hα₃ Hlt2) ≡ (p α₁ α₃ Hα₁ Hα₃ Hlt3).
-  Proof. eapply approx_p_funct. apply IH. Qed.
+  Proof. eapply approx_p_funct. apply IH. Defined.
   Lemma _p_functorial α₁ α₂ α₃ Hα₁ Hα₂ Hα₃ Hlt1 Hlt2 Hlt3 x:
     p α₁ α₂ Hα₁ Hα₂ Hlt1 (p α₂ α₃ Hα₂ Hα₃ Hlt2 x) ≡ p α₁ α₃ Hα₁ Hα₃ Hlt3 x.
   Proof. by apply p_functorial. Qed.
 
   Let e_functorial α₁ α₂ α₃ Hα₁ Hα₂ Hα₃ Hlt1 Hlt2 Hlt3 :
     (e α₂ α₃ Hα₂ Hα₃ Hlt2) ◎ (e α₁ α₂ Hα₁ Hα₂ Hlt1) ≡ (e α₁ α₃ Hα₁ Hα₃ Hlt3).
-  Proof. eapply approx_e_funct. apply IH. Qed.
+  Proof. eapply approx_e_funct. apply IH. Defined.
   Lemma _e_functorial α₁ α₂ α₃ Hα₁ Hα₂ Hα₃ Hlt1 Hlt2 Hlt3 x:
     e α₂ α₃ Hα₂ Hα₃ Hlt2 (e α₁ α₂ Hα₁ Hα₂ Hlt1 x) ≡ e α₁ α₃ Hα₁ Hα₃ Hlt3 x.
   Proof. by apply e_functorial. Qed.
 
 
   Let e_p_id α₁ α₂ Hα₁ Hα₂ Hlt : (e α₁ α₂ Hα₁ Hα₂ Hlt) ◎ (p α₁ α₂ Hα₁ Hα₂ Hlt) ≡{α₁}≡ cid.
-  Proof. eapply approx_e_p_id, IH. Qed.
+  Proof. eapply approx_e_p_id, IH. Defined.
   Lemma _e_p_id α₁ α₂ Hα₁ Hα₂ Hlt x : e α₁ α₂ Hα₁ Hα₂ Hlt (p α₁ α₂ Hα₁ Hα₂ Hlt x) ≡{α₁}≡ x.
   Proof. by apply e_p_id. Qed.
 
   Let p_e_id α₁ α₂ Hα₁ Hα₂ Hlt : (p α₁ α₂ Hα₁ Hα₂ Hlt) ◎ (e α₁ α₂ Hα₁ Hα₂ Hlt) ≡ cid.
-  Proof. eapply approx_p_e_id, IH. Qed.
+  Proof. eapply approx_p_e_id, IH. Defined.
   Lemma _p_e_id α₁  α₂ Hα₁ Hα₂ Hlt x : p α₁ α₂ Hα₁ Hα₂ Hlt (e α₁ α₂ Hα₁ Hα₂ Hlt x) ≡ x.
   Proof. by apply p_e_id. Qed.
 
@@ -1276,45 +1276,45 @@ Section limit_case.
   Proof. eapply bounded_approx_ψ. Defined.
 
   Let ψ_ϕ_id α Hα : (ψ α Hα) ◎ (ϕ α Hα) ≡ cid.
-  Proof. eapply approx_ψ_ϕ_id; apply IH. Qed.
+  Proof. eapply approx_ψ_ϕ_id; apply IH. Defined.
   Lemma _ψ_ϕ_id α Hα x : ψ α Hα (ϕ α Hα x) ≡ x.
   Proof. by apply ψ_ϕ_id. Qed.
   Let ϕ_ψ_id α Hα : (ϕ α Hα) ◎ (ψ α Hα) ≡{α}≡ cid.
-  Proof. eapply approx_ϕ_ψ_id, IH. Qed.
+  Proof. eapply approx_ϕ_ψ_id, IH. Defined.
   Lemma _Φ_Ψ_id α Hα x : ϕ α Hα (ψ α Hα x) ≡{α}≡ x.
   Proof. by apply ϕ_ψ_id. Qed.
 
   Let p_ψ_unfold γ Hγ Hsγ (Hlt : γ ≺ᵢ succ γ) : p γ (succ γ) Hγ Hsγ Hlt ≡ ψ γ Hγ ◎ unfold γ Hγ Hsγ.
-  Proof. by eapply approx_p_ψ_unfold. Qed.
+  Proof. by eapply approx_p_ψ_unfold. Defined.
   Lemma _p_ψ_unfold γ Hγ Hsγ (Hlt : γ ≺ᵢ succ γ) x : p γ (succ γ) Hγ Hsγ Hlt x ≡ ψ γ Hγ (unfold γ Hγ Hsγ x).
   Proof. by apply p_ψ_unfold. Qed.
 
   Let e_fold_ϕ γ Hγ Hsγ (Hlt : γ ≺ᵢ succ γ) : e γ (succ γ) Hγ Hsγ Hlt ≡ fold γ Hγ Hsγ ◎ ϕ γ Hγ.
-  Proof. by eapply approx_e_fold_ϕ. Qed.
+  Proof. by eapply approx_e_fold_ϕ. Defined.
   Lemma _e_fold_ϕ γ Hγ Hsγ (Hlt : γ ≺ᵢ succ γ) x : e γ (succ γ) Hγ Hsγ Hlt x ≡ fold γ Hγ Hsγ (ϕ γ Hγ x).
   Proof. by apply e_fold_ϕ. Qed.
 
   Let ψ_p_fold γ Hγ Hsγ (Hlt : γ ≺ᵢ succ γ) : ψ γ Hγ ≡ p γ (succ γ) Hγ Hsγ Hlt ◎ fold γ Hγ Hsγ.
-  Proof. intros x. setoid_rewrite (p_ψ_unfold _ _ _ _ _). cbn. by setoid_rewrite (unfold_fold_id _ _ _ _). Qed.
+  Proof. intros x. setoid_rewrite (p_ψ_unfold _ _ _ _ _). cbn. by setoid_rewrite (unfold_fold_id _ _ _ _). Defined.
   Lemma _ψ_p_fold γ Hγ Hsγ (Hlt : γ ≺ᵢ succ γ) x : ψ γ Hγ x ≡ p γ (succ γ) Hγ Hsγ Hlt (fold γ Hγ Hsγ x).
   Proof. by apply ψ_p_fold. Qed.
 
   Let ϕ_unfold_e γ Hγ Hsγ (Hlt : γ ≺ᵢ succ γ) : ϕ γ Hγ ≡ unfold γ Hγ Hsγ ◎ e γ (succ γ) Hγ Hsγ Hlt.
-  Proof. intros x. cbn. setoid_rewrite (e_fold_ϕ _ _ _ _ x). by setoid_rewrite (unfold_fold_id _ _ _ _). Qed.
+  Proof. intros x. cbn. setoid_rewrite (e_fold_ϕ _ _ _ _ x). by setoid_rewrite (unfold_fold_id _ _ _ _). Defined.
   Lemma _ϕ_unfold_e γ Hγ Hsγ (Hlt : γ ≺ᵢ succ γ) x : ϕ γ Hγ x ≡ unfold γ Hγ Hsγ (e γ (succ γ) Hγ Hsγ Hlt x).
   Proof. by apply ϕ_unfold_e. Qed.
 
   Let ψ_succ_id γ Hle Hsle :
     ψ (succ γ) Hsle ≡
     fold γ Hle Hsle ◎ trunc_map (succ (succ γ)) (succ γ) (map (fold γ Hle Hsle ◎ ϕ γ Hle, ψ γ Hle ◎ unfold γ Hle Hsle)).
-  Proof. by eapply approx_ψ_succ_id. Qed.
+  Proof. by eapply approx_ψ_succ_id. Defined.
   Lemma _ψ_succ_id γ Hle Hsle x :
     ψ (succ γ) Hsle x ≡
     fold γ Hle Hsle (trunc_map (succ (succ γ)) (succ γ) (map (fold γ Hle Hsle ◎ ϕ γ Hle, ψ γ Hle ◎ unfold γ Hle Hsle)) x).
   Proof. by apply ψ_succ_id. Qed.
 
   Let X_pi_id γ γ' Hγ Hγ' : γ = γ' → ofe_eq (X γ Hγ) (X γ' Hγ').
-  Proof. intros ->. pi_clear. reflexivity. Qed.
+  Proof. intros ->. pi_clear. reflexivity. Defined.
 
   (** the maps F(e_{α₁, α₂}, p_{α₁, α₂}) lifted to the truncation -- essentially, this is equal to p_{1+α₁, 1 + α₂} *)
   Program Definition Fep : ∀ α₁ α₂ Hα₁ Hα₂, α₁ ≺ᵢ α₂ → FX α₂ Hα₂ -n> FX α₁ Hα₁
@@ -1323,7 +1323,7 @@ Section limit_case.
   (* we have the equality fold_G ◎ Fep ◎ unfold_G ≡ p (for suitable indices) *)
   Let Fep_lifts_p γ0 γ1 Hγ0 Hγ1 Hsγ0 Hsγ1 Hlt Hlts:
     (fold γ0 Hγ0 Hsγ0) ◎ (Fep γ0 γ1 Hγ0 Hγ1 Hlt) ◎ (unfold γ1 Hγ1 Hsγ1) ≡ p (succ γ0) (succ γ1) Hsγ0 Hsγ1 Hlts.
-  Proof. eapply approx_Fep_p. Qed.
+  Proof. eapply approx_Fep_p. Defined.
   Lemma _Fep_lifts_p γ0 γ1 Hγ0 Hγ1 Hsγ0 Hsγ1 Hlt Hlts x:
     fold γ0 Hγ0 Hsγ0 (Fep γ0 γ1 Hγ0 Hγ1 Hlt (unfold γ1 Hγ1 Hsγ1 x)) ≡ p (succ γ0) (succ γ1) Hsγ0 Hsγ1 Hlts x.
   Proof. by apply Fep_lifts_p. Qed.
@@ -1953,41 +1953,41 @@ Section final_limit.
   Let ψ β := bounded_approx_ψ IH β I.
 
   Let ϕ_ψ_id : ∀ β, ϕ β ◎ ψ β ≡{β}≡ cid.
-  Proof. intros β. eapply approx_ϕ_ψ_id, IH. Qed.
+  Proof. intros β. eapply approx_ϕ_ψ_id, IH. Defined.
   Let ψ_ϕ_id : ∀ β, ψ β ◎ ϕ β ≡ cid.
-  Proof. intros β. eapply approx_ψ_ϕ_id, IH. Qed.
+  Proof. intros β. eapply approx_ψ_ϕ_id, IH. Defined.
   Let X_eq γ : ofe_eq (X (succ γ)) ([G (X γ)]_{succ γ}).
   Proof. apply IH. Defined.
 
   Let fold β := fold_transport (X_eq β).
   Let unfold β := unfold_transport (X_eq β).
   Let fold_unfold_id : ∀ β, fold β ◎ unfold β ≡ cid.
-  Proof. intros β x; cbn. unfold fold, unfold, unfold_transport, fold_transport. by clear_transports. Qed.
+  Proof. intros β x; cbn. unfold fold, unfold, unfold_transport, fold_transport. by clear_transports. Defined.
   Let unfold_fold_id : ∀ β, unfold β ◎ fold β ≡ cid.
-  Proof. intros β x; cbn. unfold fold, unfold, unfold_transport, fold_transport. by clear_transports. Qed.
+  Proof. intros β x; cbn. unfold fold, unfold, unfold_transport, fold_transport. by clear_transports. Defined.
 
   Let e γ0 γ1 (Hlt : γ0 ≺ᵢ γ1) := bounded_approx_e IH γ0 γ1 I I Hlt.
   Let p γ0 γ1 (Hlt : γ0 ≺ᵢ γ1) := bounded_approx_p IH γ0 γ1 I I Hlt.
   Let e_p_id : ∀ γ0 γ1 Hlt, e γ0 γ1 Hlt ◎ p γ0 γ1 Hlt ≡{γ0}≡ cid.
-  Proof. intros; eapply approx_e_p_id, IH. Qed.
+  Proof. intros; eapply approx_e_p_id, IH. Defined.
   Let p_e_id : ∀ γ0 γ1 Hlt, p γ0 γ1 Hlt ◎ e γ0 γ1 Hlt ≡ cid.
-  Proof. intros; eapply approx_p_e_id, IH. Qed.
+  Proof. intros; eapply approx_p_e_id, IH. Defined.
   Let e_funct : ∀ γ0 γ1 γ2 H1 H2 H3, e γ1 γ2 H2 ◎ e γ0 γ1 H1 ≡ e γ0 γ2 H3.
-  Proof. intros; eapply approx_e_funct, IH. Qed.
+  Proof. intros; eapply approx_e_funct, IH. Defined.
   Let p_funct : ∀ γ0 γ1 γ2 H1 H2 H3, p γ0 γ1 H1 ◎ p γ1 γ2 H2 ≡ p γ0 γ2 H3.
-  Proof. intros; eapply approx_p_funct, IH. Qed.
+  Proof. intros; eapply approx_p_funct, IH. Defined.
 
   Let p_ψ_unfold γ Hlt : p γ (succ γ) Hlt ≡ ψ γ ◎ unfold γ.
-  Proof. eapply approx_p_ψ_unfold. Qed.
+  Proof. eapply approx_p_ψ_unfold. Defined.
   Let e_fold_ϕ γ Hlt : e γ (succ γ) Hlt ≡ fold γ ◎ ϕ γ.
-  Proof. eapply approx_e_fold_ϕ. Qed.
+  Proof. eapply approx_e_fold_ϕ. Defined.
 
   Let ψ_p_fold γ (Hlt : γ ≺ᵢ succ γ): ψ γ ≡ p γ (succ γ) Hlt ◎ fold γ.
   Proof.
     intros x. setoid_rewrite (p_ψ_unfold _ _ _). cbn. by setoid_rewrite (unfold_fold_id _ x).
-  Qed.
+  Defined.
   Let ϕ_unfold_e γ (Hlt : γ ≺ᵢ succ γ): ϕ γ ≡ unfold γ ◎ e γ (succ γ) Hlt.
-  Proof. intros x. cbn. setoid_rewrite (e_fold_ϕ _ _ x). by setoid_rewrite (unfold_fold_id _ _). Qed.
+  Proof. intros x. cbn. setoid_rewrite (e_fold_ϕ _ _ x). by setoid_rewrite (unfold_fold_id _ _). Defined.
 
   (* definition of the final limit *)
   Definition FX_lim : ∀ γ, COFE SI := λ γ, cofe _ ([G (X γ)]_{succ γ}).
@@ -2016,7 +2016,7 @@ Section final_limit.
   Qed.
 
   Let Fep_lim_lifts_p : ∀ γ0 γ1 (Hlt : γ0 ≺ᵢ γ1) (Hlts : succ γ0 ≺ᵢ succ γ1), fold γ0 ◎ Fep_lim γ0 γ1 Hlt ◎ unfold γ1 ≡ p (succ γ0) (succ γ1) Hlts.
-  Proof. intros; eapply approx_Fep_p. Qed.
+  Proof. intros; eapply approx_Fep_p. Defined.
 
   Lemma Fep_lim_unfold γ0 γ1 (Hlt : γ0 ≺ᵢ γ1) (Hlts : succ γ0 ≺ᵢ succ γ1) :
     (Fep_lim γ0 γ1 Hlt) ◎ (unfold γ1) ≡ (unfold γ0) ◎  p (succ γ0) (succ γ1) Hlts.
@@ -2276,18 +2276,18 @@ Section merge_extension.
   Proof. apply A. Qed.
 
   Let p_e_id γ0 γ1 Hγ0 Hγ1 Hlt : p γ0 γ1 Hγ0 Hγ1 Hlt ◎ e γ0 γ1 Hγ0 Hγ1 Hlt ≡ cid.
-  Proof. apply A. Qed.
+  Proof. apply A. Defined.
   Let e_p_id γ0 γ1 Hγ0 Hγ1 Hlt : e γ0 γ1 Hγ0 Hγ1 Hlt ◎ p γ0 γ1 Hγ0 Hγ1 Hlt ≡{γ0}≡ cid.
-  Proof. apply A. Qed.
+  Proof. apply A. Defined.
   Let ϕ_ψ_id γ Hγ : ϕ γ Hγ ◎ ψ γ Hγ ≡{γ}≡ cid.
-  Proof. apply A. Qed.
+  Proof. apply A. Defined.
   Let ψ_ϕ_id γ Hγ : ψ γ Hγ ◎ ϕ γ Hγ ≡ cid.
-  Proof. apply A. Qed.
+  Proof. apply A. Defined.
 
   Let e_funct γ0 γ1 γ2 Hγ0 Hγ1 Hγ2 Hlt0 Hlt1 Hlt2 : e γ1 γ2 Hγ1 Hγ2 Hlt1 ◎ e γ0 γ1 Hγ0 Hγ1 Hlt0 ≡ e γ0 γ2 Hγ0 Hγ2 Hlt2.
-  Proof. apply A. Qed.
+  Proof. apply A. Defined.
   Let p_funct γ0 γ1 γ2 Hγ0 Hγ1 Hγ2 Hlt0 Hlt1 Hlt2 : p γ0 γ1 Hγ0 Hγ1 Hlt0 ◎ p γ1 γ2 Hγ1 Hγ2 Hlt1 ≡ p γ0 γ2 Hγ0 Hγ2 Hlt2.
-  Proof. apply A. Qed.
+  Proof. apply A. Defined.
 
   Let fold γ Hγ Hsγ := fold_transport (X_eq γ Hγ Hsγ).
   Let unfold γ Hγ Hsγ := unfold_transport (X_eq γ Hγ Hsγ).
@@ -2295,24 +2295,24 @@ Section merge_extension.
   Let Fep_p γ0 γ1 Hγ0 Hγ1 Hsγ0 Hsγ1 Hlt Hlts :
     fold γ0 Hγ0 Hsγ0 ◎ trunc_map (succ γ1) (succ γ0) (map (e γ0 γ1 Hγ0 Hγ1 Hlt, p γ0 γ1 Hγ0 Hγ1 Hlt)) ◎ unfold γ1 Hγ1 Hsγ1
     ≡ p (succ γ0) (succ γ1) Hsγ0 Hsγ1 Hlts.
-  Proof. apply approx_Fep_p. Qed.
+  Proof. apply approx_Fep_p. Defined.
   Let Fep_p_limit γ0 γ1 (Hlim : index_is_limit γ1) Hγ0 Hsγ0 Hγ1 Hlt Hslt :
     fold γ0 Hγ0 Hsγ0 ◎ trunc_map (succ γ1) (succ γ0) (map (e γ0 γ1 Hγ0 Hγ1 Hlt, p γ0 γ1 Hγ0 Hγ1 Hlt))
     ≡ p (succ γ0) γ1 Hsγ0 Hγ1 Hslt ◎ ψ γ1 Hγ1.
-  Proof. by apply approx_Fep_p_limit. Qed.
+  Proof. by apply approx_Fep_p_limit. Defined.
 
   Let p_ψ_unfold γ Hγ Hsγ Hlt : p γ (succ γ) Hγ Hsγ Hlt ≡ ψ γ Hγ ◎ unfold γ Hγ Hsγ.
-  Proof. apply approx_p_ψ_unfold. Qed.
+  Proof. apply approx_p_ψ_unfold. Defined.
   Let e_fold_ϕ γ Hγ Hsγ Hlt : e γ (succ γ) Hγ Hsγ Hlt ≡ fold γ Hγ Hsγ ◎ ϕ γ Hγ.
-  Proof. apply approx_e_fold_ϕ. Qed.
+  Proof. apply approx_e_fold_ϕ. Defined.
 
   Let ϕ_succ_id γ Hle Hsle: ϕ (succ γ) Hsle
     ≡ trunc_map (succ γ) (succ (succ γ)) (map (ψ γ Hle ◎ unfold γ Hle Hsle, fold γ Hle Hsle ◎ ϕ γ Hle))
       ◎ unfold γ Hle Hsle.
-  Proof. eapply approx_ϕ_succ_id. Qed.
+  Proof. eapply approx_ϕ_succ_id. Defined.
   Let ψ_succ_id γ Hle Hsle: ψ (succ γ) Hsle
     ≡ fold γ Hle Hsle ◎ trunc_map (succ (succ γ)) (succ γ) (map (fold γ Hle Hsle ◎ ϕ γ Hle, ψ γ Hle ◎ unfold γ Hle Hsle)).
-  Proof. eapply approx_ψ_succ_id. Qed.
+  Proof. eapply approx_ψ_succ_id. Defined.
 
 
   Let Xβ : COFE SI := ext_Xγ E.
@@ -2322,21 +2322,21 @@ Section merge_extension.
   Let ψβ : [G Xβ]_{succ β} -n> Xβ := ext_ψγ E.
 
   Let pβ_eβ_id γ0 Hγ0 : pβ γ0 Hγ0 ◎ eβ γ0 Hγ0 ≡ cid.
-  Proof. apply E. Qed.
+  Proof. apply E. Defined.
   Let eβ_pβ_id γ0 Hγ0 : eβ γ0 Hγ0 ◎ pβ γ0 Hγ0 ≡{γ0}≡ cid.
-  Proof. apply E. Qed.
+  Proof. apply E. Defined.
   Let eβ_funct γ0 γ1 Hγ0 Hγ1 Hlt : eβ γ1 Hγ1 ◎ e γ0 γ1 Hγ0 Hγ1 Hlt ≡ eβ γ0 Hγ0.
-  Proof. apply E. Qed.
+  Proof. apply E. Defined.
   Let pβ_funct γ0 γ1 Hγ0 Hγ1 Hlt : p γ0 γ1 Hγ0 Hγ1 Hlt ◎ pβ γ1 Hγ1 ≡ pβ γ0 Hγ0.
-  Proof. apply E. Qed.
+  Proof. apply E. Defined.
 
   Let ψβ_ϕβ_id : ψβ ◎ ϕβ ≡ cid.
-  Proof. apply E. Qed.
+  Proof. apply E. Defined.
   Let ϕβ_ψβ_id : ϕβ ◎ ψβ ≡{β}≡ cid.
-  Proof. apply E. Qed.
+  Proof. apply E. Defined.
 
   Instance Xβ_truncated : OfeTruncated Xβ β.
-  Proof. apply E. Qed.
+  Proof. apply E. Defined.
 
   (* if β is a successor ordinal....: *)
   Let Xβ_eq γ' (Hlt : γ' ≺ᵢ β) (Heq : β = succ γ'): projCOFE _ Xβ = [G (X γ' Hlt)]_{succ γ'}.
@@ -2350,27 +2350,27 @@ Section merge_extension.
       ◎ trunc_map (succ γ1) (succ γ0) (map (e γ0 γ1 Hγ0 Hγ1 Hlt, p γ0 γ1 Hγ0 Hγ1 Hlt))
       ◎ unfoldβ γ1 Hγ1 Hsγ1
       ≡ pβ (succ γ0) Hsγ0.
-  Proof. apply ext_Fep_p. Qed.
+  Proof. apply ext_Fep_p. Defined.
   Let p_ψ_unfoldβ γ' Hlt Heq :
       pβ γ' Hlt ≡ ψ γ' Hlt ◎ unfoldβ γ' Hlt Heq.
-  Proof. apply ext_p_ψ_unfold. Qed.
+  Proof. apply ext_p_ψ_unfold. Defined.
   Let e_fold_ϕβ γ' Hlt Heq : eβ γ' Hlt ≡ foldβ γ' Hlt Heq ◎ ϕ γ' Hlt.
-  Proof. apply ext_e_fold_ϕ. Qed.
+  Proof. apply ext_e_fold_ϕ. Defined.
   Let ϕβ_succ_id γ' Hlt Heq: ϕβ ≡ trunc_map (succ γ') (succ β) (map (ψ γ' Hlt ◎ unfoldβ γ' Hlt Heq,
                                            foldβ γ' Hlt Heq ◎ ϕ γ' Hlt)) ◎ unfoldβ γ' Hlt Heq.
-  Proof. apply ext_ϕ_succ_id. Qed.
+  Proof. apply ext_ϕ_succ_id. Defined.
   Let ψβ_succ_id γ' Hlt Heq : ψβ
       ≡ foldβ γ' Hlt Heq
         ◎ trunc_map (succ β) (succ γ') (map (foldβ γ' Hlt Heq ◎ ϕ γ' Hlt,
                                              ψ γ' Hlt ◎ unfoldβ γ' Hlt Heq)).
-  Proof. apply ext_ψ_succ_id. Qed.
+  Proof. apply ext_ψ_succ_id. Defined.
 
   (* if β is a limit ordinal *)
   Let Fep_pβ_limit γ0 Hγ0 Hsγ0 (Hlim : index_is_limit β) :
       fold γ0 Hγ0 Hsγ0
         ◎ trunc_map (succ β) (succ γ0) (map (eβ γ0 Hγ0, pβ γ0 Hγ0))
       ≡ pβ (succ γ0) Hsγ0 ◎ ψβ.
-  Proof. by apply ext_Fep_p_limit. Qed.
+  Proof. by apply ext_Fep_p_limit. Defined.
 
   (** now we can define the new stuff *)
   Lemma le_lt_eq_dec γ (Hγ : γ ⪯ᵢ β) : {γ ≺ᵢ β} + {γ= β}.

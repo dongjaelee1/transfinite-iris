@@ -28,3 +28,6 @@ _opam
 
 *.pygtex
 *.pygstyle
+
+.DS_Store
+*/.DS_Store

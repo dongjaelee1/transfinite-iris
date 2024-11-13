@@ -1,7 +1,6 @@
-From stdpp Require Export sets coPset.
 From iris.algebra Require Import functions gmap proofmode_classes.
 From transfinite.stepindex Require Import functors.
-From iris.proofmode Require Import classes.
+From iris.proofmode Require Import proofmode.
 From transfinite.base_logic.lib Require Export iprop.
 From iris.prelude Require Import options.
 Import uPred.
@@ -59,21 +58,21 @@ Ltac solve_inG :=
   split; (assumption || by apply _).
 
 (** * Definition of the connective [own] *)
-Local Definition inG_unfold `{SI: indexT} {Σ: gFunctors} {A} {i : inG Σ A} :
+Local Definition inG_unfold `{SI: indexT} {Σ A} {i : inG Σ A} :
     inG_apply i (iPropO Σ) -n> inG_apply i (iPrePropO Σ) :=
   trFunctor_map _ (iProp_fold, iProp_unfold).
-Local Definition inG_fold `{SI: indexT} {Σ: gFunctors} {A} {i : inG Σ A} :
+Local Definition inG_fold `{SI: indexT} {Σ A} {i : inG Σ A} :
     inG_apply i (iPrePropO Σ) -n> inG_apply i (iPropO Σ) :=
   trFunctor_map _ (iProp_unfold, iProp_fold).
 
-Local Definition iRes_singleton `{SI: indexT} {Σ: gFunctors} {A} {i : inG Σ A} (γ : gname) (a : A) : iResUR Σ :=
+Local Definition iRes_singleton `{SI: indexT} {Σ A} {i : inG Σ A} (γ : gname) (a : A) : iResUR Σ :=
   discrete_fun_singleton (inG_id i)
     {[ γ := inG_unfold (cmra_transport inG_prf a) ]}.
 Global Instance: Params (@iRes_singleton) 4 := {}.
 
-Local Definition own_def `{SI: indexT} {Σ: gFunctors} `{!inG Σ A} (γ : gname) (a : A) : iProp Σ :=
+Local Definition own_def `{SI: indexT} `{!inG Σ A} (γ : gname) (a : A) : iProp Σ :=
   uPred_ownM (iRes_singleton γ a).
-Local Definition own_aux : seal (@own_def). by eexists. Qed.
+Local Definition own_aux : seal (@own_def). Proof. by eexists. Qed.
 Definition own := own_aux.(unseal).
 Global Arguments own {SI Σ A _} γ a.
 Local Definition own_eq : @own = @own_def := own_aux.(seal_eq).
@@ -81,9 +80,10 @@ Local Instance: Params (@own) 5 := {}.
 
 (** * Properties about ghost ownership *)
 Section global.
-Context `{SI: indexT} {Σ: gFunctors} `{i : !inG Σ A}.
+Context `{SI: indexT} `{i : !inG Σ A}.
 Implicit Types a : A.
 
+(** ** Properties of [iRes_singleton] *)
 Local Lemma inG_unfold_fold (x : inG_apply i (iPrePropO Σ)) :
   inG_unfold (inG_fold x) ≡ x.
 Proof.
@@ -103,14 +103,8 @@ Proof.
   move=> /(cmra_morphism_validN inG_fold). by rewrite inG_fold_unfold.
 Qed.
 
-(** ** Properties of [iRes_singleton] *)
-Local Instance iRes_singleton_ne γ : NonExpansive (@iRes_singleton SI Σ A _ γ).
+Local Instance iRes_singleton_ne γ : NonExpansive (@iRes_singleton _ Σ A _ γ).
 Proof. by intros n a a' Ha; apply discrete_fun_singleton_ne; rewrite Ha. Qed.
-Local Lemma iRes_singleton_validN γ a n : ✓{n} (iRes_singleton γ a) ↔ ✓{n} a.
-Proof.
-  rewrite /iRes_singleton discrete_fun_singleton_validN.
-  rewrite singleton_validN inG_unfold_validN. by destruct inG_prf.
-Qed.
 Local Lemma iRes_singleton_validI γ a : ✓ (iRes_singleton γ a) ⊢@{iPropI Σ} ✓ a.
 Proof.
   rewrite /iRes_singleton.
@@ -132,7 +126,7 @@ Proof.
   intros ?. rewrite /iRes_singleton.
   apply discrete_fun_singleton_discrete, gmap_singleton_discrete; [apply _|].
   intros x Hx. assert (cmra_transport inG_prf a ≡ inG_fold x) as Ha.
-  { apply (discrete _). by rewrite -Hx inG_fold_unfold. }
+  { apply (discrete_0 _). by rewrite -Hx inG_fold_unfold. }
   by rewrite Ha inG_unfold_fold.
 Qed.
 Local Instance iRes_singleton_core_id γ a :
@@ -189,9 +183,9 @@ Proof. intros a1 a2. apply own_mono. Qed.
 Lemma own_valid γ a : own γ a ⊢ ✓ a.
 Proof. by rewrite !own_eq /own_def ownM_valid iRes_singleton_validI. Qed.
 Lemma own_valid_2 γ a1 a2 : own γ a1 -∗ own γ a2 -∗ ✓ (a1 ⋅ a2).
-Proof. apply wand_intro_r. by rewrite -own_op own_valid. Qed.
+Proof. apply entails_wand, wand_intro_r. by rewrite -own_op own_valid. Qed.
 Lemma own_valid_3 γ a1 a2 a3 : own γ a1 -∗ own γ a2 -∗ own γ a3 -∗ ✓ (a1 ⋅ a2 ⋅ a3).
-Proof. do 2 apply wand_intro_r. by rewrite -!own_op own_valid. Qed.
+Proof. apply entails_wand. do 2 apply wand_intro_r. by rewrite -!own_op own_valid. Qed.
 Lemma own_valid_r γ a : own γ a ⊢ own γ a ∗ ✓ a.
 Proof. apply: bi.persistent_entails_r. apply own_valid. Qed.
 Lemma own_valid_l γ a : own γ a ⊢ ✓ a ∗ own γ a.
@@ -202,7 +196,7 @@ Proof. rewrite !own_eq /own_def. apply _. Qed.
 Global Instance own_core_persistent γ a : CoreId a → Persistent (own γ a).
 Proof. rewrite !own_eq /own_def; apply _. Qed.
 
-Lemma later_own `{!FiniteIndex SI} γ a : ▷ own γ a -∗ ◇ ∃ b, own γ b ∧ ▷ (a ≡ b).
+Lemma later_own `{!FiniteIndex SI} γ a : ▷ own γ a ⊢ ◇ ∃ b, own γ b ∧ ▷ (a ≡ b).
 Proof.
   rewrite own_eq /own_def later_ownM. apply exist_elim=> r.
   assert (NonExpansive (λ r : iResUR Σ, r (inG_id i) !! γ)).
@@ -264,7 +258,7 @@ Lemma own_alloc a : ✓ a → ⊢ |==> ∃ γ, own γ a.
 Proof. intros Ha. eapply (own_alloc_dep (λ _, a)); eauto. Qed.
 
 (** ** Frame preserving updates *)
-Lemma own_updateP P γ a : a ~~>: P → own γ a ==∗ ∃ a', ⌜P a'⌝ ∗ own γ a'.
+Lemma own_updateP P γ a : a ~~>: P → own γ a ⊢ |==> ∃ a', ⌜P a'⌝ ∗ own γ a'.
 Proof.
   intros Hupd. rewrite !own_eq.
   rewrite -(bupd_mono (∃ m,
@@ -283,17 +277,19 @@ Proof.
     by apply and_intro; [apply pure_intro|].
 Qed.
 
-Lemma own_update γ a a' : a ~~> a' → own γ a ==∗ own γ a'.
+Lemma own_update γ a a' : a ~~> a' → own γ a ⊢ |==> own γ a'.
 Proof.
-  intros; rewrite (own_updateP (a' =.)); last by apply cmra_update_updateP.
-  apply bupd_mono, exist_elim=> a''. rewrite sep_and. apply pure_elim_l=> -> //.
+  intros. iIntros "?".
+  iMod (own_updateP (a' =.) with "[$]") as (a'') "[-> $]".
+  { by apply cmra_update_updateP. }
+  done.
 Qed.
 Lemma own_update_2 γ a1 a2 a' :
   a1 ⋅ a2 ~~> a' → own γ a1 -∗ own γ a2 ==∗ own γ a'.
-Proof. intros. apply wand_intro_r. rewrite -own_op. by apply own_update. Qed.
+Proof. intros. apply entails_wand, wand_intro_r. rewrite -own_op. by iApply own_update. Qed.
 Lemma own_update_3 γ a1 a2 a3 a' :
   a1 ⋅ a2 ⋅ a3 ~~> a' → own γ a1 -∗ own γ a2 -∗ own γ a3 ==∗ own γ a'.
-Proof. intros. do 2 apply wand_intro_r. rewrite -!own_op. by apply own_update. Qed.
+Proof. intros. apply entails_wand. do 2 apply wand_intro_r. rewrite -!own_op. by iApply own_update. Qed.
 End global.
 
 Global Arguments own_valid {_ _ _} [_] _ _.
@@ -320,7 +316,7 @@ Qed.
 
 (** Big op class instances *)
 Section big_op_instances.
-  Context `{SI: indexT} {A: ucmra} `{!inG Σ A}.
+  Context `{SI: indexT} `{!inG Σ (A:ucmra)}.
 
   Global Instance own_cmra_sep_homomorphism γ :
     WeakMonoidHomomorphism op uPred_sep (≡) (own γ).
@@ -367,7 +363,7 @@ End big_op_instances.
 
 (** Proofmode class instances *)
 Section proofmode_instances.
-  Context `{SI: indexT} {Σ: gFunctors} `{!inG Σ A}.
+  Context `{SI: indexT} `{!inG Σ A}.
   Implicit Types a b : A.
 
   Global Instance into_sep_own γ a b1 b2 :
@@ -380,6 +376,20 @@ Section proofmode_instances.
   Global Instance from_sep_own γ a b1 b2 :
     IsOp a b1 b2 → FromSep (own γ a) (own γ b1) (own γ b2).
   Proof. intros. by rewrite /FromSep -own_op -is_op. Qed.
+  (* TODO: Improve this instance with generic own simplification machinery
+  once https://gitlab.mpi-sws.org/iris/iris/-/issues/460 is fixed *)
+  (* Cost > 50 to give priority to [combine_sep_as_fractional]. *)
+  Global Instance combine_sep_as_own γ a b1 b2 :
+    IsOp a b1 b2 → CombineSepAs (own γ b1) (own γ b2) (own γ a) | 60.
+  Proof. intros. by rewrite /CombineSepAs -own_op -is_op. Qed.
+  (* TODO: Improve this instance with generic own validity simplification
+  machinery once https://gitlab.mpi-sws.org/iris/iris/-/issues/460 is fixed *)
+  Global Instance combine_sep_gives_own γ b1 b2 :
+    CombineSepGives (own γ b1) (own γ b2) (✓ (b1 ⋅ b2)).
+  Proof.
+    intros. rewrite /CombineSepGives -own_op own_valid.
+    by apply: bi.persistently_intro.
+  Qed.
   Global Instance from_and_own_persistent γ a b1 b2 :
     IsOp a b1 b2 → TCOr (CoreId b1) (CoreId b2) →
     FromAnd (own γ a) (own γ b1) (own γ b2).
