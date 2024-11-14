@@ -1,37 +1,35 @@
 (** A simple "ghost variable" of arbitrary type with fractional ownership.
 Can be mutated when fully owned. *)
-From iris.algebra Require Import dfrac_agree.
+From iris.algebra Require Import dfrac_agree proofmode_classes frac.
 From iris.bi.lib Require Import fractional.
 From iris.proofmode Require Import proofmode.
-From transfinite.base_logic.lib Require Export own.
+From iris.base_logic.lib Require Export own.
 From iris.prelude Require Import options.
 
 (** The CMRA we need. *)
-Class ghost_varG `{SI: indexT} Σ (A : Type) := GhostVarG {
-  ghost_var_inG : inG Σ (dfrac_agreeR $ leibnizO A);
+Class ghost_varG Σ (A : Type) := GhostVarG {
+  #[local] ghost_var_inG :: inG Σ (dfrac_agreeR $ leibnizO A);
 }.
-Local Existing Instance ghost_var_inG.
-Global Hint Mode ghost_varG - - ! : typeclass_instances.
+Global Hint Mode ghost_varG - ! : typeclass_instances.
 
-Definition ghost_varΣ `{SI: indexT} (A : Type) : gFunctors :=
+Definition ghost_varΣ (A : Type) : gFunctors :=
   #[ GFunctor (dfrac_agreeR $ leibnizO A) ].
 
-Global Instance subG_ghost_varΣ `{SI: indexT} Σ A : subG (ghost_varΣ A) Σ → ghost_varG Σ A.
+Global Instance subG_ghost_varΣ Σ A : subG (ghost_varΣ A) Σ → ghost_varG Σ A.
 Proof. solve_inG. Qed.
 
-Local Definition ghost_var_def `{SI: indexT} `{!ghost_varG Σ A}
+Local Definition ghost_var_def `{!ghost_varG Σ A}
     (γ : gname) (q : Qp) (a : A) : iProp Σ :=
   own γ (to_frac_agree (A:=leibnizO A) q a).
 Local Definition ghost_var_aux : seal (@ghost_var_def). Proof. by eexists. Qed.
 Definition ghost_var := ghost_var_aux.(unseal).
 Local Definition ghost_var_unseal :
   @ghost_var = @ghost_var_def := ghost_var_aux.(seal_eq).
-Global Arguments ghost_var {SI Σ A _} γ q a.
+Global Arguments ghost_var {Σ A _} γ q a.
 
 Local Ltac unseal := rewrite ?ghost_var_unseal /ghost_var_def.
 
 Section lemmas.
-  Context `{SI: indexT}.
   Context `{!ghost_varG Σ A}.
   Implicit Types (a b : A) (q : Qp).
 
@@ -56,7 +54,7 @@ Section lemmas.
     ghost_var γ q1 a1 -∗ ghost_var γ q2 a2 -∗ ⌜(q1 + q2 ≤ 1)%Qp ∧ a1 = a2⌝.
   Proof.
     unseal. iIntros "Hvar1 Hvar2".
-    iDestruct (own_valid_2 with "Hvar1 Hvar2") as %[Hq Ha]%frac_agree_op_valid.
+    iCombine "Hvar1 Hvar2" gives %[Hq Ha]%frac_agree_op_valid.
     done.
   Qed.
   (** Almost all the time, this is all you really need. *)
@@ -65,6 +63,28 @@ Section lemmas.
   Proof.
     iIntros "Hvar1 Hvar2".
     iDestruct (ghost_var_valid_2 with "Hvar1 Hvar2") as %[_ ?]. done.
+  Qed.
+
+  Global Instance ghost_var_combine_gives γ a1 q1 a2 q2 :
+    CombineSepGives (ghost_var γ q1 a1) (ghost_var γ q2 a2)
+      ⌜(q1 + q2 ≤ 1)%Qp ∧ a1 = a2⌝.
+  Proof.
+    rewrite /CombineSepGives. iIntros "[H1 H2]".
+    iDestruct (ghost_var_valid_2 with "H1 H2") as %[H1 H2].
+    eauto.
+  Qed.
+
+  Global Instance ghost_var_combine_as γ a1 q1 a2 q2 q :
+    IsOp q q1 q2 →
+    CombineSepAs (ghost_var γ q1 a1) (ghost_var γ q2 a2)
+      (ghost_var γ q a1) | 60.
+  (* higher cost than the Fractional instance, which is used for a1 = a2 *)
+  Proof.
+    rewrite /CombineSepAs /IsOp => ->. iIntros "[H1 H2]".
+    (* This can't be a single [iCombine] since the instance providing that is
+    exactly what we are proving here. *)
+    iCombine "H1 H2" gives %[_ ->].
+    by iCombine "H1 H2" as "H".
   Qed.
 
   (** This is just an instance of fractionality above, but that can be hard to find. *)
@@ -92,9 +112,9 @@ Section lemmas.
   Proof. iApply ghost_var_update_2. apply Qp.half_half. Qed.
 
   (** Framing support *)
-  Global Instance frame_ghost_var p γ a q1 q2 RES :
-    FrameFractionalHyps p (ghost_var γ q1 a) (λ q, ghost_var γ q a)%I RES q1 q2 →
-    Frame p (ghost_var γ q1 a) (ghost_var γ q2 a) RES | 5.
+  Global Instance frame_ghost_var p γ a q1 q2 q :
+    FrameFractionalQp q1 q2 q →
+    Frame p (ghost_var γ q1 a) (ghost_var γ q2 a) (ghost_var γ q a) | 5.
   Proof. apply: frame_fractional. Qed.
 
 End lemmas.

@@ -22,30 +22,29 @@ This library is a logical, ownership-based wrapper around [gset_bij]. *)
 
 From iris.algebra.lib Require Import gset_bij.
 From iris.bi.lib Require Import fractional.
-From transfinite.base_logic.lib Require Import own.
+From iris.base_logic.lib Require Import own.
 From iris.proofmode Require Import proofmode.
 From iris.prelude Require Import options.
 
 (* The uCMRA we need. *)
-Class gset_bijG `{SI: indexT} Σ A B `{Countable A, Countable B} :=
-  GsetBijG { gset_bijG_inG : inG Σ (gset_bijR A B); }.
-Local Existing Instance gset_bijG_inG.
-Global Hint Mode gset_bijG - - ! ! - - - - : typeclass_instances.
+Class gset_bijG Σ A B `{Countable A, Countable B} :=
+  GsetBijG { #[local] gset_bijG_inG :: inG Σ (gset_bijR A B); }.
+Global Hint Mode gset_bijG - ! ! - - - - : typeclass_instances.
 
-Definition gset_bijΣ `{SI: indexT} A B `{Countable A, Countable B}: gFunctors :=
+Definition gset_bijΣ A B `{Countable A, Countable B}: gFunctors :=
   #[ GFunctor (gset_bijR A B) ].
-Global Instance subG_gset_bijΣ `{SI: indexT} `{Countable A, Countable B} Σ :
+Global Instance subG_gset_bijΣ `{Countable A, Countable B} Σ :
   subG (gset_bijΣ A B) Σ → gset_bijG Σ A B.
 Proof. solve_inG. Qed.
 
-Definition gset_bij_own_auth_def`{gset_bijG Σ A B} (γ : gname)
+Definition gset_bij_own_auth_def `{gset_bijG Σ A B} (γ : gname)
     (dq : dfrac) (L : gset (A * B)) : iProp Σ :=
   own γ (gset_bij_auth dq L).
 Definition gset_bij_own_auth_aux : seal (@gset_bij_own_auth_def). Proof. by eexists. Qed.
 Definition gset_bij_own_auth := unseal gset_bij_own_auth_aux.
 Definition gset_bij_own_auth_eq :
   @gset_bij_own_auth = @gset_bij_own_auth_def := seal_eq gset_bij_own_auth_aux.
-Global Arguments gset_bij_own_auth {_ _ _ _ _ _ _ _ _}.
+Global Arguments gset_bij_own_auth {_ _ _ _ _ _ _ _}.
 
 Definition gset_bij_own_elem_def `{gset_bijG Σ A B} (γ : gname)
   (a : A) (b : B) : iProp Σ := own γ (gset_bij_elem a b).
@@ -53,7 +52,7 @@ Definition gset_bij_own_elem_aux : seal (@gset_bij_own_elem_def). Proof. by eexi
 Definition gset_bij_own_elem := unseal gset_bij_own_elem_aux.
 Definition gset_bij_own_elem_eq :
   @gset_bij_own_elem = @gset_bij_own_elem_def := seal_eq gset_bij_own_elem_aux.
-Global Arguments gset_bij_own_elem {_ _ _ _ _ _ _ _ _}.
+Global Arguments gset_bij_own_elem {_ _ _ _ _ _ _ _}.
 
 Section gset_bij.
   Context `{gset_bijG Σ A B}.
@@ -83,7 +82,7 @@ Section gset_bij.
     ⌜✓ (dq1 ⋅ dq2) ∧ L1 = L2 ∧ gset_bijective L1⌝.
   Proof.
     rewrite gset_bij_own_auth_eq. iIntros "H1 H2".
-    by iDestruct (own_valid_2 with "H1 H2") as %?%gset_bij_auth_dfrac_op_valid.
+    by iCombine "H1 H2" gives %?%gset_bij_auth_dfrac_op_valid.
   Qed.
   Lemma gset_bij_own_auth_exclusive γ L1 L2 :
     gset_bij_own_auth γ (DfracOwn 1) L1 -∗ gset_bij_own_auth γ (DfracOwn 1) L2 -∗ False.
@@ -104,7 +103,7 @@ Section gset_bij.
     ⌜a = a' ↔ b = b'⌝.
   Proof.
     rewrite gset_bij_own_elem_eq. iIntros "Hel1 Hel2".
-    by iDestruct (own_valid_2 with "Hel1 Hel2") as %?%gset_bij_elem_agree.
+    by iCombine "Hel1 Hel2" gives %?%gset_bij_elem_agree.
   Qed.
 
   Lemma gset_bij_own_elem_get {γ q L} a b :
@@ -112,14 +111,14 @@ Section gset_bij.
     gset_bij_own_auth γ q L -∗ gset_bij_own_elem γ a b.
   Proof.
     intros. rewrite gset_bij_own_auth_eq gset_bij_own_elem_eq.
-    by apply own_mono, bij_view_included.
+    iApply own_mono. by apply bij_view_included.
   Qed.
 
   Lemma gset_bij_elem_of {γ q L} a b :
     gset_bij_own_auth γ q L -∗ gset_bij_own_elem γ a b -∗ ⌜(a, b) ∈ L⌝.
   Proof.
     iIntros "Hauth Helem". rewrite gset_bij_own_auth_eq gset_bij_own_elem_eq.
-    iPoseProof (own_valid_2 with "Hauth Helem") as "%Ha".
+    iCombine "Hauth Helem" gives "%Ha".
     iPureIntro. revert Ha. rewrite bij_both_dfrac_valid. intros (_ & _ & ?); done.
   Qed.
 

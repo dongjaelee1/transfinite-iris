@@ -1,18 +1,19 @@
 From iris.algebra Require Export frac.
 From iris.bi.lib Require Import fractional.
-From iris.proofmode Require Import tactics.
-From transfinite.base_logic.lib Require Export invariants.
+From iris.proofmode Require Import proofmode.
+From iris.base_logic.lib Require Export invariants.
 From iris.prelude Require Import options.
 Import uPred.
 
-Class cinvG `{SI: indexT} Σ := cinv_inG :> inG Σ fracR.
-Definition cinvΣ `{SI: indexT} : gFunctors := #[GFunctor fracR].
+Class cinvG Σ := { #[local] cinv_inG :: inG Σ fracR }.
 
-Global Instance subG_cinvΣ `{SI: indexT} {Σ} : subG (cinvΣ) Σ → cinvG Σ.
+Definition cinvΣ : gFunctors := #[GFunctor fracR].
+
+Global Instance subG_cinvΣ {Σ} : subG cinvΣ Σ → cinvG Σ.
 Proof. solve_inG. Qed.
 
 Section defs.
-  Context `{SI: indexT} {Σ : gFunctors} `{!invG Σ, !cinvG Σ}.
+  Context `{!invGS_gen hlc Σ, !cinvG Σ}.
 
   Definition cinv_own (γ : gname) (p : frac) : iProp Σ := own γ p.
 
@@ -20,10 +21,10 @@ Section defs.
     inv N (P ∨ cinv_own γ 1).
 End defs.
 
-Global Instance: Params (@cinv) 6 := {}.
+Global Instance: Params (@cinv) 5 := {}.
 
 Section proofs.
-  Context `{SI: indexT} {Σ : gFunctors} `{!invG Σ, !cinvG Σ}.
+  Context `{!invGS_gen hlc Σ, !cinvG Σ}.
 
   Global Instance cinv_own_timeless γ p : Timeless (cinv_own γ p).
   Proof. rewrite /cinv_own; apply _. Qed.
@@ -45,12 +46,12 @@ Section proofs.
   Proof. split; [done|]. apply _. Qed.
 
   Lemma cinv_own_valid γ q1 q2 : cinv_own γ q1 -∗ cinv_own γ q2 -∗ ⌜q1 + q2 ≤ 1⌝%Qp.
-  Proof. rewrite -frac_validI. apply (own_valid_2 γ q1 q2). Qed.
+  Proof. rewrite -frac_valid -uPred.discrete_valid. apply (own_valid_2 γ q1 q2). Qed.
 
   Lemma cinv_own_1_l γ q : cinv_own γ 1 -∗ cinv_own γ q -∗ False.
   Proof.
     iIntros "H1 H2".
-    iDestruct (cinv_own_valid with "H1 H2") as %[]%(@exclusive_l SI _ 1%Qp).
+    iDestruct (cinv_own_valid with "H1 H2") as %[]%(exclusive_l 1%Qp).
   Qed.
 
   Lemma cinv_iff N γ P Q : cinv N γ P -∗ ▷ □ (P ↔ Q) -∗ cinv N γ Q.
@@ -83,7 +84,7 @@ Section proofs.
     iIntros (??). iMod (own_alloc_strong 1%Qp I) as (γ) "[Hfresh Hγ]"; [done|done|].
     iExists γ. iIntros "!> {$Hγ $Hfresh}" (P).
     iMod (inv_alloc_open N _ (P ∨ cinv_own γ 1)) as "[Hinv Hclose]"; first by eauto.
-    iIntros "!>". iFrame. iIntros "HP". iApply "Hclose". iNext; by iLeft.
+    iIntros "!>". iFrame. iIntros "HP". iApply "Hclose". iLeft. done.
   Qed.
 
   Lemma cinv_alloc_cofinite (G : gset gname) E N :
@@ -108,7 +109,7 @@ Section proofs.
   Qed.
 
   (*** Accessors *)
-  Lemma cinv_acc_strong  E N γ p P :
+  Lemma cinv_acc_strong E N γ p P :
     ↑N ⊆ E →
     cinv N γ P -∗ (cinv_own γ p ={E,E∖↑N}=∗
     ▷ P ∗ cinv_own γ p ∗ (∀ E' : coPset, ▷ P ∨ cinv_own γ 1 ={E',↑N ∪ E'}=∗ True)).

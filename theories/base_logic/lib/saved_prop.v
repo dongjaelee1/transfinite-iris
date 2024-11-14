@@ -1,8 +1,7 @@
 From stdpp Require Import gmap.
 From iris.algebra Require Import dfrac_agree.
 From iris.proofmode Require Import proofmode.
-From transfinite.base_logic Require Export own.
-From transfinite.stepindex Require Import functors.
+From iris.base_logic Require Export own.
 From iris.bi Require Import fractional.
 From iris.prelude Require Import options.
 Import uPred.
@@ -10,28 +9,27 @@ Import uPred.
 (* "Saved anything" -- this can give you saved propositions, saved predicates,
    saved whatever-you-like. *)
 
-Class savedAnythingG `{SI: indexT} (Σ : gFunctors) (F : tFunctor) := SavedAnythingG {
-  saved_anything_inG : inG Σ (dfrac_agreeR (tFunctor_apply F (iPropO Σ)));
-  saved_anything_contractive : tFunctorContractive F (* NOT an instance to avoid cycles with [subG_savedAnythingΣ]. *)
+Class savedAnythingG (Σ : gFunctors) (F : oFunctor) := SavedAnythingG {
+  #[local] saved_anything_inG :: inG Σ (dfrac_agreeR (oFunctor_apply F (iPropO Σ)));
+  saved_anything_contractive : oFunctorContractive F (* NOT an instance to avoid cycles with [subG_savedAnythingΣ]. *)
 }.
-Local Existing Instance saved_anything_inG.
 
-Definition savedAnythingΣ `{SI: indexT} (F : tFunctor) `{!tFunctorContractive F} : gFunctors :=
-  #[ GFunctor (dfrac_agreeTRF F) ].
+Definition savedAnythingΣ (F : oFunctor) `{!oFunctorContractive F} : gFunctors :=
+  #[ GFunctor (dfrac_agreeRF F) ].
 
-Global Instance subG_savedAnythingΣ `{SI: indexT} {Σ F} `{!tFunctorContractive F} :
+Global Instance subG_savedAnythingΣ {Σ F} `{!oFunctorContractive F} :
   subG (savedAnythingΣ F) Σ → savedAnythingG Σ F.
 Proof. solve_inG. Qed.
 
-Definition saved_anything_own `{SI: indexT} `{!savedAnythingG Σ F}
-    (γ : gname) (dq : dfrac) (x : tFunctor_apply F (iPropO Σ)) : iProp Σ :=
+Definition saved_anything_own `{!savedAnythingG Σ F}
+    (γ : gname) (dq : dfrac) (x : oFunctor_apply F (iPropO Σ)) : iProp Σ :=
   own γ (to_dfrac_agree dq x).
 Global Typeclasses Opaque saved_anything_own.
 Global Instance: Params (@saved_anything_own) 4 := {}.
 
 Section saved_anything.
-  Context `{SI: indexT} `{!savedAnythingG Σ F}.
-  Implicit Types x y : tFunctor_apply F (iPropO Σ).
+  Context `{!savedAnythingG Σ F}.
+  Implicit Types x y : oFunctor_apply F (iPropO Σ).
   Implicit Types (γ : gname) (dq : dfrac).
 
   Global Instance saved_anything_discarded_persistent γ x :
@@ -70,24 +68,54 @@ Section saved_anything.
   Lemma saved_anything_valid γ dq x :
     saved_anything_own γ dq x -∗ ⌜✓ dq⌝.
   Proof.
-    rewrite /saved_anything_own own_valid dfrac_agree_validI //.
+    rewrite /saved_anything_own own_valid dfrac_agree_validI //. eauto.
   Qed.
   Lemma saved_anything_valid_2 γ dq1 dq2 x y :
     saved_anything_own γ dq1 x -∗ saved_anything_own γ dq2 y -∗ ⌜✓ (dq1 ⋅ dq2)⌝ ∗ x ≡ y.
   Proof.
     iIntros "Hx Hy". rewrite /saved_anything_own.
-    iDestruct (own_valid_2 with "Hx Hy") as "Hv".
+    iCombine "Hx Hy" gives "Hv".
     rewrite dfrac_agree_validI_2. iDestruct "Hv" as "[$ $]".
   Qed.
   Lemma saved_anything_agree γ dq1 dq2 x y :
     saved_anything_own γ dq1 x -∗ saved_anything_own γ dq2 y -∗ x ≡ y.
   Proof. iIntros "Hx Hy". iPoseProof (saved_anything_valid_2 with "Hx Hy") as "[_ $]". Qed.
 
+  Global Instance saved_anything_combine_gives γ dq1 dq2 x y :
+    CombineSepGives (saved_anything_own γ dq1 x) (saved_anything_own γ dq2 y)
+      (⌜✓ (dq1 ⋅ dq2)⌝ ∗ x ≡ y).
+  Proof.
+    rewrite /CombineSepGives. iIntros "[Hx Hy]".
+    iPoseProof (saved_anything_valid_2 with "Hx Hy") as "[% #$]". eauto.
+  Qed.
+
+  Global Instance saved_anything_combine_as γ dq1 dq2 x y :
+    CombineSepAs (saved_anything_own γ dq1 x) (saved_anything_own γ dq2 y)
+      (saved_anything_own γ (dq1 ⋅ dq2) x).
+  (* higher cost than the Fractional instance, which kicks in for #qs *)
+  Proof.
+    rewrite /CombineSepAs. iIntros "[Hx Hy]".
+    iCombine "Hx Hy" gives "[_ #H]".
+    iRewrite -"H" in "Hy". rewrite /saved_anything_own.
+    iCombine "Hx Hy" as "Hxy". by rewrite -dfrac_agree_op.
+  Qed.
+
   (** Make an element read-only. *)
   Lemma saved_anything_persist γ dq v :
     saved_anything_own γ dq v ==∗ saved_anything_own γ DfracDiscarded v.
   Proof.
     iApply own_update. apply dfrac_agree_persist.
+  Qed.
+
+  (** Recover fractional ownership for read-only element. *)
+  Lemma saved_anything_unpersist γ v :
+    saved_anything_own γ DfracDiscarded v ==∗ ∃ q, saved_anything_own γ (DfracOwn q) v.
+  Proof.
+    iIntros "H".
+    iMod (own_updateP with "H") as "H";
+      first by apply dfrac_agree_unpersist.
+    iDestruct "H" as (? (q&->)) "H".
+    iIntros "!>". iExists q. done.
   Qed.
 
   (** Updates *)
@@ -98,7 +126,8 @@ Section saved_anything.
   Qed.
   Lemma saved_anything_update_2 y γ q1 q2 x1 x2 :
     (q1 + q2 = 1)%Qp →
-    saved_anything_own γ (DfracOwn q1) x1 -∗ saved_anything_own γ (DfracOwn q2) x2 ==∗ saved_anything_own γ (DfracOwn q1) y ∗ saved_anything_own γ (DfracOwn q2) y.
+    saved_anything_own γ (DfracOwn q1) x1 -∗ saved_anything_own γ (DfracOwn q2) x2 ==∗
+    saved_anything_own γ (DfracOwn q1) y ∗ saved_anything_own γ (DfracOwn q2) y.
   Proof.
     intros Hq. rewrite -own_op. iApply own_update_2.
     apply dfrac_agree_update_2.
@@ -118,7 +147,7 @@ Notation savedPropG Σ := (savedAnythingG Σ (▶ ∙)).
 Notation savedPropΣ := (savedAnythingΣ (▶ ∙)).
 
 Section saved_prop.
-  Context `{SI: indexT} `{!savedPropG Σ}.
+  Context `{!savedPropG Σ}.
 
   Definition saved_prop_own (γ : gname) (dq : dfrac) (P: iProp Σ) :=
     saved_anything_own (F := ▶ ∙) γ dq (Next P).
@@ -162,17 +191,22 @@ Section saved_prop.
     saved_prop_own γ dq1 P -∗ saved_prop_own γ dq2 Q -∗ ⌜✓ (dq1 ⋅ dq2)⌝ ∗ ▷ (P ≡ Q).
   Proof.
     iIntros "HP HQ".
-    iPoseProof (saved_anything_valid_2 (F := ▶ ∙) with "HP HQ") as "($ & Hag)".
+    iCombine "HP HQ" gives "($ & Hag)".
     by iApply later_equivI.
   Qed.
   Lemma saved_prop_agree γ dq1 dq2 P Q :
     saved_prop_own γ dq1 P -∗ saved_prop_own γ dq2 Q -∗ ▷ (P ≡ Q).
-  Proof. iIntros "HP HQ". iPoseProof (saved_prop_valid_2 with "HP HQ") as "[_ $]". Qed.
+  Proof. iIntros "HP HQ". iCombine "HP" "HQ" gives "[_ $]". Qed.
 
   (** Make an element read-only. *)
   Lemma saved_prop_persist γ dq P :
     saved_prop_own γ dq P ==∗ saved_prop_own γ DfracDiscarded P.
   Proof. apply saved_anything_persist. Qed.
+
+  (** Recover fractional ownership for read-only element. *)
+  Lemma saved_prop_unpersist γ v :
+    saved_prop_own γ DfracDiscarded v ==∗ ∃ q, saved_prop_own γ (DfracOwn q) v.
+  Proof. apply saved_anything_unpersist. Qed.
 
   (** Updates *)
   Lemma saved_prop_update Q γ P :
@@ -180,7 +214,8 @@ Section saved_prop.
   Proof. apply saved_anything_update. Qed.
   Lemma saved_prop_update_2 Q γ q1 q2 P1 P2 :
     (q1 + q2 = 1)%Qp →
-    saved_prop_own γ (DfracOwn q1) P1 -∗ saved_prop_own γ (DfracOwn q2) P2 ==∗ saved_prop_own γ (DfracOwn q1) Q ∗ saved_prop_own γ (DfracOwn q2) Q.
+    saved_prop_own γ (DfracOwn q1) P1 -∗ saved_prop_own γ (DfracOwn q2) P2 ==∗
+    saved_prop_own γ (DfracOwn q1) Q ∗ saved_prop_own γ (DfracOwn q2) Q.
   Proof. apply saved_anything_update_2. Qed.
   Lemma saved_prop_update_halves Q γ P1 P2 :
     saved_prop_own γ (DfracOwn (1/2)) P1 -∗
@@ -194,17 +229,15 @@ Notation savedPredG Σ A := (savedAnythingG Σ (A -d> ▶ ∙)).
 Notation savedPredΣ A := (savedAnythingΣ (A -d> ▶ ∙)).
 
 Section saved_pred.
-  Context `{SI: indexT} `{!savedPredG Σ A}.
+  Context `{!savedPredG Σ A}.
 
   Definition saved_pred_own (γ : gname) (dq : dfrac) (Φ : A → iProp Σ) :=
     saved_anything_own (F := A -d> ▶ ∙) γ dq (Next ∘ Φ).
 
-  (* FIXME: solve_contractive should work here *)
   Global Instance saved_pred_own_contractive `{!savedPredG Σ A} γ dq :
     Contractive (saved_pred_own γ dq : (A -d> iPropO Σ) → iProp Σ).
   Proof.
-    intros n F G Hdist. rewrite /saved_pred_own. f_equiv.
-    intros ?; simpl. f_contractive. apply Hdist.
+    solve_proper_core ltac:(fun _ => first [ intros ?; progress simpl | by auto | f_contractive | f_equiv ]).
   Qed.
 
   Global Instance saved_pred_discarded_persistent γ Φ :
@@ -242,7 +275,7 @@ Section saved_pred.
     saved_pred_own γ dq1 Φ -∗ saved_pred_own γ dq2 Ψ -∗ ⌜✓ (dq1 ⋅ dq2)⌝ ∗ ▷ (Φ x ≡ Ψ x).
   Proof.
     iIntros "HΦ HΨ".
-    iPoseProof (saved_anything_valid_2 (F := A -d> ▶ ∙) with "HΦ HΨ") as "($ & Hag)".
+    iCombine "HΦ HΨ" gives "($ & Hag)".
     iApply later_equivI. by iApply (discrete_fun_equivI with "Hag").
   Qed.
   Lemma saved_pred_agree γ dq1 dq2 Φ Ψ x :
@@ -254,13 +287,19 @@ Section saved_pred.
     saved_pred_own γ dq Φ ==∗ saved_pred_own γ DfracDiscarded Φ.
   Proof. apply saved_anything_persist. Qed.
 
+  (** Recover fractional ownership for read-only element. *)
+  Lemma saved_pred_unpersist γ Φ:
+    saved_pred_own γ DfracDiscarded Φ ==∗ ∃ q, saved_pred_own γ (DfracOwn q) Φ.
+  Proof. apply saved_anything_unpersist. Qed.
+
   (** Updates *)
   Lemma saved_pred_update Ψ γ Φ :
     saved_pred_own γ (DfracOwn 1) Φ ==∗ saved_pred_own γ (DfracOwn 1) Ψ.
   Proof. apply saved_anything_update. Qed.
   Lemma saved_pred_update_2 Ψ γ q1 q2 Φ1 Φ2 :
     (q1 + q2 = 1)%Qp →
-    saved_pred_own γ (DfracOwn q1) Φ1 -∗ saved_pred_own γ (DfracOwn q2) Φ2 ==∗ saved_pred_own γ (DfracOwn q1) Ψ ∗ saved_pred_own γ (DfracOwn q2) Ψ.
+    saved_pred_own γ (DfracOwn q1) Φ1 -∗ saved_pred_own γ (DfracOwn q2) Φ2 ==∗
+    saved_pred_own γ (DfracOwn q1) Ψ ∗ saved_pred_own γ (DfracOwn q2) Ψ.
   Proof. apply saved_anything_update_2. Qed.
   Lemma saved_pred_update_halves Ψ γ Φ1 Φ2 :
     saved_pred_own γ (DfracOwn (1/2)) Φ1 -∗

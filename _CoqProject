@@ -33,6 +33,7 @@ theories/base_logic/derived.v
 theories/base_logic/algebra.v
 theories/base_logic/proofmode.v
 theories/base_logic/base_logic.v
+
 theories/base_logic/lib/iprop.v
 theories/base_logic/lib/own.v
 theories/base_logic/lib/saved_prop.v
@@ -49,4 +50,9 @@ theories/base_logic/lib/ghost_var.v
 theories/base_logic/lib/gset_bij.v
 theories/base_logic/lib/ghost_map.v
 theories/base_logic/lib/mono_nat.v
+theories/base_logic/lib/boxes.v
+theories/base_logic/lib/fancy_updates_from_vs.v
+theories/base_logic/lib/later_credits.v
+theories/base_logic/lib/mono_Z.v
+theories/base_logic/lib/token.v
 

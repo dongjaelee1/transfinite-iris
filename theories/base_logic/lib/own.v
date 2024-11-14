@@ -103,7 +103,7 @@ Proof.
   move=> /(cmra_morphism_validN inG_fold). by rewrite inG_fold_unfold.
 Qed.
 
-Local Instance iRes_singleton_ne γ : NonExpansive (@iRes_singleton _ Σ A _ γ).
+Local Instance iRes_singleton_ne γ : NonExpansive (@iRes_singleton SI Σ A _ γ).
 Proof. by intros n a a' Ha; apply discrete_fun_singleton_ne; rewrite Ha. Qed.
 Local Lemma iRes_singleton_validI γ a : ✓ (iRes_singleton γ a) ⊢@{iPropI Σ} ✓ a.
 Proof.

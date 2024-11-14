@@ -1,7 +1,7 @@
 (** Ghost state for a monotonically increasing nat, wrapping the [mono_natR]
 RA. Provides an authoritative proposition [mono_nat_auth_own γ q n] for the
 underlying number [n] and a persistent proposition [mono_nat_lb_own γ m]
-witnessing that the authoritative nat is at least m.
+witnessing that the authoritative nat is at least [m].
 
 The key rules are [mono_nat_lb_own_valid], which asserts that an auth at [n] and
 a lower-bound at [m] imply that [m ≤ n], and [mono_nat_update], which allows to
@@ -10,18 +10,17 @@ increase the auth element. At any time the auth nat can be "snapshotted" with
 From iris.proofmode Require Import proofmode.
 From iris.algebra.lib Require Import mono_nat.
 From iris.bi.lib Require Import fractional.
-From transfinite.base_logic.lib Require Export own.
+From iris.base_logic.lib Require Export own.
 From iris.prelude Require Import options.
 
-Class mono_natG `{SI: indexT} Σ :=
-  MonoNatG { mono_natG_inG : inG Σ mono_natR; }.
-Local Existing Instance mono_natG_inG.
+Class mono_natG Σ :=
+  MonoNatG { #[local] mono_natG_inG :: inG Σ mono_natR; }.
 
-Definition mono_natΣ `{SI: indexT} : gFunctors := #[ GFunctor mono_natR ].
-Global Instance subG_mono_natΣ `{SI: indexT} Σ : subG mono_natΣ Σ → mono_natG Σ.
+Definition mono_natΣ : gFunctors := #[ GFunctor mono_natR ].
+Global Instance subG_mono_natΣ Σ : subG mono_natΣ Σ → mono_natG Σ.
 Proof. solve_inG. Qed.
 
-Local Definition mono_nat_auth_own_def `{SI: indexT} `{!mono_natG Σ}
+Local Definition mono_nat_auth_own_def `{!mono_natG Σ}
     (γ : gname) (q : Qp) (n : nat) : iProp Σ :=
   own γ (●MN{#q} n).
 Local Definition mono_nat_auth_own_aux : seal (@mono_nat_auth_own_def).
@@ -29,22 +28,21 @@ Proof. by eexists. Qed.
 Definition mono_nat_auth_own := mono_nat_auth_own_aux.(unseal).
 Local Definition mono_nat_auth_own_unseal :
   @mono_nat_auth_own = @mono_nat_auth_own_def := mono_nat_auth_own_aux.(seal_eq).
-Global Arguments mono_nat_auth_own {SI Σ _} γ q n.
+Global Arguments mono_nat_auth_own {Σ _} γ q n.
 
-Local Definition mono_nat_lb_own_def `{SI: indexT} `{!mono_natG Σ} (γ : gname) (n : nat): iProp Σ :=
+Local Definition mono_nat_lb_own_def `{!mono_natG Σ} (γ : gname) (n : nat): iProp Σ :=
   own γ (◯MN n).
 Local Definition mono_nat_lb_own_aux : seal (@mono_nat_lb_own_def). Proof. by eexists. Qed.
 Definition mono_nat_lb_own := mono_nat_lb_own_aux.(unseal).
 Local Definition mono_nat_lb_own_unseal :
   @mono_nat_lb_own = @mono_nat_lb_own_def := mono_nat_lb_own_aux.(seal_eq).
-Global Arguments mono_nat_lb_own {SI Σ _} γ n.
+Global Arguments mono_nat_lb_own {Σ _} γ n.
 
 Local Ltac unseal := rewrite
   ?mono_nat_auth_own_unseal /mono_nat_auth_own_def
   ?mono_nat_lb_own_unseal /mono_nat_lb_own_def.
 
 Section mono_nat.
-  Context `{SI: indexT}.
   Context `{!mono_natG Σ}.
   Implicit Types (n m : nat).
 
@@ -68,7 +66,7 @@ Section mono_nat.
     ⌜(q1 + q2 ≤ 1)%Qp ∧ n1 = n2⌝.
   Proof.
     unseal. iIntros "H1 H2".
-    iDestruct (own_valid_2 with "H1 H2") as %?%mono_nat_auth_dfrac_op_valid; done.
+    iCombine "H1 H2" gives %?%mono_nat_auth_dfrac_op_valid; done.
   Qed.
   Lemma mono_nat_auth_own_exclusive γ n1 n2 :
     mono_nat_auth_own γ 1 n1 -∗ mono_nat_auth_own γ 1 n2 -∗ False.
@@ -81,7 +79,7 @@ Section mono_nat.
     mono_nat_auth_own γ q n -∗ mono_nat_lb_own γ m -∗ ⌜(q ≤ 1)%Qp ∧ m ≤ n⌝.
   Proof.
     unseal. iIntros "Hauth Hlb".
-    iDestruct (own_valid_2 with "Hauth Hlb") as %Hvalid%mono_nat_both_dfrac_valid.
+    iCombine "Hauth Hlb" gives %Hvalid%mono_nat_both_dfrac_valid.
     auto.
   Qed.
 
@@ -91,23 +89,32 @@ Section mono_nat.
   with "Hauth") as "#Hfrag"]. *)
   Lemma mono_nat_lb_own_get γ q n :
     mono_nat_auth_own γ q n -∗ mono_nat_lb_own γ n.
-  Proof. unseal. apply own_mono, mono_nat_included. Qed.
+  Proof. unseal. iApply own_mono. apply mono_nat_included. Qed.
 
   Lemma mono_nat_lb_own_le {γ n} n' :
     n' ≤ n →
     mono_nat_lb_own γ n -∗ mono_nat_lb_own γ n'.
-  Proof. unseal. intros. by apply own_mono, mono_nat_lb_mono. Qed.
+  Proof. unseal. intros. iApply own_mono. by apply mono_nat_lb_mono. Qed.
 
   Lemma mono_nat_lb_own_0 γ :
     ⊢ |==> mono_nat_lb_own γ 0.
   Proof. unseal. iApply own_unit. Qed.
 
+  Lemma mono_nat_own_alloc_strong P n :
+    pred_infinite P →
+    ⊢ |==> ∃ γ, ⌜P γ⌝ ∗ mono_nat_auth_own γ 1 n ∗ mono_nat_lb_own γ n.
+  Proof.
+    unseal. intros.
+    iMod (own_alloc_strong (●MN n ⋅ ◯MN n) P) as (γ) "[% [??]]"; first done.
+    { apply mono_nat_both_valid; auto. }
+    auto with iFrame.
+  Qed.
   Lemma mono_nat_own_alloc n :
     ⊢ |==> ∃ γ, mono_nat_auth_own γ 1 n ∗ mono_nat_lb_own γ n.
   Proof.
-    unseal. iMod (own_alloc (●MN n ⋅ ◯MN n)) as (γ) "[??]".
-    { apply mono_nat_both_valid; auto. }
-    auto with iFrame.
+    iMod (mono_nat_own_alloc_strong (λ _, True) n) as (γ) "[_ ?]".
+    - by apply pred_infinite_True.
+    - eauto.
   Qed.
 
   Lemma mono_nat_own_update {γ n} n' :
