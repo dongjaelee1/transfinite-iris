@@ -1,9 +1,9 @@
 From stdpp Require Export coPset.
 From iris.algebra Require Import gmap auth agree gset coPset.
 From iris.proofmode Require Import proofmode.
-From iris.base_logic.lib Require Export own.
-From iris.base_logic.lib Require Import wsat.
-From iris.base_logic Require Export later_credits.
+From transfinite.base_logic.lib Require Export own.
+From transfinite.base_logic.lib Require Import wsat.
+From transfinite.base_logic.lib Require Export later_credits.
 From iris.prelude Require Import options.
 Export wsatGS.
 Import uPred.
@@ -22,7 +22,7 @@ Import le_upd_if.
  *)
 Inductive has_lc := HasLc | HasNoLc.
 
-Class invGpreS (Σ : gFunctors) : Set := InvGpreS {
+Class invGpreS `{SI : indexT} (Σ : gFunctors) : Set := InvGpreS {
   #[local] invGpreS_wsat :: wsatGpreS Σ;
   #[local] invGpreS_lc :: lcGpreS Σ;
 }.
@@ -30,29 +30,29 @@ Class invGpreS (Σ : gFunctors) : Set := InvGpreS {
 (* [invGS_lc] needs to be global in order to enable the use of lemmas like
 [lc_split] that require [lcGS], and not [invGS]. [invGS_wsat] also needs to be
 global as the lemmas in [invariants.v] require it. *)
-Class invGS_gen (hlc : has_lc) (Σ : gFunctors) : Set := InvG {
+Class invGS_gen `{SI : indexT} (hlc : has_lc) (Σ : gFunctors) : Set := InvG {
   #[global] invGS_wsat :: wsatGS Σ;
   #[global] invGS_lc :: lcGS Σ;
 }.
-Global Hint Mode invGS_gen - - : typeclass_instances.
-Global Hint Mode invGpreS - : typeclass_instances.
+Global Hint Mode invGS_gen - - - : typeclass_instances.
+Global Hint Mode invGpreS - - : typeclass_instances.
 
 Notation invGS := (invGS_gen HasLc).
 
-Definition invΣ : gFunctors :=
+Definition invΣ `{SI : indexT} : gFunctors :=
   #[wsatΣ; lcΣ].
-Global Instance subG_invΣ {Σ} : subG invΣ Σ → invGpreS Σ.
+Global Instance subG_invΣ `{SI : indexT} {Σ} : subG invΣ Σ → invGpreS Σ.
 Proof. solve_inG. Qed.
 
-Local Definition uPred_fupd_def `{!invGS_gen hlc Σ} (E1 E2 : coPset) (P : iProp Σ) : iProp Σ :=
+Local Definition uPred_fupd_def `{SI : indexT} `{!invGS_gen hlc Σ} (E1 E2 : coPset) (P : iProp Σ) : iProp Σ :=
   wsat ∗ ownE E1 -∗ le_upd_if (if hlc is HasLc then true else false) (◇ (wsat ∗ ownE E2 ∗ P)).
 Local Definition uPred_fupd_aux : seal (@uPred_fupd_def). Proof. by eexists. Qed.
 Definition uPred_fupd := uPred_fupd_aux.(unseal).
-Global Arguments uPred_fupd {hlc Σ _}.
-Local Lemma uPred_fupd_unseal `{!invGS_gen hlc Σ} : @fupd _ uPred_fupd = uPred_fupd_def.
+Global Arguments uPred_fupd {SI hlc Σ _}.
+Local Lemma uPred_fupd_unseal `{SI : indexT} `{!invGS_gen hlc Σ} : @fupd _ uPred_fupd = uPred_fupd_def.
 Proof. rewrite -uPred_fupd_aux.(seal_eq) //. Qed.
 
-Lemma uPred_fupd_mixin `{!invGS_gen hlc Σ} : BiFUpdMixin (uPredI (iResUR Σ)) uPred_fupd.
+Lemma uPred_fupd_mixin `{SI : indexT} `{!invGS_gen hlc Σ} : BiFUpdMixin (uPredI (iResUR Σ)) uPred_fupd.
 Proof.
   split.
   - rewrite uPred_fupd_unseal. solve_proper.
@@ -72,15 +72,15 @@ Proof.
     iIntros "!> !>". by iApply "HP".
   - rewrite uPred_fupd_unseal /uPred_fupd_def. by iIntros (????) "[HwP $]".
 Qed.
-Global Instance uPred_bi_fupd `{!invGS_gen hlc Σ} : BiFUpd (uPredI (iResUR Σ)) :=
+Global Instance uPred_bi_fupd `{SI : indexT} `{!invGS_gen hlc Σ} : BiFUpd (uPredI (iResUR Σ)) :=
   {| bi_fupd_mixin := uPred_fupd_mixin |}.
 
-Global Instance uPred_bi_bupd_fupd `{!invGS_gen hlc Σ} : BiBUpdFUpd (uPredI (iResUR Σ)).
+Global Instance uPred_bi_bupd_fupd `{SI : indexT} `{!invGS_gen hlc Σ} : BiBUpdFUpd (uPredI (iResUR Σ)).
 Proof. rewrite /BiBUpdFUpd uPred_fupd_unseal. by iIntros (E P) ">? [$ $] !> !>". Qed.
 
 (** The interaction laws with the plainly modality are only supported when
   we opt out of the support for later credits. *)
-Global Instance uPred_bi_fupd_plainly_no_lc `{!invGS_gen HasNoLc Σ} :
+Global Instance uPred_bi_fupd_plainly_no_lc `{SI : indexT} `{!invGS_gen HasNoLc Σ} :
   BiFUpdPlainly (uPredI (iResUR Σ)).
 Proof.
   split; rewrite uPred_fupd_unseal /uPred_fupd_def.
@@ -108,7 +108,7 @@ Qed.
   This is typically used as [iMod (lc_fupd_elim_later with "Hcredit HP") as "HP".],
   where ["Hcredit"] is a credit available in the context and ["HP"] is the
   assumption from which a later should be stripped. *)
-Lemma lc_fupd_elim_later `{!invGS_gen HasLc Σ} E P :
+Lemma lc_fupd_elim_later `{SI : indexT} `{!invGS_gen HasLc Σ} E P :
    £ 1 -∗ (▷ P) -∗ |={E}=> P.
 Proof.
   iIntros "Hf Hupd".
@@ -121,7 +121,7 @@ Qed.
   in front of it in exchange for a later credit.
   This is typically used as [iApply (lc_fupd_add_later with "Hcredit")],
   where ["Hcredit"] is a credit available in the context. *)
-Lemma lc_fupd_add_later `{!invGS_gen HasLc Σ} E1 E2 P :
+Lemma lc_fupd_add_later `{SI : indexT} `{!invGS_gen HasLc Σ} E1 E2 P :
   £ 1 -∗ (▷ |={E1, E2}=> P) -∗ |={E1, E2}=> P.
 Proof.
   iIntros "Hf Hupd". iApply (fupd_trans E1 E1).
@@ -129,7 +129,7 @@ Proof.
 Qed.
 
 (** Similar to above, but here we are adding [n] laters. *)
-Lemma lc_fupd_add_laterN `{!invGS_gen HasLc Σ} E1 E2 P n :
+Lemma lc_fupd_add_laterN `{SI : indexT} `{!invGS_gen HasLc Σ} E1 E2 P n :
   £ n -∗ (▷^n |={E1, E2}=> P) -∗ |={E1, E2}=> P.
 Proof.
   iIntros "Hf Hupd". iInduction n as [|n] "IH"; first done.
@@ -146,7 +146,7 @@ a general lemma that lets one unfold a [|={E1, E2}=> P] into a basic update
 while also carrying around some frame [ω E] that tracks the current mask.
 We also provide a bunch of later credits for consistency,
 but there is no way to use them since this is a [HasNoLc] lemma. *)
-Lemma fupd_soundness_no_lc_unfold `{!invGpreS Σ} m E :
+Lemma fupd_soundness_no_lc_unfold `{SI : indexT} `{!invGpreS Σ} m E :
   ⊢ |==> ∃ `(Hws: invGS_gen HasNoLc Σ) (ω : coPset → iProp Σ),
     £ m ∗ ω E ∗ □ (∀ E1 E2 P, (|={E1, E2}=> P) -∗ ω E1 ==∗ ◇ (ω E2 ∗ P)).
 Proof.
