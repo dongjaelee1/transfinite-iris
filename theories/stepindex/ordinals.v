@@ -500,11 +500,14 @@ Next Obligation.
     eapply ord_trans; eauto.
 Qed.
 
+Definition one_def : ord := succ_def (zero_def).
+
 
 (* We make this notion only available in the ordinal scope.
    This way it does not override the step-index notation. *)
 Notation "'zero'" := (zero_def) : ordinals.
 Notation "'succ' x" := (succ_def x) (at level 20, no associativity): ordinals.
+Notation "'one'" := (one_def) : ordinals.
 
 Definition ord_lt (α β : ord) := (α: set) ∈ (β: set).
 Infix "≺" := ord_lt (at level 80) : ordinals.

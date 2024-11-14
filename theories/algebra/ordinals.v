@@ -55,5 +55,21 @@ Section ordinals.
   Qed.
 
   Canonical Structure ordUR : ucmra := Ucmra ord ord_ucmra_mixin.
-End ordinals.
 
+  Lemma ord_included_1 (x y : ord) : x ≼ y → x ⪯ y.
+  Proof. intros H. inv H. apply natural_addition_increase. Qed.
+
+  Lemma ord_local_update (x y x' y' : ord) :
+    (** Morally [x - y = x' - y']: the difference between auth and frag must
+    stay the same with this update. Written using [+] due to underflow. *)
+    x ⊕ y' = x' ⊕ y → (x,y) ~l~> (x',y').
+  Proof.
+    intros ??; apply local_update_unital_discrete=> z _.
+    split.
+    - by auto.
+    - rewrite ord_op_plus. rewrite ord_op_plus in H0.
+      rewrite H0 in H. replace ((y ⊕ z) ⊕ y') with ((y' ⊕ z) ⊕ y) in H.
+      + by apply natural_addition_cancel in H.
+      + rewrite natural_addition_assoc natural_addition_comm. f_equal. by apply natural_addition_comm.
+  Qed.
+End ordinals.

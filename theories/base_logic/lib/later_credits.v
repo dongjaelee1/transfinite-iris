@@ -3,95 +3,103 @@ That update is used internally to define the Iris [fupd]; it should not
 usually be directly used unless you are defining your own [fupd]. *)
 From iris.prelude Require Import options.
 From iris.proofmode Require Import tactics.
-From iris.algebra Require Export auth numbers.
+From iris.algebra Require Export auth.
+From transfinite.stepindex Require Export ordinals ordinal_arith.
+From transfinite.algebra Require Export ordinals.
 From transfinite.base_logic.lib Require Import iprop own.
 Import uPred.
 
+(* WIP : use other ordinals? - exist. prop., and def. of equality *)
 
 (** The ghost state for later credits *)
 Class lcGpreS `{SI : indexT} (Σ : gFunctors) := LcGpreS {
-  #[local] lcGpreS_inG :: inG Σ (authR natUR)
+  #[local] lcGpreS_inG :: inG Σ (authR ordUR)
 }.
 
 Class lcGS `{SI : indexT} (Σ : gFunctors) := LcGS {
-  #[local] lcGS_inG :: inG Σ (authR natUR);
+  #[local] lcGS_inG :: inG Σ (authR ordUR);
   lcGS_name : gname;
 }.
 Global Hint Mode lcGS - - : typeclass_instances.
 
-Definition lcΣ `{SI : indexT} := #[GFunctor (authR (natUR))].
+Definition lcΣ `{SI : indexT} := #[GFunctor (authR (ordUR))].
 Global Instance subG_lcΣ `{SI : indexT} {Σ} : subG lcΣ Σ → lcGpreS Σ.
 Proof. solve_inG. Qed.
 
 
 (** The user-facing credit resource, denoting ownership of [n] credits. *)
-Local Definition lc_def `{SI : indexT} `{!lcGS Σ} (n : nat) : iProp Σ := own lcGS_name (◯ n).
+Local Definition lc_def `{SI : indexT} `{!lcGS Σ} (n : ord) : iProp Σ := own lcGS_name (◯ n).
 Local Definition lc_aux : seal (@lc_def). Proof. by eexists. Qed.
 Definition lc := lc_aux.(unseal).
 Local Definition lc_unseal :
   @lc = @lc_def := lc_aux.(seal_eq).
-Global Arguments lc {Σ _} n.
+Global Arguments lc {_ Σ _} n.
 
 Notation "'£'  n" := (lc n) (at level 1).
 
 (** The internal authoritative part of the credit ghost state,
   tracking how many credits are available in total.
   Users should not directly interface with this. *)
-Local Definition lc_supply_def `{!lcGS Σ} (n : nat) : iProp Σ := own lcGS_name (● n).
+Local Definition lc_supply_def `{SI : indexT} `{!lcGS Σ} (n : ord) : iProp Σ := own lcGS_name (● n).
 Local Definition lc_supply_aux : seal (@lc_supply_def). Proof. by eexists. Qed.
 Local Definition lc_supply := lc_supply_aux.(unseal).
 Local Definition lc_supply_unseal :
   @lc_supply = @lc_supply_def := lc_supply_aux.(seal_eq).
-Global Arguments lc_supply {Σ _} n.
+Global Arguments lc_supply {_ Σ _} n.
 
 
 Section later_credit_theory.
-  Context `{!lcGS Σ}.
+  Context `{SI : indexT} `{!lcGS Σ}.
   Implicit Types (P Q : iProp Σ).
 
   (** Later credit rules *)
   Lemma lc_split n m :
-    £ (n + m) ⊣⊢ £ n ∗ £ m.
+    £ (n ⊕ m) ⊣⊢ £ n ∗ £ m.
   Proof.
     rewrite lc_unseal /lc_def.
     rewrite -own_op auth_frag_op //=.
   Qed.
 
-  Lemma lc_zero : ⊢ |==> £ 0.
+  Lemma lc_zero : ⊢ |==> £ zero%O.
   Proof.
     rewrite lc_unseal /lc_def. iApply own_unit.
   Qed.
 
   Lemma lc_supply_bound n m :
-    lc_supply m -∗ £ n -∗ ⌜n ≤ m⌝.
+    lc_supply m -∗ £ n -∗ ⌜(n ⪯ m)%O⌝.
   Proof.
     rewrite lc_unseal /lc_def.
     rewrite lc_supply_unseal /lc_supply_def.
     iIntros "H1 H2".
     iCombine "H1 H2" gives %Hop.
     iPureIntro. eapply auth_both_valid_discrete in Hop as [Hlt _].
-    by eapply nat_included.
+    by apply ord_included_1.
   Qed.
 
   Lemma lc_decrease_supply n m :
-    lc_supply (n + m) -∗ £ n -∗ |==> lc_supply m.
+    lc_supply (n ⊕ m) -∗ £ n -∗ |==> lc_supply m.
   Proof.
     rewrite lc_unseal /lc_def.
     rewrite lc_supply_unseal /lc_supply_def.
     iIntros "H1 H2".
     iMod (own_update_2 with "H1 H2") as "Hown".
-    { eapply auth_update. eapply (nat_local_update _ _ m 0). lia. }
+    { eapply auth_update. eapply (ord_local_update _ _ m zero%O).
+      rewrite natural_addition_zero_right_id. apply natural_addition_comm.
+    }
     by iDestruct "Hown" as "[Hm _]".
   Qed.
 
   Lemma lc_succ n :
-    £ (S n) ⊣⊢ £ 1 ∗ £ n.
-  Proof. rewrite -lc_split //=. Qed.
+    £ (succ n)%O ⊣⊢ £ one%O ∗ £ n.
+  Proof.
+    rewrite -lc_split //=. rewrite natural_addition_succ. rewrite natural_addition_zero_left_id. done.
+  Qed.
 
   Lemma lc_weaken {n} m :
-    m ≤ n → £ n -∗ £ m.
+    (m ⪯ n)%O → £ n -∗ £ m.
   Proof.
-    intros [k ->]%Nat.le_sum. rewrite lc_split. iIntros "[$ _]".
+    intros. 
+    rewrite lc_split. iIntros "[$ _]".
   Qed.
 
   Global Instance lc_timeless n : Timeless (£ n).
