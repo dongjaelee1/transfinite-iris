@@ -22,18 +22,18 @@ This library is a logical, ownership-based wrapper around [gset_bij]. *)
 
 From iris.algebra.lib Require Import gset_bij.
 From iris.bi.lib Require Import fractional.
-From iris.base_logic.lib Require Import own.
+From transfinite.base_logic.lib Require Import own.
 From iris.proofmode Require Import proofmode.
 From iris.prelude Require Import options.
 
 (* The uCMRA we need. *)
-Class gset_bijG Σ A B `{Countable A, Countable B} :=
+Class gset_bijG `{SI: indexT} Σ A B `{Countable A, Countable B} :=
   GsetBijG { #[local] gset_bijG_inG :: inG Σ (gset_bijR A B); }.
-Global Hint Mode gset_bijG - ! ! - - - - : typeclass_instances.
+Global Hint Mode gset_bijG - - ! ! - - - - : typeclass_instances.
 
-Definition gset_bijΣ A B `{Countable A, Countable B}: gFunctors :=
+Definition gset_bijΣ `{SI: indexT} A B `{Countable A, Countable B}: gFunctors :=
   #[ GFunctor (gset_bijR A B) ].
-Global Instance subG_gset_bijΣ `{Countable A, Countable B} Σ :
+Global Instance subG_gset_bijΣ `{SI: indexT} `{Countable A, Countable B} Σ :
   subG (gset_bijΣ A B) Σ → gset_bijG Σ A B.
 Proof. solve_inG. Qed.
 
@@ -44,7 +44,7 @@ Definition gset_bij_own_auth_aux : seal (@gset_bij_own_auth_def). Proof. by eexi
 Definition gset_bij_own_auth := unseal gset_bij_own_auth_aux.
 Definition gset_bij_own_auth_eq :
   @gset_bij_own_auth = @gset_bij_own_auth_def := seal_eq gset_bij_own_auth_aux.
-Global Arguments gset_bij_own_auth {_ _ _ _ _ _ _ _}.
+Global Arguments gset_bij_own_auth {_ _ _ _ _ _ _ _ _}.
 
 Definition gset_bij_own_elem_def `{gset_bijG Σ A B} (γ : gname)
   (a : A) (b : B) : iProp Σ := own γ (gset_bij_elem a b).
@@ -52,7 +52,7 @@ Definition gset_bij_own_elem_aux : seal (@gset_bij_own_elem_def). Proof. by eexi
 Definition gset_bij_own_elem := unseal gset_bij_own_elem_aux.
 Definition gset_bij_own_elem_eq :
   @gset_bij_own_elem = @gset_bij_own_elem_def := seal_eq gset_bij_own_elem_aux.
-Global Arguments gset_bij_own_elem {_ _ _ _ _ _ _ _}.
+Global Arguments gset_bij_own_elem {_ _ _ _ _ _ _ _ _}.
 
 Section gset_bij.
   Context `{gset_bijG Σ A B}.

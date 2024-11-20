@@ -18,17 +18,17 @@ the generalization to negative integers. *)
 From iris.proofmode Require Import proofmode.
 From iris.algebra.lib Require Import mono_nat.
 From iris.bi.lib Require Import fractional.
-From iris.base_logic.lib Require Export own.
-From iris.base_logic.lib Require Import mono_nat.
+From transfinite.base_logic.lib Require Export own.
+From transfinite.base_logic.lib Require Import mono_nat.
 From iris.prelude Require Import options.
 
 Local Open Scope Z_scope.
 
-Class mono_ZG Σ :=
+Class mono_ZG `{SI: indexT} Σ :=
   MonoZG { #[local] mono_ZG_natG :: mono_natG Σ; }.
-Definition mono_ZΣ := mono_natΣ.
+Definition mono_ZΣ `{SI: indexT} := mono_natΣ.
 
-Local Definition mono_Z_auth_own_def `{!mono_ZG Σ}
+Local Definition mono_Z_auth_own_def `{SI: indexT} `{!mono_ZG Σ}
     (γ : gname) (q : Qp) (n : Z) : iProp Σ :=
   ⌜0 ≤ n⌝ ∗ mono_nat_auth_own γ q (Z.to_nat n).
 Local Definition mono_Z_auth_own_aux : seal (@mono_Z_auth_own_def).
@@ -36,22 +36,22 @@ Proof. by eexists. Qed.
 Definition mono_Z_auth_own := mono_Z_auth_own_aux.(unseal).
 Local Definition mono_Z_auth_own_unseal :
   @mono_Z_auth_own = @mono_Z_auth_own_def := mono_Z_auth_own_aux.(seal_eq).
-Global Arguments mono_Z_auth_own {Σ _} γ q n.
+Global Arguments mono_Z_auth_own {SI Σ _} γ q n.
 
-Local Definition mono_Z_lb_own_def `{!mono_ZG Σ} (γ : gname) (n : Z) : iProp Σ :=
+Local Definition mono_Z_lb_own_def `{SI: indexT} `{!mono_ZG Σ} (γ : gname) (n : Z) : iProp Σ :=
   ⌜0 ≤ n⌝ ∗ mono_nat_lb_own γ (Z.to_nat n).
 Local Definition mono_Z_lb_own_aux : seal (@mono_Z_lb_own_def). Proof. by eexists. Qed.
 Definition mono_Z_lb_own := mono_Z_lb_own_aux.(unseal).
 Local Definition mono_Z_lb_own_unseal :
   @mono_Z_lb_own = @mono_Z_lb_own_def := mono_Z_lb_own_aux.(seal_eq).
-Global Arguments mono_Z_lb_own {Σ _} γ n.
+Global Arguments mono_Z_lb_own {SI Σ _} γ n.
 
 Local Ltac unseal := rewrite
   ?mono_Z_auth_own_unseal /mono_Z_auth_own_def
   ?mono_Z_lb_own_unseal /mono_Z_lb_own_def.
 
 Section mono_Z.
-  Context `{!mono_ZG Σ}.
+  Context `{SI: indexT} `{!mono_ZG Σ}.
   Implicit Types (n m : Z).
 
   Global Instance mono_Z_auth_own_timeless γ q n : Timeless (mono_Z_auth_own γ q n).

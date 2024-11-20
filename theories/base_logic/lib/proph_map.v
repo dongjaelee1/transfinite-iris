@@ -1,6 +1,6 @@
 From iris.proofmode Require Import proofmode.
-From iris.base_logic.lib Require Export own.
-From iris.base_logic.lib Require Import ghost_map.
+From transfinite.base_logic.lib Require Export own.
+From transfinite.base_logic.lib Require Import ghost_map.
 From iris.prelude Require Import options.
 Import uPred.
 
@@ -8,25 +8,25 @@ Local Notation proph_map P V := (gmap P (list V)).
 Definition proph_val_list (P V : Type) := list (P * V).
 
 (** The CMRA we need. *)
-Class proph_mapGpreS (P V : Type) (Σ : gFunctors) `{Countable P} := {
+Class proph_mapGpreS `{SI: indexT} (P V : Type) (Σ : gFunctors) `{Countable P} := {
   #[local] proph_map_GpreS_inG :: ghost_mapG Σ P (list V)
 }.
 
-Class proph_mapGS (P V : Type) (Σ : gFunctors) `{Countable P} := ProphMapGS {
+Class proph_mapGS `{SI: indexT} (P V : Type) (Σ : gFunctors) `{Countable P} := ProphMapGS {
   #[local] proph_map_inG :: proph_mapGpreS P V Σ;
   proph_map_name : gname
 }.
-Global Arguments proph_map_name {_ _ _ _ _} _ : assert.
+Global Arguments proph_map_name {_ _ _ _ _ _} _ : assert.
 
-Definition proph_mapΣ (P V : Type) `{Countable P} : gFunctors :=
+Definition proph_mapΣ `{SI: indexT} (P V : Type) `{Countable P} : gFunctors :=
   #[ghost_mapΣ P (list V)].
 
-Global Instance subG_proph_mapGpreS {Σ P V} `{Countable P} :
+Global Instance subG_proph_mapGpreS `{SI: indexT} {Σ P V} `{Countable P} :
   subG (proph_mapΣ P V) Σ → proph_mapGpreS P V Σ.
 Proof. solve_inG. Qed.
 
 Section definitions.
-  Context `{pG : proph_mapGS P V Σ}.
+  Context `{SI: indexT} `{pG : proph_mapGS P V Σ}.
   Implicit Types pvs : proph_val_list P V.
   Implicit Types R : proph_map P V.
   Implicit Types p : P.
@@ -71,11 +71,11 @@ Section list_resolves.
   Qed.
 End list_resolves.
 
-Lemma proph_map_init `{Countable P, !proph_mapGpreS P V Σ} pvs ps :
+Lemma proph_map_init `{SI: indexT} `{Countable P, !proph_mapGpreS P V Σ} pvs ps :
   ⊢ |==> ∃ _ : proph_mapGS P V Σ, proph_map_interp pvs ps.
 Proof.
   iMod (ghost_map_alloc_empty) as (γ) "Hh".
-  iModIntro. iExists (ProphMapGS P V _ _ _ _ γ), ∅. iSplit; last by iFrame.
+  iModIntro. iExists (ProphMapGS _ P V _ _ _ _ γ), ∅. iSplit; last by iFrame.
   iPureIntro. done.
 Qed.
 

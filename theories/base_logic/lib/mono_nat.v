@@ -10,17 +10,17 @@ increase the auth element. At any time the auth nat can be "snapshotted" with
 From iris.proofmode Require Import proofmode.
 From iris.algebra.lib Require Import mono_nat.
 From iris.bi.lib Require Import fractional.
-From iris.base_logic.lib Require Export own.
+From transfinite.base_logic.lib Require Export own.
 From iris.prelude Require Import options.
 
-Class mono_natG Σ :=
+Class mono_natG `{SI: indexT} Σ :=
   MonoNatG { #[local] mono_natG_inG :: inG Σ mono_natR; }.
 
-Definition mono_natΣ : gFunctors := #[ GFunctor mono_natR ].
-Global Instance subG_mono_natΣ Σ : subG mono_natΣ Σ → mono_natG Σ.
+Definition mono_natΣ `{SI: indexT} : gFunctors := #[ GFunctor mono_natR ].
+Global Instance subG_mono_natΣ `{SI: indexT} Σ : subG mono_natΣ Σ → mono_natG Σ.
 Proof. solve_inG. Qed.
 
-Local Definition mono_nat_auth_own_def `{!mono_natG Σ}
+Local Definition mono_nat_auth_own_def `{SI: indexT} `{!mono_natG Σ}
     (γ : gname) (q : Qp) (n : nat) : iProp Σ :=
   own γ (●MN{#q} n).
 Local Definition mono_nat_auth_own_aux : seal (@mono_nat_auth_own_def).
@@ -28,22 +28,22 @@ Proof. by eexists. Qed.
 Definition mono_nat_auth_own := mono_nat_auth_own_aux.(unseal).
 Local Definition mono_nat_auth_own_unseal :
   @mono_nat_auth_own = @mono_nat_auth_own_def := mono_nat_auth_own_aux.(seal_eq).
-Global Arguments mono_nat_auth_own {Σ _} γ q n.
+Global Arguments mono_nat_auth_own {SI Σ _} γ q n.
 
-Local Definition mono_nat_lb_own_def `{!mono_natG Σ} (γ : gname) (n : nat): iProp Σ :=
+Local Definition mono_nat_lb_own_def `{SI: indexT} `{!mono_natG Σ} (γ : gname) (n : nat): iProp Σ :=
   own γ (◯MN n).
 Local Definition mono_nat_lb_own_aux : seal (@mono_nat_lb_own_def). Proof. by eexists. Qed.
 Definition mono_nat_lb_own := mono_nat_lb_own_aux.(unseal).
 Local Definition mono_nat_lb_own_unseal :
   @mono_nat_lb_own = @mono_nat_lb_own_def := mono_nat_lb_own_aux.(seal_eq).
-Global Arguments mono_nat_lb_own {Σ _} γ n.
+Global Arguments mono_nat_lb_own {SI Σ _} γ n.
 
 Local Ltac unseal := rewrite
   ?mono_nat_auth_own_unseal /mono_nat_auth_own_def
   ?mono_nat_lb_own_unseal /mono_nat_lb_own_def.
 
 Section mono_nat.
-  Context `{!mono_natG Σ}.
+  Context `{SI: indexT} `{!mono_natG Σ}.
   Implicit Types (n m : nat).
 
   Global Instance mono_nat_auth_own_timeless γ q n : Timeless (mono_nat_auth_own γ q n).

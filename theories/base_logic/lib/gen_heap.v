@@ -3,8 +3,8 @@ From iris.algebra Require Import reservation_map agree frac.
 From iris.algebra Require Export dfrac.
 From iris.bi.lib Require Import fractional.
 From iris.proofmode Require Import proofmode.
-From iris.base_logic.lib Require Export own.
-From iris.base_logic.lib Require Import ghost_map.
+From transfinite.base_logic.lib Require Export own.
+From transfinite.base_logic.lib Require Import ghost_map.
 From iris.prelude Require Import options.
 Import uPred.
 
@@ -65,33 +65,33 @@ these can be matched up with the invariant namespaces. *)
 
 (** The CMRAs we need, and the global ghost names we are using. *)
 
-Class gen_heapGpreS (L V : Type) (Σ : gFunctors) `{Countable L} := {
+Class gen_heapGpreS `{SI: indexT} (L V : Type) (Σ : gFunctors) `{Countable L} := {
   #[local] gen_heapGpreS_heap :: ghost_mapG Σ L V;
   #[local] gen_heapGpreS_meta :: ghost_mapG Σ L gname;
   #[local] gen_heapGpreS_meta_data :: inG Σ (reservation_mapR (agreeR positiveO));
 }.
 
-Class gen_heapGS (L V : Type) (Σ : gFunctors) `{Countable L} := GenHeapGS {
+Class gen_heapGS `{SI: indexT} (L V : Type) (Σ : gFunctors) `{Countable L} := GenHeapGS {
   #[local] gen_heap_inG :: gen_heapGpreS L V Σ;
   gen_heap_name : gname;
   gen_meta_name : gname
 }.
-Global Arguments GenHeapGS L V Σ {_ _ _} _ _.
-Global Arguments gen_heap_name {L V Σ _ _} _ : assert.
-Global Arguments gen_meta_name {L V Σ _ _} _ : assert.
+Global Arguments GenHeapGS {SI} L V Σ {_ _ _} _ _.
+Global Arguments gen_heap_name {SI L V Σ _ _} _ : assert.
+Global Arguments gen_meta_name {SI L V Σ _ _} _ : assert.
 
-Definition gen_heapΣ (L V : Type) `{Countable L} : gFunctors := #[
+Definition gen_heapΣ `{SI: indexT} (L V : Type) `{Countable L} : gFunctors := #[
   ghost_mapΣ L V;
   ghost_mapΣ L gname;
   GFunctor (reservation_mapR (agreeR positiveO))
 ].
 
-Global Instance subG_gen_heapGpreS {Σ L V} `{Countable L} :
+Global Instance subG_gen_heapGpreS `{SI: indexT} {Σ L V} `{Countable L} :
   subG (gen_heapΣ L V) Σ → gen_heapGpreS L V Σ.
 Proof. solve_inG. Qed.
 
 Section definitions.
-  Context `{Countable L, hG : !gen_heapGS L V Σ}.
+  Context `{SI: indexT} `{Countable L, hG : !gen_heapGS L V Σ}.
 
   Definition gen_heap_interp (σ : gmap L V) : iProp Σ := ∃ m : gmap L gname,
     (* The [⊆] is used to avoid assigning ghost information to the locations in
@@ -123,13 +123,13 @@ Section definitions.
   Definition meta := meta_aux.(unseal).
   Local Definition meta_unseal : @meta = @meta_def := meta_aux.(seal_eq).
 End definitions.
-Global Arguments meta {L _ _ V Σ _ A _ _} l N x.
+Global Arguments meta {SI L _ _ V Σ _ A _ _} l N x.
 
 Local Notation "l ↦ dq v" := (pointsto l dq v)
   (at level 20, dq custom dfrac at level 1, format "l  ↦ dq  v") : bi_scope.
 
 Section gen_heap.
-  Context {L V} `{Countable L, !gen_heapGS L V Σ}.
+  Context `{SI: indexT} {L V} `{Countable L, !gen_heapGS L V Σ}.
   Implicit Types P Q : iProp Σ.
   Implicit Types Φ : V → iProp Σ.
   Implicit Types σ : gmap L V.
@@ -315,7 +315,7 @@ End gen_heap.
 The key difference to [gen_heap_init] is that the [inG] instances in the new
 [gen_heapGS] instance are related to the original [gen_heapGpreS] instance,
 whereas [gen_heap_init] forgets about that relation. *)
-Lemma gen_heap_init_names `{Countable L, !gen_heapGpreS L V Σ} σ :
+Lemma gen_heap_init_names `{SI: indexT} `{Countable L, !gen_heapGpreS L V Σ} σ :
   ⊢ |==> ∃ γh γm : gname,
     let hG := GenHeapGS L V Σ γh γm in
     gen_heap_interp σ ∗ ([∗ map] l ↦ v ∈ σ, l ↦ v) ∗ ([∗ map] l ↦ _ ∈ σ, meta_token l ⊤).
@@ -330,7 +330,7 @@ Proof.
   rewrite right_id_L. done.
 Qed.
 
-Lemma gen_heap_init `{Countable L, !gen_heapGpreS L V Σ} σ :
+Lemma gen_heap_init `{SI: indexT} `{Countable L, !gen_heapGpreS L V Σ} σ :
   ⊢ |==> ∃ _ : gen_heapGS L V Σ,
     gen_heap_interp σ ∗ ([∗ map] l ↦ v ∈ σ, l ↦ v) ∗ ([∗ map] l ↦ _ ∈ σ, meta_token l ⊤).
 Proof.

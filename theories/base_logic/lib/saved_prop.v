@@ -1,7 +1,8 @@
 From stdpp Require Import gmap.
 From iris.algebra Require Import dfrac_agree.
 From iris.proofmode Require Import proofmode.
-From iris.base_logic Require Export own.
+From transfinite.base_logic Require Export own.
+From transfinite.stepindex Require Import functors.
 From iris.bi Require Import fractional.
 From iris.prelude Require Import options.
 Import uPred.
@@ -9,27 +10,27 @@ Import uPred.
 (* "Saved anything" -- this can give you saved propositions, saved predicates,
    saved whatever-you-like. *)
 
-Class savedAnythingG (Σ : gFunctors) (F : oFunctor) := SavedAnythingG {
-  #[local] saved_anything_inG :: inG Σ (dfrac_agreeR (oFunctor_apply F (iPropO Σ)));
-  saved_anything_contractive : oFunctorContractive F (* NOT an instance to avoid cycles with [subG_savedAnythingΣ]. *)
+Class savedAnythingG `{SI: indexT} (Σ : gFunctors) (F : tFunctor) := SavedAnythingG {
+  #[local] saved_anything_inG :: inG Σ (dfrac_agreeR (tFunctor_apply F (iPropO Σ)));
+  saved_anything_contractive : tFunctorContractive F (* NOT an instance to avoid cycles with [subG_savedAnythingΣ]. *)
 }.
 
-Definition savedAnythingΣ (F : oFunctor) `{!oFunctorContractive F} : gFunctors :=
-  #[ GFunctor (dfrac_agreeRF F) ].
+Definition savedAnythingΣ `{SI: indexT} (F : tFunctor) `{!tFunctorContractive F} : gFunctors :=
+  #[ GFunctor (dfrac_agreeTRF F) ].
 
-Global Instance subG_savedAnythingΣ {Σ F} `{!oFunctorContractive F} :
+Global Instance subG_savedAnythingΣ `{SI: indexT} {Σ F} `{!tFunctorContractive F} :
   subG (savedAnythingΣ F) Σ → savedAnythingG Σ F.
 Proof. solve_inG. Qed.
 
-Definition saved_anything_own `{!savedAnythingG Σ F}
-    (γ : gname) (dq : dfrac) (x : oFunctor_apply F (iPropO Σ)) : iProp Σ :=
+Definition saved_anything_own `{SI: indexT} `{!savedAnythingG Σ F}
+    (γ : gname) (dq : dfrac) (x : tFunctor_apply F (iPropO Σ)) : iProp Σ :=
   own γ (to_dfrac_agree dq x).
 Global Typeclasses Opaque saved_anything_own.
 Global Instance: Params (@saved_anything_own) 4 := {}.
 
 Section saved_anything.
-  Context `{!savedAnythingG Σ F}.
-  Implicit Types x y : oFunctor_apply F (iPropO Σ).
+  Context `{SI: indexT} `{!savedAnythingG Σ F}.
+  Implicit Types x y : tFunctor_apply F (iPropO Σ).
   Implicit Types (γ : gname) (dq : dfrac).
 
   Global Instance saved_anything_discarded_persistent γ x :
@@ -147,7 +148,7 @@ Notation savedPropG Σ := (savedAnythingG Σ (▶ ∙)).
 Notation savedPropΣ := (savedAnythingΣ (▶ ∙)).
 
 Section saved_prop.
-  Context `{!savedPropG Σ}.
+  Context `{SI: indexT} `{!savedPropG Σ}.
 
   Definition saved_prop_own (γ : gname) (dq : dfrac) (P: iProp Σ) :=
     saved_anything_own (F := ▶ ∙) γ dq (Next P).
@@ -229,7 +230,7 @@ Notation savedPredG Σ A := (savedAnythingG Σ (A -d> ▶ ∙)).
 Notation savedPredΣ A := (savedAnythingΣ (A -d> ▶ ∙)).
 
 Section saved_pred.
-  Context `{!savedPredG Σ A}.
+  Context `{SI: indexT} `{!savedPredG Σ A}.
 
   Definition saved_pred_own (γ : gname) (dq : dfrac) (Φ : A → iProp Σ) :=
     saved_anything_own (F := A -d> ▶ ∙) γ dq (Next ∘ Φ).

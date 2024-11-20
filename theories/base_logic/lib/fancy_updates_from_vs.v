@@ -3,14 +3,14 @@ view shift, and that the laws of the fancy update can be derived from the
 laws of the view shift. *)
 From stdpp Require Export coPset.
 From iris.proofmode Require Import proofmode.
-From iris.base_logic Require Export base_logic.
+From transfinite.base_logic Require Export base_logic.
 From iris.prelude Require Import options.
 
 (* The sections add extra BI assumptions, which is only picked up with [Type*]. *)
 Set Default Proof Using "Type*".
 
 Section fupd.
-Context {M} (vs : coPset → coPset → uPred M → uPred M → uPred M).
+Context `{SI: indexT} {M} (vs : coPset → coPset → uPred M → uPred M → uPred M).
 
 Notation "P ={ E1 , E2 }=> Q" := (vs E1 E2 P Q)
   (at level 99, E1,E2 at level 50, Q at level 200,

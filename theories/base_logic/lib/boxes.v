@@ -1,23 +1,23 @@
 From iris.algebra Require Import lib.excl_auth gmap agree.
 From iris.proofmode Require Import proofmode.
-From iris.base_logic.lib Require Export invariants.
+From transfinite.base_logic.lib Require Export invariants.
 From iris.prelude Require Import options.
 Import uPred.
 
 (** The CMRAs we need. *)
-Class boxG Σ :=
+Class boxG `{SI : indexT} Σ :=
   #[local] boxG_inG :: inG Σ (prodR
     (excl_authR boolO)
     (optionR (agreeR (laterO (iPropO Σ))))).
 
-Definition boxΣ : gFunctors := #[ GFunctor (excl_authR boolO *
-                                            optionRF (agreeRF (▶ ∙)) ) ].
+Definition boxΣ `{SI : indexT} : gFunctors := #[ GFunctor (excl_authR boolO *
+                                            optionTRF (agreeTRF (▶ ∙)) ) ].
 
-Global Instance subG_boxΣ Σ : subG boxΣ Σ → boxG Σ.
+Global Instance subG_boxΣ `{SI : indexT} Σ : subG boxΣ Σ → boxG Σ.
 Proof. solve_inG. Qed.
 
 Section box_defs.
-  Context `{!invGS_gen hlc Σ, !boxG Σ} (N : namespace).
+  Context `{SI : indexT} `{!invGS_gen hlc Σ, !boxG Σ} (N : namespace).
 
   Definition slice_name := gname.
 
@@ -40,13 +40,13 @@ Section box_defs.
                          inv N (slice_inv γ (Φ γ)))%I.
 End box_defs.
 
-Global Instance: Params (@box_own_prop) 3 := {}.
-Global Instance: Params (@slice_inv) 3 := {}.
-Global Instance: Params (@slice) 5 := {}.
-Global Instance: Params (@box) 5 := {}.
+Global Instance: Params (@box_own_prop) 4 := {}.
+Global Instance: Params (@slice_inv) 4 := {}.
+Global Instance: Params (@slice) 6 := {}.
+Global Instance: Params (@box) 6 := {}.
 
 Section box.
-Context `{!invGS_gen hlc Σ, !boxG Σ} (N : namespace).
+Context `{SI : indexT} `{!invGS_gen hlc Σ, !boxG Σ} (N : namespace).
 Implicit Types P Q : iProp Σ.
 
 Global Instance box_own_prop_ne γ : NonExpansive (box_own_prop γ).
@@ -101,7 +101,7 @@ Proof.
   iIntros. iExists (λ _, True)%I. by rewrite !big_opM_empty.
 Qed.
 
-Lemma slice_insert_empty E q f Q P :
+Lemma slice_insert_empty `{!FiniteIndex SI} E q f Q P :
   ▷?q box N f P ={E}=∗ ∃ γ, ⌜f !! γ = None⌝ ∗
     slice N γ Q ∗ ▷?q box N (<[γ:=false]> f) (Q ∗ P).
 Proof.
@@ -120,7 +120,7 @@ Proof.
     iFrame; eauto.
 Qed.
 
-Lemma slice_delete_empty E q f P Q γ :
+Lemma slice_delete_empty `{!FiniteIndex SI} E q f P Q γ :
   ↑N ⊆ E →
   f !! γ = Some false →
   slice N γ Q -∗ ▷?q box N f P ={E}=∗ ∃ P',
@@ -139,7 +139,7 @@ Proof.
   - iExists Φ; eauto.
 Qed.
 
-Lemma slice_fill E q f γ P Q :
+Lemma slice_fill `{!FiniteIndex SI} E q f γ P Q :
   ↑N ⊆ E →
   f !! γ = Some false →
   slice N γ Q -∗ ▷ Q -∗ ▷?q box N f P ={E}=∗ ▷?q box N (<[γ:=true]> f) P.
@@ -156,7 +156,7 @@ Proof.
     iFrame; eauto.
 Qed.
 
-Lemma slice_empty E q f P Q γ :
+Lemma slice_empty `{!FiniteIndex SI} E q f P Q γ :
   ↑N ⊆ E →
   f !! γ = Some true →
   slice N γ Q -∗ ▷?q box N f P ={E}=∗ ▷ Q ∗ ▷?q box N (<[γ:=false]> f) P.
@@ -175,7 +175,7 @@ Proof.
     iFrame; eauto.
 Qed.
 
-Lemma slice_insert_full E q f P Q :
+Lemma slice_insert_full `{!FiniteIndex SI} E q f P Q :
   ↑N ⊆ E →
   ▷ Q -∗ ▷?q box N f P ={E}=∗ ∃ γ, ⌜f !! γ = None⌝ ∗
     slice N γ Q ∗ ▷?q box N (<[γ:=true]> f) (Q ∗ P).
@@ -187,7 +187,7 @@ Proof.
   - by rewrite insert_insert.
 Qed.
 
-Lemma slice_delete_full E q f P Q γ :
+Lemma slice_delete_full `{!FiniteIndex SI} E q f P Q γ :
   ↑N ⊆ E →
   f !! γ = Some true →
   slice N γ Q -∗ ▷?q box N f P ={E}=∗
@@ -200,7 +200,7 @@ Proof.
   iExists P'. iFrame. rewrite -insert_delete_insert delete_insert ?lookup_delete //.
 Qed.
 
-Lemma box_fill E f P :
+Lemma box_fill `{!FiniteIndex SI} E f P :
   ↑N ⊆ E →
   box N f P -∗ ▷ P ={E}=∗ box N (const true <$> f) P.
 Proof.
@@ -217,7 +217,7 @@ Proof.
   iModIntro. iSplitL; last done. iNext; iExists true. iFrame.
 Qed.
 
-Lemma box_empty E f P :
+Lemma box_empty `{!FiniteIndex SI} E f P :
   ↑N ⊆ E →
   map_Forall (λ _, (true =.)) f →
   box N f P ={E}=∗ ▷ P ∗ box N (const false <$> f) P.
@@ -239,7 +239,7 @@ Proof.
   - iExists Φ; iSplit; by rewrite big_opM_fmap.
 Qed.
 
-Lemma slice_iff E q f P Q Q' γ b :
+Lemma slice_iff `{!FiniteIndex SI} E q f P Q Q' γ b :
   ↑N ⊆ E → f !! γ = Some b →
   ▷ □ (Q ↔ Q') -∗ slice N γ Q -∗ ▷?q box N f P ={E}=∗ ∃ γ' P',
     ⌜delete γ f !! γ' = None⌝ ∗ ▷?q ▷ □ (P ↔ P') ∗
@@ -257,7 +257,7 @@ Proof.
     iIntros "!>". by iSplit; iIntros "[? $]"; iApply "HQQ'".
 Qed.
 
-Lemma slice_split E q f P Q1 Q2 γ b :
+Lemma slice_split `{!FiniteIndex SI} E q f P Q1 Q2 γ b :
   ↑N ⊆ E → f !! γ = Some b →
   slice N γ (Q1 ∗ Q2) -∗ ▷?q box N f P ={E}=∗ ∃ γ1 γ2,
     ⌜delete γ f !! γ1 = None⌝ ∗ ⌜delete γ f !! γ2 = None⌝ ∗ ⌜γ1 ≠ γ2⌝ ∗
@@ -282,7 +282,7 @@ Proof.
     iNext. iRewrite "Heq". iPureIntro. by rewrite assoc (comm _ Q2).
 Qed.
 
-Lemma slice_combine E q f P Q1 Q2 γ1 γ2 b :
+Lemma slice_combine `{!FiniteIndex SI} E q f P Q1 Q2 γ1 γ2 b :
   ↑N ⊆ E → γ1 ≠ γ2 → f !! γ1 = Some b → f !! γ2 = Some b →
   slice N γ1 Q1 -∗ slice N γ2 Q2 -∗ ▷?q box N f P ={E}=∗ ∃ γ,
     ⌜delete γ2 (delete γ1 f) !! γ = None⌝ ∗ slice N γ (Q1 ∗ Q2) ∗

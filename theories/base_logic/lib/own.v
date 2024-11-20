@@ -105,6 +105,11 @@ Qed.
 
 Local Instance iRes_singleton_ne γ : NonExpansive (@iRes_singleton SI Σ A _ γ).
 Proof. by intros n a a' Ha; apply discrete_fun_singleton_ne; rewrite Ha. Qed.
+Local Lemma iRes_singleton_validN γ a n : ✓{n} (iRes_singleton γ a) ↔ ✓{n} a.
+Proof.
+  rewrite /iRes_singleton discrete_fun_singleton_validN.
+  rewrite singleton_validN inG_unfold_validN. by destruct inG_prf.
+Qed.
 Local Lemma iRes_singleton_validI γ a : ✓ (iRes_singleton γ a) ⊢@{iPropI Σ} ✓ a.
 Proof.
   rewrite /iRes_singleton.

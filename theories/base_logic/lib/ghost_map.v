@@ -5,25 +5,25 @@ From iris.bi.lib Require Import fractional.
 From iris.proofmode Require Import proofmode.
 From iris.algebra Require Import gmap_view.
 From iris.algebra Require Export dfrac.
-From iris.base_logic.lib Require Export own.
+From transfinite.base_logic.lib Require Export own.
 From iris.prelude Require Import options.
 
 (** The CMRA we need.
 FIXME: This is intentionally discrete-only, but
 should we support setoids via [Equiv]? *)
-Class ghost_mapG Σ (K V : Type) `{Countable K} := GhostMapG {
+Class ghost_mapG `{SI : indexT} Σ (K V : Type) `{Countable K} := GhostMapG {
   #[local] ghost_map_inG :: inG Σ (gmap_viewR K (agreeR (leibnizO V)));
 }.
 
-Definition ghost_mapΣ (K V : Type) `{Countable K} : gFunctors :=
+Definition ghost_mapΣ `{SI : indexT} (K V : Type) `{Countable K} : gFunctors :=
   #[ GFunctor (gmap_viewR K (agreeR (leibnizO V))) ].
 
-Global Instance subG_ghost_mapΣ Σ (K V : Type) `{Countable K} :
+Global Instance subG_ghost_mapΣ `{SI : indexT} Σ (K V : Type) `{Countable K} :
   subG (ghost_mapΣ K V) Σ → ghost_mapG Σ K V.
 Proof. solve_inG. Qed.
 
 Section definitions.
-  Context `{ghost_mapG Σ K V}.
+  Context `{SI : indexT} `{ghost_mapG Σ K V}.
 
   Local Definition ghost_map_auth_def
       (γ : gname) (q : Qp) (m : gmap K V) : iProp Σ :=
@@ -53,7 +53,7 @@ Local Ltac unseal := rewrite
   ?ghost_map_elem_unseal /ghost_map_elem_def.
 
 Section lemmas.
-  Context `{ghost_mapG Σ K V}.
+  Context `{SI : indexT} `{ghost_mapG Σ K V}.
   Implicit Types (k : K) (v : V) (dq : dfrac) (q : Qp) (m : gmap K V).
 
   (** * Lemmas about the map elements *)

@@ -1,19 +1,19 @@
 From iris.algebra Require Export frac.
 From iris.bi.lib Require Import fractional.
 From iris.proofmode Require Import proofmode.
-From iris.base_logic.lib Require Export invariants.
+From transfinite.base_logic.lib Require Export invariants.
 From iris.prelude Require Import options.
 Import uPred.
 
-Class cinvG Σ := { #[local] cinv_inG :: inG Σ fracR }.
+Class cinvG `{SI: indexT} Σ := { #[local] cinv_inG :: inG Σ fracR }.
 
-Definition cinvΣ : gFunctors := #[GFunctor fracR].
+Definition cinvΣ `{SI: indexT} : gFunctors := #[GFunctor fracR].
 
-Global Instance subG_cinvΣ {Σ} : subG cinvΣ Σ → cinvG Σ.
+Global Instance subG_cinvΣ `{SI: indexT} {Σ} : subG cinvΣ Σ → cinvG Σ.
 Proof. solve_inG. Qed.
 
 Section defs.
-  Context `{!invGS_gen hlc Σ, !cinvG Σ}.
+  Context `{SI: indexT} `{!invGS_gen hlc Σ, !cinvG Σ}.
 
   Definition cinv_own (γ : gname) (p : frac) : iProp Σ := own γ p.
 
@@ -21,10 +21,10 @@ Section defs.
     inv N (P ∨ cinv_own γ 1).
 End defs.
 
-Global Instance: Params (@cinv) 5 := {}.
+Global Instance: Params (@cinv) 6 := {}.
 
 Section proofs.
-  Context `{!invGS_gen hlc Σ, !cinvG Σ}.
+  Context `{SI: indexT} `{!invGS_gen hlc Σ, !cinvG Σ}.
 
   Global Instance cinv_own_timeless γ p : Timeless (cinv_own γ p).
   Proof. rewrite /cinv_own; apply _. Qed.

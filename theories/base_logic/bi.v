@@ -160,6 +160,12 @@ Qed.
 Global Instance uPred_bi_bupd `{SI: indexT} M : BiBUpd (uPredI M) := {| bi_bupd_mixin := uPred_bupd_mixin M |}.
 
 (** extra BI instances *)
+Global Instance uPred_bi_finite `{SI: indexT} `{!FiniteIndex SI} M : BiFinite (uPredI M).
+Proof.
+  split.
+  - intros; apply later_exist_false.
+  - exact: later_sep_1.
+Qed.
 
 Global Instance uPred_affine `{SI: indexT} M : BiAffine (uPredI M) | 0.
 Proof. intros P. exact: pure_intro. Qed.

@@ -3,34 +3,34 @@ Can be mutated when fully owned. *)
 From iris.algebra Require Import dfrac_agree proofmode_classes frac.
 From iris.bi.lib Require Import fractional.
 From iris.proofmode Require Import proofmode.
-From iris.base_logic.lib Require Export own.
+From transfinite.base_logic.lib Require Export own.
 From iris.prelude Require Import options.
 
 (** The CMRA we need. *)
-Class ghost_varG Σ (A : Type) := GhostVarG {
+Class ghost_varG `{SI: indexT} Σ (A : Type) := GhostVarG {
   #[local] ghost_var_inG :: inG Σ (dfrac_agreeR $ leibnizO A);
 }.
-Global Hint Mode ghost_varG - ! : typeclass_instances.
+Global Hint Mode ghost_varG - - ! : typeclass_instances.
 
-Definition ghost_varΣ (A : Type) : gFunctors :=
+Definition ghost_varΣ `{SI: indexT} (A : Type) : gFunctors :=
   #[ GFunctor (dfrac_agreeR $ leibnizO A) ].
 
-Global Instance subG_ghost_varΣ Σ A : subG (ghost_varΣ A) Σ → ghost_varG Σ A.
+Global Instance subG_ghost_varΣ `{SI: indexT} Σ A : subG (ghost_varΣ A) Σ → ghost_varG Σ A.
 Proof. solve_inG. Qed.
 
-Local Definition ghost_var_def `{!ghost_varG Σ A}
+Local Definition ghost_var_def `{SI: indexT} `{!ghost_varG Σ A}
     (γ : gname) (q : Qp) (a : A) : iProp Σ :=
   own γ (to_frac_agree (A:=leibnizO A) q a).
 Local Definition ghost_var_aux : seal (@ghost_var_def). Proof. by eexists. Qed.
 Definition ghost_var := ghost_var_aux.(unseal).
 Local Definition ghost_var_unseal :
   @ghost_var = @ghost_var_def := ghost_var_aux.(seal_eq).
-Global Arguments ghost_var {Σ A _} γ q a.
+Global Arguments ghost_var {SI Σ A _} γ q a.
 
 Local Ltac unseal := rewrite ?ghost_var_unseal /ghost_var_def.
 
 Section lemmas.
-  Context `{!ghost_varG Σ A}.
+  Context `{SI: indexT} `{!ghost_varG Σ A}.
   Implicit Types (a b : A) (q : Qp).
 
   Global Instance ghost_var_timeless γ q a : Timeless (ghost_var γ q a).

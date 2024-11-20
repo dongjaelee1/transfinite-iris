@@ -1,23 +1,24 @@
 From stdpp Require Export namespaces.
 From iris.algebra Require Import gmap.
 From iris.proofmode Require Import proofmode.
-From iris.base_logic.lib Require Export fancy_updates.
-From iris.base_logic.lib Require Import wsat.
+From transfinite.base_logic.lib Require Export fancy_updates.
+From transfinite.base_logic.lib Require Import wsat.
 From iris.prelude Require Import options.
 Import le_upd_if.
+Import uPred.
 
 (** Semantic Invariants *)
-Local Definition inv_def `{!invGS_gen hlc Σ} (N : namespace) (P : iProp Σ) : iProp Σ :=
+Local Definition inv_def `{SI : indexT} `{!invGS_gen hlc Σ} (N : namespace) (P : iProp Σ) : iProp Σ :=
   □ ∀ E, ⌜↑N ⊆ E⌝ → |={E,E ∖ ↑N}=> ▷ P ∗ (▷ P ={E ∖ ↑N,E}=∗ True).
 Local Definition inv_aux : seal (@inv_def). Proof. by eexists. Qed.
 Definition inv := inv_aux.(unseal).
-Global Arguments inv {hlc Σ _} N P.
+Global Arguments inv {SI hlc Σ _} N P.
 Local Definition inv_unseal : @inv = @inv_def := inv_aux.(seal_eq).
-Global Instance: Params (@inv) 3 := {}.
+Global Instance: Params (@inv) 4 := {}.
 
 (** * Invariants *)
 Section inv.
-  Context `{!invGS_gen hlc Σ}.
+  Context `{SI : indexT} `{!invGS_gen hlc Σ}.
   Implicit Types i : positive.
   Implicit Types N : namespace.
   Implicit Types E : coPset.
@@ -100,7 +101,7 @@ Section inv.
   Global Instance inv_persistent N P : Persistent (inv N P).
   Proof. rewrite inv_unseal. apply _. Qed.
 
-  Lemma inv_alter N P Q : inv N P -∗ ▷ □ (P -∗ Q ∗ (Q -∗ P)) -∗ inv N Q.
+  Lemma inv_alter `{!FiniteIndex SI} N P Q : inv N P -∗ ▷ □ (P -∗ Q ∗ (Q -∗ P)) -∗ inv N Q.
   Proof.
     rewrite inv_unseal. iIntros "#HI #HPQ !>" (E H).
     iMod ("HI" $! E H) as "[HP Hclose]".
@@ -110,10 +111,10 @@ Section inv.
 
   Lemma inv_iff N P Q : inv N P -∗ ▷ □ (P ↔ Q) -∗ inv N Q.
   Proof.
-    iIntros "#HI #HPQ". iApply (inv_alter with "HI").
-    iIntros "!> !> HP". iSplitL "HP".
-    - by iApply "HPQ".
-    - iIntros "HQ". by iApply "HPQ".
+    rewrite inv_unseal. iIntros "#HI #HPQ !>" (E H).
+    iMod ("HI" $! E H) as "[HP Hclose]".
+    iDestruct ("HPQ" with "HP") as "$".
+    iIntros "!> HQ". iApply "Hclose". iApply "HPQ". done.
   Qed.
 
   Lemma inv_alloc N E P : ▷ P ={E}=∗ inv N P.
@@ -135,7 +136,7 @@ Section inv.
     rewrite inv_unseal /inv_def; iIntros (?) "#HI". by iApply "HI".
   Qed.
 
-  Lemma inv_combine N1 N2 N P Q :
+  Lemma inv_combine `{!FiniteIndex SI} N1 N2 N P Q :
     N1 ## N2 →
     ↑N1 ∪ ↑N2 ⊆@{coPset} ↑N →
     inv N1 P -∗ inv N2 Q -∗ inv N (P ∗ Q).
@@ -148,7 +149,7 @@ Section inv.
     iMod "Hclose" as % _. iMod ("HcloseQ" with "HQ") as % _. by iApply "HcloseP".
   Qed.
 
-  Lemma inv_combine_dup_l N P Q :
+  Lemma inv_combine_dup_l `{!FiniteIndex SI} N P Q :
     □ (P -∗ P ∗ P) -∗
     inv N P -∗ inv N Q -∗ inv N (P ∗ Q).
   Proof.
@@ -202,20 +203,44 @@ Section inv.
     iIntros "!> {$HP} HP". iApply "Hclose"; auto.
   Qed.
 
-  Lemma inv_split_l N P Q : inv N (P ∗ Q) -∗ inv N P.
+  Lemma inv_split_l `{!FiniteIndex SI} N P Q : inv N (P ∗ Q) -∗ inv N P.
   Proof.
     iIntros "#HI". iApply inv_alter; eauto.
     iIntros "!> !> [$ $] $".
   Qed.
-  Lemma inv_split_r N P Q : inv N (P ∗ Q) -∗ inv N Q.
+  Lemma inv_split_r `{!FiniteIndex SI} N P Q : inv N (P ∗ Q) -∗ inv N Q.
   Proof.
     rewrite (comm _ P Q). eapply inv_split_l.
   Qed.
-  Lemma inv_split N P Q : inv N (P ∗ Q) -∗ inv N P ∗ inv N Q.
+  Lemma inv_split `{!FiniteIndex SI} N P Q : inv N (P ∗ Q) -∗ inv N P ∗ inv N Q.
   Proof.
     iIntros "#H".
     iPoseProof (inv_split_l with "H") as "$".
     iPoseProof (inv_split_r with "H") as "$".
+  Qed.
+
+  Lemma inv_alter_timeless P N Q {HT: Timeless P} : inv N P -∗ □ (P -∗ Q ∗ ▷ (Q -∗ P)) -∗ inv N Q.
+  Proof.
+    rewrite inv_unseal. iIntros "#HI #HPQ !>" (E H).
+    iMod ("HI" $! E H) as "[>HP Hclose]".
+    iDestruct ("HPQ" with "HP") as "[$ HQP]".
+    iIntros "!> HQ". iApply "Hclose". iApply "HQP". done.
+  Qed.
+
+  Lemma inv_split_l_timeless N P Q `{!Timeless P} `{!Timeless Q}: inv N (P ∗ Q) -∗ inv N P.
+  Proof.
+    iIntros "#HI". iApply (inv_alter_timeless with "[$]"); eauto.
+    iIntros "!> [$ $]". iNext; eauto.
+  Qed.
+  Lemma inv_split_r_timeless N P Q `{!Timeless P} `{!Timeless Q}: inv N (P ∗ Q) -∗ inv N Q.
+  Proof.
+    rewrite (comm _ P Q). eapply inv_split_l_timeless; auto.
+  Qed.
+  Lemma inv_split_timeless N P Q `{!Timeless P} `{!Timeless Q}: inv N (P ∗ Q) -∗ inv N P ∗ inv N Q.
+  Proof.
+    iIntros "#H".
+    iPoseProof (inv_split_l_timeless with "H") as "$".
+    iPoseProof (inv_split_r_timeless with "H") as "$".
   Qed.
 
 End inv.

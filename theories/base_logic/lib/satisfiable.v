@@ -3,7 +3,7 @@ From iris.algebra Require Import functions gmap gmap_view gset coPset.
 From transfinite.base_logic Require Import upred.
 From transfinite.bi Require Export satisfiable.
 From transfinite.base_logic.lib Require Import iprop own wsat fancy_updates.
-From iris.proofmode Require Import tactics.
+From iris.proofmode Require Import proofmode.
 Import uPred.
 
 
@@ -128,7 +128,7 @@ Section alloc.
     intros α. exists m. split.
     - by apply cmra_valid_validN.
     - destruct HP as [HP]. apply HP; first by apply cmra_valid_validN.
-      unseal. rewrite /uPred_ownM_def. exists ε.
+      unseal. rewrite /upred.uPred_ownM_def. exists ε.
       by rewrite right_id.
   Qed.
 
@@ -183,19 +183,23 @@ Section alloc.
   Qed.
 
   (* this instance can be used to allocate invariants *)
-  Global Instance alloc_wsat_inst `{!invPreG Σ}:
-    Alloc (invG Σ) (λ _, wsat ∗ ownE ⊤)%I True.
+  Global Instance alloc_wsat_inst `{!wsatGpreS Σ}:
+    Alloc (wsatGS Σ) (λ _, wsat ∗ ownE ⊤)%I True.
   Proof.
     intros P _ HP.
-    eapply (can_alloc (λ γ, own γ (gmap_view_auth (DfracOwn 1) ∅))) in HP as [γI HP];
+    inv wsatGpreS0.
+    (* assert (wsatGpreS_inv0 : inG Σ (gmap_viewR positive (agreeR (laterO (iPropO Σ))))). *)
+    (* { inv wsatGpreS0. auto. }     *)
+    eapply (can_alloc (λ γ, own γ (gmap_view_auth (DfracOwn 1) (∅ : gmap gname (agreeR $ laterO (iPropO Σ)))))) in HP as [γI HP];
       last by apply gmap_view_auth_valid.
     eapply (can_alloc (λ γ, own γ (CoPset ⊤))) in HP as [γE HP];
       last by done.
     eapply (can_alloc (λ γ, own γ (GSet ∅))) in HP as [γD HP];
       last by done.
-    exists (InvG _ _ _ γI γE γD).
+    eexists (WsatG _ _ _ γI γE γD). Unshelve.
+    2:{ split; auto. }
     rewrite /wsat /ownE -lock; eapply alloc_mono, HP.
-    iIntros "[[[$ ?] $] ?]".
+    simpl. iIntros "[[[$ ?] $] ?]".
     iExists ∅. rewrite fmap_empty big_opM_empty. by iFrame.
   Qed.
 
@@ -203,60 +207,64 @@ End alloc.
 
 
 (* we create a notion of satisfiability which includes invariant masks *)
-Class SatisfiableAtFupd `{SI: indexT} {Σ: gFunctors} `{!invG Σ} (sat_at: coPset → iProp Σ → Prop) := {
+Class SatisfiableAtFupd `{SI: indexT} {Σ: gFunctors} `{!invGS Σ} (sat_at: coPset → iProp Σ → Prop) := {
   sat_fupd E1 E2 P: sat_at E1 (|={E1, E2}=> P)%I → sat_at E2 P
 }.
 
-Class SatisfiableAt `{SI: indexT} {Σ: gFunctors} `{!invG Σ} (sat_at: coPset → iProp Σ → Prop) := {
-  sat_at_satisfiable E:> Satisfiable (sat_at E);
-  sat_at_bupd E:> SatisfiableBUpd (sat_at E);
-  sat_at_later E:> SatisfiableLater (sat_at E);
-  sat_at_fupd :> SatisfiableAtFupd sat_at
+Class SatisfiableAt `{SI: indexT} {Σ: gFunctors} `{!invGS Σ} (sat_at: coPset → iProp Σ → Prop) := {
+  #[global] sat_at_satisfiable E :: Satisfiable (sat_at E);
+  #[global] sat_at_bupd E :: SatisfiableBUpd (sat_at E);
+  #[global] sat_at_later E :: SatisfiableLater (sat_at E);
+  #[global] sat_at_fupd :: SatisfiableAtFupd sat_at
 }.
 
 Notation SatisfiableAtExists X sat_at := (∀ E, SatisfiableExists X (sat_at E)).
 
-(* there is a canonical satisfiability instance for every notion of satisfiable *)
-Section canonical_sat_at.
-  Context `{SI: indexT} {Σ: gFunctors} `{!invG Σ} {sat: iProp Σ → Prop} `{!Satisfiable sat} `{!SatisfiableBUpd sat} `{!SatisfiableLater sat}.
+(** TODO: need updates to handle later credits. *)
 
-  Definition sat_at E := (sat_frame (sat := sat) (wsat ∗ ownE E)%I).
+(* (* there is a canonical satisfiability instance for every notion of satisfiable *) *)
+(* Section canonical_sat_at. *)
+(*   Context `{SI: indexT} {Σ: gFunctors} `{!invGS Σ} {sat: iProp Σ → Prop} `{!Satisfiable sat} `{!SatisfiableBUpd sat} `{!SatisfiableLater sat}. *)
 
-  Global Instance sat_at_satisfiable_at_fupd:
-    SatisfiableAtFupd sat_at.
-  Proof using Type*.
-    split; unfold sat_at, sat_frame; intros E1 E2 P Hs; eapply sat_later, sat_bupd, sat_mono, Hs.
-    iIntros "((W & O) & P)". rewrite uPred_fupd_eq /uPred_fupd_def.
-    iSpecialize ("P" with "[W O]"); first by iFrame.
-    iMod "P". iModIntro. iApply except_0_later.
-    iMod "P" as "($ & $ & $)".
-  Qed.
+(*   Definition sat_at E := (sat_frame (sat := sat) (wsat ∗ ownE E)%I). *)
 
-  Global Instance sat_at_satisfiable_at: SatisfiableAt sat_at.
-  Proof using Type*.
-    split; apply _.
-  Qed.
+(*   Global Instance sat_at_satisfiable_at_fupd: *)
+(*     SatisfiableAtFupd sat_at. *)
+(*   Proof using Type*. *)
+(*     split; unfold sat_at, sat_frame; intros E1 E2 P Hs; eapply sat_later, sat_bupd, sat_mono, Hs. *)
+(*     iIntros "((W & O) & P)". *)
+(*     rewrite fancy_updates.uPred_fupd_unseal. *)
+(*     iSpecialize ("P" with "[W O]"); first by iFrame. *)
+(*     iMod "P". iModIntro. iApply except_0_later. *)
+(*     rewrite fancy_updates.uPred_fupd_unseal /fancy_updates.uPred_fupd_def. *)
+(*     iMod "P" as "($ & $ & $)". *)
+(*   Qed. *)
 
-End canonical_sat_at.
+(*   Global Instance sat_at_satisfiable_at: SatisfiableAt sat_at. *)
+(*   Proof using Type*. *)
+(*     split; apply _. *)
+(*   Qed. *)
 
-Notation iProp_sat_at := (sat_at (sat := iProp_sat)).
+(* End canonical_sat_at. *)
+
+(* Notation iProp_sat_at := (sat_at (sat := iProp_sat)). *)
 
 
-(* framing preserves SatisfiableAtFUpd *)
-Section sat_at_frame.
-  Context `{SI: indexT} {Σ: gFunctors} `{!invG Σ} {sat_at: coPset → iProp Σ → Prop}.
+(* (* framing preserves SatisfiableAtFUpd *) *)
+(* Section sat_at_frame. *)
+(*   Context `{SI: indexT} {Σ: gFunctors} `{!invG Σ} {sat_at: coPset → iProp Σ → Prop}. *)
 
-  Definition sat_at_frame F E P := sat_frame (sat := sat_at E) F P.
+(*   Definition sat_at_frame F E P := sat_frame (sat := sat_at E) F P. *)
 
-  Global Instance sat_at_frame_satisfiable_at_fupd `{!∀ E, Satisfiable (sat_at E)} `{!SatisfiableAtFupd sat_at} F:
-     SatisfiableAtFupd (sat_at_frame F).
-  Proof.
-    split; unfold sat_at_frame, sat_frame. intros E1 E2 P Hs; eapply sat_fupd, sat_mono, Hs.
-    iIntros "[$ $]".
-  Qed.
+(*   Global Instance sat_at_frame_satisfiable_at_fupd `{!∀ E, Satisfiable (sat_at E)} `{!SatisfiableAtFupd sat_at} F: *)
+(*      SatisfiableAtFupd (sat_at_frame F). *)
+(*   Proof. *)
+(*     split; unfold sat_at_frame, sat_frame. intros E1 E2 P Hs; eapply sat_fupd, sat_mono, Hs. *)
+(*     iIntros "[$ $]". *)
+(*   Qed. *)
 
-  Global Instance sat_at_frame_satisfiable_at `{!SatisfiableAt sat_at} F: SatisfiableAt (sat_at_frame F).
-  Proof.
-    split; apply _.
-  Qed.
-End sat_at_frame.
+(*   Global Instance sat_at_frame_satisfiable_at `{!SatisfiableAt sat_at} F: SatisfiableAt (sat_at_frame F). *)
+(*   Proof. *)
+(*     split; apply _. *)
+(*   Qed. *)
+(* End sat_at_frame. *)

@@ -1,6 +1,6 @@
 From iris.algebra Require Import gset coPset.
 From iris.proofmode Require Import proofmode.
-From iris.base_logic.lib Require Export invariants.
+From transfinite.base_logic.lib Require Export invariants.
 From iris.prelude Require Import options.
 Import uPred.
 
@@ -8,16 +8,16 @@ Import uPred.
 
 Definition na_inv_pool_name := gname.
 
-Class na_invG Σ :=
+Class na_invG `{SI: indexT} Σ :=
   #[local] na_inv_inG :: inG Σ (prodR coPset_disjR (gset_disjR positive)).
 
-Definition na_invΣ : gFunctors :=
-  #[ GFunctor (constRF (prodR coPset_disjR (gset_disjR positive))) ].
-Global Instance subG_na_invG {Σ} : subG na_invΣ Σ → na_invG Σ.
+Definition na_invΣ `{SI: indexT} : gFunctors :=
+  #[ GFunctor (constTRF (prodR coPset_disjR (gset_disjR positive))) ].
+Global Instance subG_na_invG `{SI: indexT} {Σ} : subG na_invΣ Σ → na_invG Σ.
 Proof. solve_inG. Qed.
 
 Section defs.
-  Context `{!invGS_gen hlc Σ, !na_invG Σ}.
+  Context `{SI: indexT} `{!invGS_gen hlc Σ, !na_invG Σ}.
 
   Definition na_own (p : na_inv_pool_name) (E : coPset) : iProp Σ :=
     own p (CoPset E, GSet ∅).
@@ -27,11 +27,11 @@ Section defs.
          inv N (P ∗ own p (ε, GSet {[i]}) ∨ na_own p {[i]}).
 End defs.
 
-Global Instance: Params (@na_inv) 3 := {}.
+Global Instance: Params (@na_inv) 4 := {}.
 Global Typeclasses Opaque na_own na_inv.
 
 Section proofs.
-  Context `{!invGS_gen hlc Σ, !na_invG Σ}.
+  Context `{SI: indexT} `{!invGS_gen hlc Σ, !na_invG Σ}.
 
   Global Instance na_own_timeless p E : Timeless (na_own p E).
   Proof. rewrite /na_own; apply _. Qed.
@@ -93,7 +93,7 @@ Section proofs.
     iNext. iLeft. by iFrame.
   Qed.
 
-  Lemma na_inv_acc p E F N P :
+  Lemma na_inv_acc `{!FiniteIndex SI} p E F N P :
     ↑N ⊆ E → ↑N ⊆ F →
     na_inv p N P -∗ na_own p F ={E}=∗ ▷ P ∗ na_own p (F∖↑N) ∗
                        (▷ P ∗ na_own p (F∖↑N) ={E}=∗ na_own p F).
@@ -117,7 +117,7 @@ Section proofs.
 
   Global Instance into_inv_na p N P : IntoInv (na_inv p N P) N := {}.
 
-  Global Instance into_acc_na p F E N P :
+  Global Instance into_acc_na `{!FiniteIndex SI} p F E N P :
     IntoAcc (X:=unit) (na_inv p N P)
             (↑N ⊆ E ∧ ↑N ⊆ F) (na_own p F) (fupd E E) (fupd E E)
             (λ _, ▷ P ∗ na_own p (F∖↑N))%I (λ _, ▷ P ∗ na_own p (F∖↑N))%I
@@ -127,4 +127,73 @@ Section proofs.
     rewrite exist_unit -assoc /=.
     iApply (na_inv_acc with "Hinv"); done.
   Qed.
+
+  (* transfinite weaker versions *)
+  Lemma na_inv_acc_open_timeless_weakening p E F N P Q :
+    Timeless Q → ↑N ⊆ E → ↑N ⊆ F →
+    na_inv p N P -∗ na_own p F -∗ (□ (P -∗ Q)) ={E}=∗ Q ∗ na_own p (F∖↑N) ∗ (▷ P ∗ na_own p (F∖↑N) -∗ |={E}=> na_own p F).
+  Proof.
+    rewrite /na_inv. iIntros (???) "#Hnainv Htoks #HPQ".
+    iDestruct "Hnainv" as (i) "[% Hinv]".
+    rewrite [F as X in na_own p X](union_difference_L (↑N) F) //.
+    rewrite [X in (X ∪ _)](union_difference_L {[i]} (↑N)) ?na_own_union; [|set_solver..].
+    iDestruct "Htoks" as "[[Htoki Q] R]".
+    iInv "Hinv" as "Inv" "Hclose".
+    iAssert (▷ (Q ∗ own p (CoPset ∅, GSet {[i]}) ∨ na_own p {[i]}))%I with "[HPQ Inv]" as ">Inv".
+    { iNext. iDestruct "Inv" as "[[P H]|H]"; eauto. iLeft. iFrame "H". by iApply "HPQ". }
+    iDestruct "Inv" as "[Hl|Htoki2]".
+    - iMod ("Hclose" with "[Htoki]") as "_"; first auto.
+      iModIntro. iDestruct "Hl" as "[P Hdis]".
+      iFrame. iIntros "[P HNA]".
+      iInv "Hinv" as "Inv" "Hclose".
+      iAssert (▷ (Q ∗ own p (CoPset ∅, GSet {[i]}) ∨ na_own p {[i]}))%I with "[HPQ Inv]" as ">Inv".
+      { iNext. iDestruct "Inv" as "[[P H]|H]"; eauto. iLeft. iFrame "H". by iApply "HPQ". }
+      iDestruct "Inv" as "[[Hl Hdis2]|Hitok]".
+      + iDestruct (own_valid_2 with "Hdis Hdis2") as %[_ Hval%gset_disj_valid_op].
+        set_solver.
+      + iMod ("Hclose" with "[P Hdis]") as "_".
+        { iNext; simpl. iLeft. iFrame. }
+        iModIntro. iFrame.
+    - iDestruct (na_own_disjoint with "Htoki Htoki2") as %?. set_solver.
+  Qed.
+
+  Lemma na_inv_acc_open_timeless p E F N P :
+    Timeless P → ↑N ⊆ E → ↑N ⊆ F →
+    na_inv p N P -∗ na_own p F ={E}=∗ P ∗ na_own p (F∖↑N)
+                    ∗ (▷ P ∗ na_own p (F∖↑N) -∗ |={E}=> na_own p F).
+  Proof.
+    intros ???. iIntros "HI Hna". iApply (na_inv_acc_open_timeless_weakening with "HI Hna"); auto.
+  Qed.
+
+  Lemma na_inv_acc_open p E F N P :
+    ↑N ⊆ E → ↑N ⊆ F →
+    na_inv p N P -∗ na_own p F ={E}=∗ ▷ (P ∗ na_own p (F∖↑N)
+                    ∗ (▷ P ∗ na_own p (F∖↑N) -∗ |={E}=> na_own p F)).
+  Proof.
+    rewrite /na_inv. iIntros (??) "#Hnainv Htoks".
+    iDestruct "Hnainv" as (i) "[% Hinv]".
+    rewrite [F as X in na_own p X](union_difference_L (↑N) F) //.
+    rewrite [X in (X ∪ _)](union_difference_L {[i]} (↑N)) ?na_own_union; [|set_solver..].
+    iDestruct "Htoks" as "[[Htoki Q] R]".
+    iInv "Hinv" as "Inv" "Hclose".
+    iPoseProof (later_or with "Inv") as "Inv".
+    iDestruct "Inv" as "[Hl|Htoki2]".
+    - iMod ("Hclose" with "[Htoki]") as "_"; first auto.
+      iModIntro. iNext. iDestruct "Hl" as "[P Hdis]".
+      iFrame. iIntros "[P HNA]".
+      iInv "Hinv" as "Inv" "Hclose".
+      iPoseProof (later_or with "Inv") as "Inv".
+      iDestruct "Inv" as "[Hl|Hitok]".
+      + iApply except_0_fupd. unfold bi_except_0. iLeft.
+        iNext; simpl. iDestruct "Hl" as "[_ Hdis2]".
+        iDestruct (own_valid_2 with "Hdis Hdis2") as %[_ Hval%gset_disj_valid_op].
+        set_solver.
+      + iMod ("Hclose" with "[P Hdis]") as "_".
+        { iNext; simpl. iLeft. iFrame. }
+        iDestruct "Hitok" as ">Hitok".
+        iModIntro. iFrame.
+    - iApply except_0_fupd. unfold bi_except_0. iLeft. iNext.
+    iDestruct (na_own_disjoint with "Htoki Htoki2") as %?. set_solver.
+  Qed.
+
 End proofs.

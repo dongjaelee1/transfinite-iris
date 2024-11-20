@@ -3,33 +3,33 @@ The [token γ] assertion provides ownership of the token named [γ],
 and the key lemma [token_exclusive] proves only one token exists. *)
 From iris.algebra Require Import excl.
 From iris.proofmode Require Import proofmode.
-From iris.base_logic.lib Require Export own.
+From transfinite.base_logic.lib Require Export own.
 From iris.prelude Require Import options.
 
 (** The CMRA we need. *)
-Class tokenG Σ := TokenG {
+Class tokenG `{SI: indexT} Σ := TokenG {
   #[local] token_inG :: inG Σ (exclR unitO);
 }.
-Global Hint Mode tokenG - : typeclass_instances.
+Global Hint Mode tokenG - - : typeclass_instances.
 
-Definition tokenΣ : gFunctors :=
+Definition tokenΣ `{SI: indexT} : gFunctors :=
   #[ GFunctor (exclR unitO) ].
 
-Global Instance subG_tokenΣ Σ : subG tokenΣ Σ → tokenG Σ.
+Global Instance subG_tokenΣ `{SI: indexT} Σ : subG tokenΣ Σ → tokenG Σ.
 Proof. solve_inG. Qed.
 
-Local Definition token_def `{!tokenG Σ} (γ : gname) : iProp Σ :=
+Local Definition token_def `{SI: indexT} `{!tokenG Σ} (γ : gname) : iProp Σ :=
   own γ (Excl ()).
 Local Definition token_aux : seal (@token_def). Proof. by eexists. Qed.
 Definition token := token_aux.(unseal).
 Local Definition token_unseal :
   @token = @token_def := token_aux.(seal_eq).
-Global Arguments token {Σ _} γ.
+Global Arguments token {SI Σ _} γ.
 
 Local Ltac unseal := rewrite ?token_unseal /token_def.
 
 Section lemmas.
-  Context `{!tokenG Σ}.
+  Context `{SI: indexT} `{!tokenG Σ}.
 
   Global Instance token_timeless γ : Timeless (token γ).
   Proof. unseal. apply _. Qed.
@@ -56,4 +56,3 @@ Section lemmas.
   Qed.
 
 End lemmas.
-
