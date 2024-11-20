@@ -147,13 +147,13 @@ while also carrying around some frame [ω E] that tracks the current mask.
 We also provide a bunch of later credits for consistency,
 but there is no way to use them since this is a [HasNoLc] lemma. *)
 Lemma fupd_soundness_no_lc_unfold `{SI : indexT} `{!invGpreS Σ} m E :
-  ⊢ |==> ∃ `(Hws: invGS_gen HasNoLc Σ) (ω : coPset → iProp Σ),
+  ⊢ |==> ∃ `(Hws: @invGS_gen SI HasNoLc Σ) (ω : coPset → iProp Σ),
     £ m ∗ ω E ∗ □ (∀ E1 E2 P, (|={E1, E2}=> P) -∗ ω E1 ==∗ ◇ (ω E2 ∗ P)).
 Proof.
   iMod wsat_alloc as (Hw) "[Hw HE]".
   (* We don't actually want any credits, but we need the [lcGS]. *)
   iMod (later_credits.le_upd.lc_alloc m) as (Hc) "[_ Hlc]".
-  set (Hi := InvG HasNoLc _ Hw Hc).
+  set (Hi := InvG SI HasNoLc _ Hw Hc).
   iExists Hi, (λ E, wsat ∗ ownE E)%I.
   rewrite (union_difference_L E ⊤); [|set_solver].
   rewrite ownE_op; [|set_solver].
@@ -167,7 +167,7 @@ Qed.
 (** Note: the [_no_lc] soundness lemmas also allow generating later credits, but
   these cannot be used for anything. They are merely provided to enable making
   the adequacy proof generic in whether later credits are used. *)
-Lemma fupd_soundness_no_lc `{!invGpreS Σ} E1 E2 (P : iProp Σ) `{!Plain P} m :
+Lemma fupd_soundness_no_lc `{SI : indexT} `{!invGpreS Σ} E1 E2 (P : iProp Σ) `{!Plain P} m :
   (∀ `{Hinv: !invGS_gen HasNoLc Σ}, £ m ={E1,E2}=∗ P) → ⊢ P.
 Proof.
   intros Hfupd. apply later_soundness, bupd_soundness; [by apply later_plain|].
@@ -177,14 +177,14 @@ Proof.
   iDestruct "H'" as "[>H1 >H2]". by iFrame.
 Qed.
 
-Lemma fupd_soundness_lc `{!invGpreS Σ} n E1 E2 (P : iProp Σ) `{!Plain P} :
+Lemma fupd_soundness_lc `{SI : indexT} `{!invGpreS Σ} n E1 E2 (P : iProp Σ) `{!Plain P} :
   (∀ `{Hinv: !invGS_gen HasLc Σ}, £ n ={E1,E2}=∗ P) → ⊢ P.
 Proof.
   intros Hfupd. eapply (lc_soundness (S n)); first done.
   intros Hc. rewrite lc_succ.
   iIntros "[Hone Hn]". rewrite -le_upd_trans. iApply bupd_le_upd.
   iMod wsat_alloc as (Hw) "[Hw HE]".
-  set (Hi := InvG HasLc _ Hw Hc).
+  set (Hi := InvG SI HasLc _ Hw Hc).
   iAssert (|={⊤,E2}=> P)%I with "[Hn]" as "H".
   { iMod (fupd_mask_subseteq E1) as "_"; first done. by iApply (Hfupd Hi). }
   rewrite uPred_fupd_unseal /uPred_fupd_def.
@@ -196,9 +196,9 @@ Qed.
 
 (** Generic soundness lemma for the fancy update, parameterized by [use_credits]
   on whether to use credits or not. *)
-Lemma fupd_soundness_gen `{!invGpreS Σ} (P : iProp Σ) `{!Plain P}
+Lemma fupd_soundness_gen `{SI : indexT} `{!invGpreS Σ} (P : iProp Σ) `{!Plain P}
   (hlc : has_lc) n E1 E2 :
-  (∀ `{Hinv : invGS_gen hlc Σ},
+  (∀ `{Hinv : @invGS_gen SI hlc Σ},
     £ n ={E1,E2}=∗ P) →
   ⊢ P.
 Proof.
@@ -209,7 +209,7 @@ Qed.
 
 (** [step_fupdN] soundness lemmas *)
 
-Lemma step_fupdN_soundness_no_lc `{!invGpreS Σ} (P : iProp Σ) `{!Plain P} n m :
+Lemma step_fupdN_soundness_no_lc `{SI : indexT} `{!invGpreS Σ} (P : iProp Σ) `{!Plain P} n m :
   (∀ `{Hinv: !invGS_gen HasNoLc Σ}, £ m ={⊤,∅}=∗ |={∅}▷=>^n P) →
   ⊢ P.
 Proof.
@@ -223,7 +223,7 @@ Proof.
   iNext. iMod "H" as "#H". auto.
 Qed.
 
-Lemma step_fupdN_soundness_no_lc' `{!invGpreS Σ} (P : iProp Σ) `{!Plain P} n m :
+Lemma step_fupdN_soundness_no_lc' `{SI : indexT} `{!invGpreS Σ} (P : iProp Σ) `{!Plain P} n m :
   (∀ `{Hinv: !invGS_gen HasNoLc Σ}, £ m ={⊤}[∅]▷=∗^n P) →
   ⊢ P.
 Proof.
@@ -235,7 +235,7 @@ Proof.
   simpl. iMod "H". iIntros "!>!>!>". iMod "H". by iApply "IH".
 Qed.
 
-Lemma step_fupdN_soundness_lc `{!invGpreS Σ} (P : iProp Σ) `{!Plain P} n m :
+Lemma step_fupdN_soundness_lc `{SI : indexT} `{!invGpreS Σ} (P : iProp Σ) `{!Plain P} n m :
   (∀ `{Hinv: !invGS_gen HasLc Σ}, £ m ={⊤,∅}=∗ |={∅}▷=>^n P) →
   ⊢ P.
 Proof.
@@ -251,7 +251,7 @@ Proof.
     by iApply ("IH" with "Hn Hupd").
 Qed.
 
-Lemma step_fupdN_soundness_lc' `{!invGpreS Σ} (P : iProp Σ) `{!Plain P} n m :
+Lemma step_fupdN_soundness_lc' `{SI : indexT} `{!invGpreS Σ} (P : iProp Σ) `{!Plain P} n m :
   (∀ `{Hinv: !invGS_gen hlc Σ}, £ m ={⊤}[∅]▷=∗^n P) →
   ⊢ P.
 Proof.
@@ -270,9 +270,9 @@ Qed.
 
 (** Generic soundness lemma for the fancy update, parameterized by [use_credits]
   on whether to use credits or not. *)
-Lemma step_fupdN_soundness_gen `{!invGpreS Σ} (P : iProp Σ) `{!Plain P}
+Lemma step_fupdN_soundness_gen `{SI : indexT} `{!invGpreS Σ} (P : iProp Σ) `{!Plain P}
   (hlc : has_lc) (n m : nat) :
-  (∀ `{Hinv : invGS_gen hlc Σ},
+  (∀ `{Hinv : !invGS_gen hlc Σ},
     £ m ={⊤,∅}=∗ |={∅}▷=>^n P) →
   ⊢ P.
 Proof.
