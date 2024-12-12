@@ -153,7 +153,7 @@ Section IR_wf_index.
     - apply existT_index_inj2.
     - intros x1 x2. destruct (index_le_lt_dec x1 x2) as [H1 | H1].
       + by left.
-      + right. eauto with stepindex.
+      + right. eauto with si_solver.
     - eauto.
     - eauto.
     - eauto.

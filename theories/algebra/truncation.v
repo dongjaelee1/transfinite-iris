@@ -116,10 +116,10 @@ Section truncatable_props.
     Context (γ: index) {Ha : Cofe A}.
 
     Program Definition trunc_chain (c : chain ([A]_{γ})) : chain A :=
-      mkchain _ A (λ α, ofe_trunc_expand γ (c α)) _.
+      @mkchain _ A (λ α, ofe_trunc_expand γ (c α)) _.
     Next Obligation. intros c α' β Hle. cbn. by rewrite (chain_cauchy c α' β Hle). Qed.
     Program Definition trunc_bchain β (c : bchain ([A]_{γ}) β) : bchain A β :=
-      mkbchain _ A β (λ γ' Hγ', ofe_trunc_expand γ (c γ' Hγ')) _.
+      @mkbchain _ A β (λ γ' Hγ', ofe_trunc_expand γ (c γ' Hγ')) _.
     Next Obligation. intros β c β' γ' Hle Hβ Hγ'. cbn. f_equiv. by apply bchain_cauchy. Qed.
 
     Global Program Instance Truncatable_cofe : Cofe ([A]_{γ}) :=
@@ -190,7 +190,7 @@ Section truncatable.
   Proof.
     cbn. setoid_rewrite ccompose_assoc at 2. setoid_rewrite (proj1 (equiv_dist _ _) (ccompose_assoc _ _ _)) at 3.
     setoid_rewrite <- (proj1 (equiv_dist _ _) (ccompose_assoc _ _ _)) at 3.
-    setoid_rewrite (dist_mono' _ _ _ _ (ofe_trunc_expand_truncate_id)); [ | auto with stepindex].
+    setoid_rewrite (dist_mono' _ _ _ _ (ofe_trunc_expand_truncate_id)); [ | auto with si_solver].
     by intros x.
   Qed.
 End truncatable.
@@ -249,7 +249,7 @@ Section proto_truncatable.
         + apply equiv_dist. intros γ. apply (H γ).
       - intros α'. unfold dist, trunc_truncation_dist. split; auto.
         intros a b c -> ->. auto.
-      - setoid_rewrite trunc_truncation_dist_unfold. intros α' β x y Heq Hlt. eauto using dist_mono.
+      - setoid_rewrite trunc_truncation_dist_unfold. intros α' β x y Heq Hlt. eauto using dist_lt.
     Qed.
     Canonical Structure tcar_truncO : ofe := Ofe (trunc_truncation A α) trunc_truncation_ofe_mixin.
 
@@ -371,10 +371,10 @@ Section classical_truncation.
   Next Obligation.
     intros α β a b Heq.
     destruct (index_le_lt_dec α β) as [H1 | H1].
-    - unshelve erewrite (choose_witness_choice _ _ a b _). { eapply dist_mono'; eassumption. }
+    - unshelve erewrite (choose_witness_choice _ _ a b _). { eapply dist_le; eassumption. }
       reflexivity.
-    - rewrite <- (dist_mono _ _ _ _ (witness_P _ _  a)). 2 : assumption.
-      rewrite <- (dist_mono _ _ _ _ (witness_P _ _ b)). 2: assumption.
+    - rewrite <- (dist_lt _ _ _ _ (witness_P _ _  a)). 2 : assumption.
+      rewrite <- (dist_lt _ _ _ _ (witness_P _ _ b)). 2: assumption.
       apply Heq.
   Qed.
 
@@ -395,7 +395,7 @@ Section classical_truncation.
     intros α β a b Heq.
     destruct (index_le_lt_dec α β) as [H1 | H1].
     - unshelve erewrite (choose_witness_choice _ _ a b _).
-      { split. intros γ H. eapply dist_mono; first apply Heq. eapply index_lt_le_trans; eauto. }
+      { split. intros γ H. eapply dist_lt; first apply Heq. eapply index_lt_le_trans; eauto. }
       reflexivity.
     - specialize (@witness_P (dist_later α) (dec_dist_later α) _ a) as [Ha].
       rewrite -(Ha β H1).

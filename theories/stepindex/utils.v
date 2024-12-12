@@ -39,11 +39,11 @@ Section index_minimum.
 
   Lemma index_min_le_l α β : index_min α β ⪯ᵢ α.
   Proof.
-    unfold index_min. destruct index_le_total; eauto with stepindex.
+    unfold index_min. destruct index_le_total; eauto with si_solver.
   Qed.
   Lemma index_min_le_r α β : index_min α β ⪯ᵢ β.
   Proof.
-    unfold index_min. destruct index_le_total; eauto with stepindex.
+    unfold index_min. destruct index_le_total; eauto with si_solver.
   Qed.
 
   Lemma index_min_l α β : α ⪯ᵢ β → index_min α β = α.
@@ -71,14 +71,14 @@ Section index_minimum.
   Lemma index_min_mono_r γ β α: γ ⪯ᵢ β → index_min α γ ⪯ᵢ index_min α β.
   Proof.
     intros H. unfold index_min. destruct (index_le_total α γ) as [H1 | H1];
-    destruct (index_le_total α β) as [H2 | H2]; try by eauto with stepindex.
+    destruct (index_le_total α β) as [H2 | H2]; try by eauto with si_solver.
     etrans; done.
   Qed.
 
 End index_minimum.
 
 
-Section stepindex_lemmas.
+Section si_solver_lemmas.
   Context `{SI: indexT}.
 
   Lemma index_le_zero α: α ⪯ᵢ zero → α = zero.
@@ -87,7 +87,7 @@ Section stepindex_lemmas.
   Qed.
 
 
-End stepindex_lemmas.
+End si_solver_lemmas.
 
 
 

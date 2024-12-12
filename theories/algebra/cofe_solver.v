@@ -122,7 +122,7 @@ Local Notation "f 'oapp' x 'opp' y" := (ofe_mor_car _ _ (ofe_mor_car _ _ f x) y)
 Ltac merge_truncs :=
   repeat match goal with
     | |- context[(trunc_map ?a ?b) oapp ?f opp ((trunc_map ?c ?a) oapp ?g opp ?x)] =>
-        setoid_rewrite <- (dist_mono' _ _ _ _ (trunc_map_compose g f c b a _))
+        setoid_rewrite <- (dist_le _ _ _ _ (trunc_map_compose g f c b a _))
   end.
 
 (** a typeclass for registering equalities between OFEs, used for the transport infrastructure *)
@@ -830,7 +830,7 @@ Section succ_case_X.
   Proof.
     split; intros Hd.
     - destruct Hd as [Hd]; eauto with index.
-    - split. intros γ' Hγ'. eapply dist_mono'; first exact Hd. by apply index_succ_iff.
+    - split. intros γ' Hγ'. eapply dist_le; first exact Hd. by apply index_succ_iff.
   Qed.
 
   Lemma sϕ'_sψ'_id : sϕ' ◎ sψ' ≡{succ β}≡ cid.
@@ -844,7 +844,7 @@ Section succ_case_X.
   Lemma sψ'_sϕ'_id : sψ' ◎ sϕ' ≡ cid.
   Proof using ψ_ϕ_id Fcontr.
     unfold sϕ', sψ'. intros x; cbn -[trunc_map]. rewrite ofe_truncated_equiv.
-    merge_truncs; last by eauto with stepindex.
+    merge_truncs; last by eauto with si_solver.
     cbn. setoid_rewrite (map_compose_dist _ _ _ _ _ _). setoid_rewrite Fcontr; first last.
     { apply dist_later_succ. apply pair_ne; by setoid_rewrite (ψ_ϕ_id _ _). }
     autorew.
@@ -896,7 +896,7 @@ Section succ_case_X.
   Proof.
     unfold se', sp'. destruct se'_ca as [H1 | H1].
     - intros x; cbn. setoid_rewrite (e_p_id _ _ _ _ _ _). cbn.
-      eapply dist_mono; first by setoid_rewrite (ϕ_ψ_id _ _ _). assumption.
+      eapply dist_lt; first by setoid_rewrite (ϕ_ψ_id _ _ _). assumption.
     - intros x; cbn. clear_transports. subst. by setoid_rewrite (ϕ_ψ_id _ _ _).
   Qed.
   Lemma sp'_se'_id γ Hγ : sp' γ Hγ ◎ se' γ Hγ ≡ cid.
@@ -951,15 +951,15 @@ Section succ_case_X.
         generalize (Xsucc_eq).
         subst β. intros. repeat pi_clear.
         unshelve setoid_rewrite <- (Fep_p _ _ _ _ _ _ _ _ );
-          [ eassumption | by eauto with stepindex | by eapply index_lt_succ_inj| ].
+          [ eassumption | by eauto with si_solver | by eapply index_lt_succ_inj| ].
         intros x; cbn. rewrite ofe_truncated_equiv.
         do 2 apply ofe_mor_ne.
         setoid_rewrite tFunctor_map_ne at 1; first last.
         { apply pair_ne.
-          { unshelve rewrite <- (e_funct γ β' (succ β')); [by eauto with stepindex |
+          { unshelve rewrite <- (e_funct γ β' (succ β')); [by eauto with si_solver |
               by eapply index_lt_succ_inj| by eauto with index | ].
             rewrite (e_fold_ϕ). rewrite ccompose_assoc. reflexivity.  }
-          { unshelve setoid_rewrite <- (p_funct γ β' (succ β')) at 1; [by eauto with stepindex |
+          { unshelve setoid_rewrite <- (p_funct γ β' (succ β')) at 1; [by eauto with si_solver |
               by eapply index_lt_succ_inj | by eauto with index | ]. rewrite (p_ψ_unfold).
             apply equiv_dist. symmetry. apply ccompose_assoc.
           }
@@ -970,7 +970,7 @@ Section succ_case_X.
         apply ofe_mor_ne.
         setoid_rewrite (ψ_succ_id _ _ _ _). cbn.
         unfold fold_transport, unfold_transport. clear_transports.
-        setoid_rewrite (dist_mono' _ _ _ _ (ofe_trunc_expand_truncate_id _)); last by eauto with stepindex.
+        setoid_rewrite (dist_le _ _ _ _ (ofe_trunc_expand_truncate_id _)); last by eauto with si_solver.
         setoid_rewrite <- (map_compose_dist _ _ _ _ _ _). equalise_pi.
       + assert (Hterm : zero ≺ᵢ β).
         { destruct (index_le_lt_dec β zero) as [|]; [index_contra_solve | assumption]. }
@@ -1412,7 +1412,7 @@ Section limit_case.
       cbn. setoid_rewrite (unfold_fold_id _ _ _ _).
       cbn. setoid_rewrite (Hx _ _ _ _ _).
       reflexivity.
-      Unshelve. { by eauto with stepindex. } transitivity (succ δ); eauto with stepindex.
+      Unshelve. { by eauto with si_solver. } transitivity (succ δ); eauto with si_solver.
     - destruct Heq. cbn. setoid_rewrite (ψ_p_fold _ _ _ _ _).
       setoid_rewrite <- (Fep_lifts_p  _ _ _ _ _ _ _ _ _).
       cbn. clear_transports. setoid_rewrite (unfold_fold_id _ _ _ _).
@@ -1422,10 +1422,10 @@ Section limit_case.
     - setoid_rewrite (ψ_p_fold _ _ _ _ _).
       destruct (index_lt_eq_lt_dec γ δ) as [[Hγlt | Hγeq] | Hγgt].
       + setoid_rewrite <- (e_functorial γ (succ γ) (succ δ) _ _ _ _ _ _ _ ).
-        cbn. setoid_rewrite (e_p_id γ (succ γ) _ _ _ _). 2: auto with stepindex.
+        cbn. setoid_rewrite (e_p_id γ (succ γ) _ _ _ _). 2: auto with si_solver.
         cbn. setoid_rewrite <- (Hx _ _ _ _ _) at 1.
         setoid_rewrite (fold_Fep _ _ _ _ _ _ _ _ _). cbn.
-        setoid_rewrite (dist_mono _ _ _ _ (e_p_id (succ γ) (succ δ) _ _ _ _)). 2: { apply index_succ_greater. }
+        setoid_rewrite (dist_lt _ _ _ _ (e_p_id (succ γ) (succ δ) _ _ _ _)). 2: { apply index_succ_greater. }
         setoid_rewrite (unfold_fold_id _ _ _ _). reflexivity.
         Unshelve. all: eauto with index.
       + subst.
@@ -1484,7 +1484,7 @@ Section limit_case.
     intros x γ0 γ1 Hγ0γ1 Hγ0 Hγ1.
     unfold Fep. cbn.
     eapply ofe_truncated_equiv; first by apply _.
-    setoid_rewrite (dist_mono _ _ _ _ (ofe_trunc_expand_truncate_id _)).
+    setoid_rewrite (dist_lt _ _ _ _ (ofe_trunc_expand_truncate_id _)).
     2: by eauto with index.
     cbn. f_equiv.
     map_compose_tac.
@@ -1500,7 +1500,7 @@ Section limit_case.
 
   (** definition of ϕ*)
   Program Definition ϕβ : Xβ -n> [G Xβ]_{β} :=
-    λne x, bcompl _ (mkbchain _ ([G Xβ]_{β}) β (λ γ Hγ,
+    λne x, bcompl _ (@mkbchain _ ([G Xβ]_{β}) β (λ γ Hγ,
       trunc_map (succ γ) β  (map (pβ γ Hγ, eβ γ Hγ)) (proj_lim _ _ γ _ x))_).
   Next Obligation.
     intros _. apply limit_index_not_zero.
@@ -1515,7 +1515,7 @@ Section limit_case.
     2: by setoid_rewrite <- Hx.
     Unshelve. 2: exact γ. 2, 3: eauto.
     unfold Fep. cbn.
-    setoid_rewrite (dist_mono _ _ _ _ (ofe_trunc_expand_truncate_id _)).
+    setoid_rewrite (dist_lt _ _ _ _ (ofe_trunc_expand_truncate_id _)).
     2: eauto with index.
     cbn.
 
@@ -1527,7 +1527,7 @@ Section limit_case.
       2: { rewrite ccompose_ne. 3: setoid_rewrite (pβ_functorial _ _ _ _ _); reflexivity.
           2: reflexivity.
           rewrite <- ccompose_assoc.
-          setoid_rewrite (dist_mono' _ _ _ _ (e_p_id _ _ _ _ _) ); last by reflexivity.
+          setoid_rewrite (dist_le _ _ _ _ (e_p_id _ _ _ _ _) ); last by reflexivity.
           by rewrite ccompose_cid_l.
       }
       2: { rewrite ccompose_ne. 2: setoid_rewrite (eβ_functorial _ _ _ _ _); reflexivity.
@@ -1551,12 +1551,12 @@ Section limit_case.
       apply cofe_unique_bcompl; [apply _ |  apply limit_index_is_limit | ].
       intros γ Hγ. cbn -[proj_lim].
       do 3 apply ofe_mor_ne.
-      eapply dist_mono' in Heq. 2: eapply index_le_lt_iff; left; apply Hγ.
+      eapply dist_le in Heq. 2: eapply index_le_lt_iff; left; apply Hγ.
       apply (proj1 (inv_lim_dist_iff _ _ _ _ _) Heq).
     - eapply ofe_truncated_dist; first by apply _. rewrite index_min_r. 2: eapply index_le_lt_iff; by left.
       apply cofe_unique_bcompl; [apply _ | apply limit_index_is_limit |]. intros γ Hγ. cbn.
       do 3 apply ofe_mor_ne.
-      apply (dist_mono _ _ _ _ (proj1 (inv_lim_dist_iff _ _ _ _ _) Heq γ Hγ)). by etransitivity.
+      apply (dist_lt _ _ _ _ (proj1 (inv_lim_dist_iff _ _ _ _ _) Heq γ Hγ)). by etransitivity.
   Qed.
 
   (** Verifying property (9) *)
@@ -1594,7 +1594,7 @@ Section limit_case.
       cbn. rewrite ofe_mor_ne.
       2: setoid_rewrite <- Heq; reflexivity.
       cbn.
-      setoid_rewrite (dist_mono _ _ _ _ (ofe_trunc_expand_truncate_id _)).
+      setoid_rewrite (dist_lt _ _ _ _ (ofe_trunc_expand_truncate_id _)).
       2: apply index_succ_greater. cbn.
 
       rewrite ofe_mor_ne.
@@ -1607,7 +1607,7 @@ Section limit_case.
        Fail setoid_rewrite (map_compose_dist _ _ _ _ _ _).
        map_compose_tac.
        setoid_rewrite Fcontr.
-       2: split; intros γ'' Hγ''; apply pair_ne; (eapply dist_mono; [apply e_p_id | assumption]).
+       2: split; intros γ'' Hγ''; apply pair_ne; (eapply dist_lt; [apply e_p_id | assumption]).
        rewrite tFunctor_map_id. reflexivity.
     }
     by setoid_rewrite (ofe_trunc_truncate_expand_id _).
@@ -1620,9 +1620,9 @@ Section limit_case.
       destruct x as [x Hx], y as [y Hy].
       cbn. specialize (Heq γ Hγ).
       cbn in Heq. rewrite ofe_truncated_dist. rewrite index_min_r.
-      2: { transitivity (β : index); eauto with stepindex. }
-      eapply dist_mono; [apply Heq | by apply limit_index_is_limit, Hγ].
-    - intros Heq γ Hγ. eapply dist_mono'; first apply (Heq γ). auto.
+      2: { transitivity (β : index); eauto with si_solver. }
+      eapply dist_lt; [apply Heq | by apply limit_index_is_limit, Hγ].
+    - intros Heq γ Hγ. eapply dist_le; first apply (Heq γ). auto.
   Qed.
 
   Lemma ψβ_ϕβ_id : ψβ ◎ ϕβ ≡ cid.
@@ -1641,7 +1641,7 @@ Section limit_case.
     1: {
       intros γ' Hγ'. cbn.
       etransitivity.
-      { setoid_rewrite (dist_mono _ _ _ _ (ofe_trunc_expand_truncate_id _)). 2: auto.
+      { setoid_rewrite (dist_lt _ _ _ _ (ofe_trunc_expand_truncate_id _)). 2: auto.
       setoid_rewrite (map_compose _ _ _ _ _). apply pβ_eβ_id'. }
       reflexivity.
     }
@@ -1655,7 +1655,7 @@ Section limit_case.
     setoid_rewrite (dist_later_lt _ _ _ (cofe_bcompl_weakly_unique _ _ _ _ _ (bchain_const _ β) _) γ Hγ).
     2: {
       intros γ' Hγ'. cbn.
-      setoid_rewrite (dist_mono _ _ _ _ (ofe_trunc_expand_truncate_id _)).
+      setoid_rewrite (dist_lt _ _ _ _ (ofe_trunc_expand_truncate_id _)).
       2: apply index_succ_greater.
       cbn.
 
@@ -1722,11 +1722,11 @@ Section limit_case.
     intros x. unfold ψβ', ϕβ'. cbn. apply equiv_dist; intros α.
     rewrite ofe_truncated_dist ofe_mor_ne.
     2: {
-      eapply dist_mono. {
+      eapply dist_lt. {
         setoid_rewrite (ofe_trunc_expand_truncate_id _).
         setoid_rewrite (map_compose_dist _ _ _ _ _ _). setoid_rewrite Fcontr.
         2: { instantiate (1 := (cid, cid)).
-          split. intros α' Hα'. eapply dist_mono'. 2: eapply index_le_lt_iff; left; apply Hα'.
+          split. intros α' Hα'. eapply dist_le. 2: eapply index_le_lt_iff; left; apply Hα'.
           split; intros y; cbn -[ψβ ϕβ]; by setoid_rewrite (ψβ_ϕβ_id _).
         }
         rewrite tFunctor_map_id. reflexivity.
@@ -1770,7 +1770,7 @@ Section limit_case.
     rewrite <- Fep_p_limit.
     setoid_rewrite ccompose_assoc at 3.
     rewrite ofe_truncated_equiv.
-    setoid_rewrite <- (dist_mono _ _ _ _ (trunc_map_compose _ _ _ _ _)).
+    setoid_rewrite <- (dist_lt _ _ _ _ (trunc_map_compose _ _ _ _ _)).
     2: assumption.
     by rewrite map_compose.
   Qed.
@@ -1910,11 +1910,11 @@ Section limit_coherent.
     - intros. cbn. rewrite ofe_truncated_equiv. unfold eβ'.
       setoid_rewrite eβ_coherent. setoid_rewrite ϕβ_coherent...
     - intros. cbn. rewrite ofe_truncated_equiv. unfold pβ'.
-      eapply dist_mono. 2: apply Hγ'.
+      eapply dist_lt. 2: apply Hγ'.
       setoid_rewrite pβ_coherent. setoid_rewrite ψβ_coherent...
     - intros. cbn. rewrite ofe_truncated_equiv. intros x; cbn.
       setoid_rewrite Fcontr at 1.
-      2: { split. intros γ Hγ. eapply dist_mono'. 2: { apply index_succ_iff, Hγ. }
+      2: { split. intros γ Hγ. eapply dist_le. 2: { apply index_succ_iff, Hγ. }
         setoid_rewrite ϕβ_coherent. rewrite ψβ_coherent. rewrite ccompose_assoc. reflexivity.
       }
       setoid_rewrite <- (map_compose_dist _ _ _ _ _ _).
@@ -2098,7 +2098,7 @@ Section final_limit.
       cbn -[Fep_lim]. setoid_rewrite (unfold_fold_id _ _).
       cbn -[Fep_lim]. setoid_rewrite (Hx _ _ _ _ _).
       cbn. reflexivity.
-      Unshelve. all: eauto 3 with stepindex. transitivity (succ δ); by eauto with stepindex.
+      Unshelve. all: eauto 3 with si_solver. transitivity (succ δ); by eauto with si_solver.
     - destruct Heq. cbn. setoid_rewrite (ψ_p_fold _ _ _).
       setoid_rewrite <- (Fep_lim_lifts_p  _ _ _ _ _).
       setoid_rewrite (unfold_fold_id  _ _).
@@ -2108,10 +2108,10 @@ Section final_limit.
     - setoid_rewrite (ψ_p_fold _ _ _).
       destruct (index_lt_eq_lt_dec γ δ) as [[Hγlt | Hγeq] | Hγgt].
       + setoid_rewrite <- (e_funct γ (succ γ) (succ δ) _ _ _ _ ).
-        cbn. setoid_rewrite (e_p_id γ (succ γ) _ _). 2: auto with stepindex.
+        cbn. setoid_rewrite (e_p_id γ (succ γ) _ _). 2: auto with si_solver.
         cbn. setoid_rewrite <- (Hx _ _ _ _ _) at 1.
         setoid_rewrite (fold_Fep_lim _ _ _ _ _). cbn.
-        setoid_rewrite (dist_mono _ _ _ _ (e_p_id (succ γ) (succ δ) _ _)). 2: auto with stepindex.
+        setoid_rewrite (dist_lt _ _ _ _ (e_p_id (succ γ) (succ δ) _ _)). 2: auto with si_solver.
         setoid_rewrite (unfold_fold_id _ _). cbn. reflexivity.
         Unshelve. all: eauto with index.
       + subst. rewrite (proof_irrel Hgt (index_succ_greater δ)).
@@ -2149,7 +2149,7 @@ Section final_limit.
     setoid_rewrite (ψ_p_fold _ _ _). cbn. setoid_rewrite (p_funct γ0 γ1 (succ γ1) _ _ _ _).
     setoid_rewrite <- (inv_lim_equalises _ _ _ _ _ _ _ x) at 1.
     setoid_rewrite (fold_Fep_lim _ _ _ _ _). cbn. setoid_rewrite (p_funct _ _ _ _ _ _ _).
-    Unshelve. all: eauto 3 with stepindex.
+    Unshelve. all: eauto 3 with si_solver.
   Qed.
 
   (** definition of ψ *)
@@ -2159,7 +2159,7 @@ Section final_limit.
     intros x γ0 γ1 Hγ0γ1 [] [].
     unfold Fep_lim. cbn.
     eapply ofe_truncated_equiv; first by apply _.
-    setoid_rewrite (dist_mono _ _ _ _ (ofe_trunc_expand_truncate_id _)); [ | eauto using index_lt_succ_mono].
+    setoid_rewrite (dist_lt _ _ _ _ (ofe_trunc_expand_truncate_id _)); [ | eauto using index_lt_succ_mono].
     cbn. f_equiv.
     map_compose_tac.
     setoid_rewrite tFunctor_map_ne.
@@ -2175,7 +2175,7 @@ Section final_limit.
 
   (** definition of ϕ*)
   Program Definition ϕ_lim : Xlim -n> G Xlim :=
-    λne x, compl (mkchain _ (G Xlim) (λ γ, map (p_lim γ, e_lim γ) (ofe_trunc_expand _ (proj_lim _ _ γ I x))) _).
+    λne x, compl (@mkchain _ (G Xlim) (λ γ, map (p_lim γ, e_lim γ) (ofe_trunc_expand _ (proj_lim _ _ γ I x))) _).
   Next Obligation.
     intros x γ' γ Hle%index_le_eq_or_lt. cbn.
     destruct Hle as [-> | Hlt]. { reflexivity. }
@@ -2184,7 +2184,7 @@ Section final_limit.
     2: by setoid_rewrite <- Hx.
     Unshelve. 2: exact γ. 2, 3: eauto.
     unfold Fep. cbn.
-    setoid_rewrite (dist_mono _ _ _ _ (ofe_trunc_expand_truncate_id _)).
+    setoid_rewrite (dist_lt _ _ _ _ (ofe_trunc_expand_truncate_id _)).
     2: apply index_succ_greater.
     cbn.
 
@@ -2195,7 +2195,7 @@ Section final_limit.
       2: { rewrite ccompose_ne. 3: setoid_rewrite (p_lim_funct _ _ _); reflexivity.
           2: reflexivity.
           rewrite <- ccompose_assoc.
-          setoid_rewrite (dist_mono' _ _ _ _ (e_p_id _ _ _) ); last by reflexivity.
+          setoid_rewrite (dist_le _ _ _ _ (e_p_id _ _ _) ); last by reflexivity.
           by rewrite ccompose_cid_l.
       }
       2: { rewrite ccompose_ne. 2: setoid_rewrite (e_lim_funct _ _ _); reflexivity.
@@ -2216,7 +2216,7 @@ Section final_limit.
   Lemma ϕ_lim_ψ_lim_id : ϕ_lim ◎ ψ_lim ≡ cid.
   Proof.
     intros x. cbn. apply equiv_dist => α. rewrite conv_compl; cbn.
-    setoid_rewrite (dist_mono _ _ _ _ (ofe_trunc_expand_truncate_id _)). 2: auto with stepindex.
+    setoid_rewrite (dist_lt _ _ _ _ (ofe_trunc_expand_truncate_id _)). 2: auto with si_solver.
     cbn. setoid_rewrite (map_compose_dist _ _ _ _ _ _).
     setoid_rewrite tFunctor_map_ne.
     2: { apply pair_ne; apply e_lim_p_lim_id. }
@@ -2231,9 +2231,9 @@ Section final_limit.
     2: {
       setoid_rewrite (map_compose_dist _ _ _ _ _ _). setoid_rewrite tFunctor_map_ne.
       2: { apply pair_ne.
-        - unshelve setoid_rewrite (proj1 (equiv_dist _ _) (e_lim_funct γ (succ γ) _)); first by auto with stepindex.
+        - unshelve setoid_rewrite (proj1 (equiv_dist _ _) (e_lim_funct γ (succ γ) _)); first by auto with si_solver.
           rewrite -ccompose_assoc (p_lim_e_lim_id _) ccompose_cid_l. reflexivity.
-        - unshelve setoid_rewrite (proj1 (equiv_dist _ _) (p_lim_funct γ (succ γ) _)); first by auto with stepindex.
+        - unshelve setoid_rewrite (proj1 (equiv_dist _ _) (p_lim_funct γ (succ γ) _)); first by auto with si_solver.
           rewrite ccompose_assoc (p_lim_e_lim_id _) ccompose_cid_r. reflexivity.
       }
       reflexivity.
@@ -2423,7 +2423,7 @@ Section merge_extension.
         ◎ @transport_id (X' β _) Xβ (X'_id_β _)
         ◎ @transport_id (X' γ Hγ) (X' β _) (X'_pi_id _ _ _ _ _)
     end.
-  Solve Obligations with eauto with stepindex.
+  Solve Obligations with eauto with si_solver.
   Next Obligation. intros; by subst. Defined.
 
   Program Definition ψ' γ (Hγ : γ ⪯ᵢ β) : [G (X' γ Hγ)]_{succ γ} -n> X' γ Hγ :=
@@ -2439,7 +2439,7 @@ Section merge_extension.
         ◎ @transport_id ([G (X' β _)]_{succ β}) ([G Xβ]_{succ β}) (ofe_eq_funct _ (X'_id_β _))
         ◎ @transport_id ([G (X' γ Hγ)]_{succ γ}) ([G (X' β _)]_{succ β}) (ofe_eq_symm (ofe_eq_funct _ (X'_pi_id _ _ _ _ _)))
     end.
-  Solve Obligations with eauto with stepindex.
+  Solve Obligations with eauto with si_solver.
   Next Obligation. intros; by subst. Defined.
 
   Lemma ϕ_ψ_id' γ Hγ : ϕ' γ Hγ ◎ ψ' γ Hγ ≡{γ}≡ cid.
@@ -2498,7 +2498,7 @@ Section merge_extension.
         ◎ eβ γ0 H0
         ◎ @transport_id (X' γ0 Hγ0) (X γ0 H0) (X'_id_lt _ _ _)
     end.
-  Solve Obligations with eauto with stepindex.
+  Solve Obligations with eauto with si_solver.
 
   Program Definition p' γ0 γ1 Hγ0 Hγ1 (Hlt : γ0 ≺ᵢ γ1) : X' γ1 Hγ1 -n> X' γ0 Hγ0  :=
     match e'_ca γ0 γ1 Hγ0 Hγ1 Hlt with
@@ -2512,7 +2512,7 @@ Section merge_extension.
         ◎ @transport_id (X' β _) Xβ (X'_id_β _)
         ◎ @transport_id (X' γ1 _) (X' β _) (ofe_eq_symm (X'_pi_id _ _ _ _ _))
     end.
-  Solve Obligations with eauto with stepindex.
+  Solve Obligations with eauto with si_solver.
 
   Lemma p_e_id' γ0 γ1 Hγ0 Hγ1 Hlt : p' γ0 γ1 Hγ0 Hγ1 Hlt ◎ e' γ0 γ1 Hγ0 Hγ1 Hlt ≡ cid.
   Proof using Fcontr.
@@ -2907,7 +2907,7 @@ Section merge.
   *)
 
   Program Definition mX γ (Hγ : P γ) := bounded_approx_X (IH γ Hγ) γ _.
-  Solve Obligations with cbn; eauto with stepindex.
+  Solve Obligations with cbn; eauto with si_solver.
   Instance mX_truncated γ Hγ: OfeTruncated (mX γ Hγ) γ.
   Proof. unfold mX. eapply approx_X_truncated. apply IH. Qed.
 
@@ -2969,7 +2969,7 @@ Section merge.
   Proof using IH_agree.
     unfold mX. symmetry. erewrite agree_eq. { symmetry; eapply approx_eq. apply IH. }
     apply IH_agree.
-    Unshelve. cbn; eauto with stepindex.
+    Unshelve. cbn; eauto with si_solver.
   Qed.
 
 
@@ -2998,7 +2998,7 @@ Section merge.
     cbn.
     setoid_rewrite (transport_id_expand _ _ _ _ _ _ _).
     cbn. clear_transports. equalise_pi.
-    Unshelve. all: eauto with stepindex.
+    Unshelve. all: eauto with si_solver.
     apply ofe_eq_funct; first reflexivity. apply IH_agree.
   Qed.
 
@@ -3056,7 +3056,7 @@ Section merge.
     do 2 setoid_rewrite <- (map_compose_dist _ _ _ _ _ _). cbn.
     unfold unfold_transport, fold_transport. equalise_pi_head. do 2 apply ofe_mor_ne.
     setoid_rewrite (transport_id_expand _ _ _ _ _ _ _). cbn. clear_transports. equalise_pi.
-    Unshelve. all: eauto with stepindex.
+    Unshelve. all: eauto with si_solver.
   Qed.
 
   Lemma mψ_succ_id γ (Hle : P γ) (Hsle : P (succ γ)):
@@ -3077,7 +3077,7 @@ Section merge.
     cbn. do 2 setoid_rewrite <- (map_compose_dist _ _ _ _ _ _). cbn.
     setoid_rewrite <- (transport_id_truncate_symm _ _ _ _ _ _ _).
     unfold unfold_transport, fold_transport. clear_transports. equalise_pi.
-    Unshelve. all: eauto with stepindex.
+    Unshelve. all: eauto with si_solver.
   Qed.
 
   Program Definition merged_approx : bounded_approx (P) :=

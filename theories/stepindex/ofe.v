@@ -7,7 +7,7 @@ Section ofe_lemmas.
   Context `{SI: indexT} {A: ofe}.
 
   Lemma dist_mono' (α β: index) (x y : A) : x ≡{α}≡ y → β ⪯ᵢ α → x ≡{β}≡ y.
-  Proof. intros H [Hβ | ->]%index_le_lt_iff; [by eapply dist_mono|auto]. Qed.
+  Proof. intros H [Hβ | ->]%index_le_lt_iff; [by eapply dist_lt|auto]. Qed.
 
 End ofe_lemmas.
 
