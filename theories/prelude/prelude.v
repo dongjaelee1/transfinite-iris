@@ -1,9 +1,9 @@
 From iris.prelude Require Export prelude.
 From iris.prelude Require Import options.
-Require Import Coq.Logic.Epsilon.
-Require Import Coq.Logic.PropExtensionality.
-Require Import Coq.Logic.FunctionalExtensionality.
-Require Import Coq.Logic.Classical_Prop.
+Require Import Stdlib.Logic.Epsilon.
+Require Import Stdlib.Logic.PropExtensionality.
+Require Import Stdlib.Logic.FunctionalExtensionality.
+Require Import Stdlib.Logic.Classical_Prop.
 
 (* some basic definitions and lemmas
 Inductive rc {A} (R: A → A → Prop) (x: A) (y: A):  Prop :=

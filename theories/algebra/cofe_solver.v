@@ -2,9 +2,9 @@ From iris.algebra Require Export ofe.
 From transfinite.algebra Require Export wf_IR truncation.
 From transfinite.stepindex Require Export ofe functors utils.
 Require Import iris.prelude.options.
-Require Coq.Logic.PropExtensionality.
-Require Coq.Logic.FunctionalExtensionality.
-Require Coq.Logic.ProofIrrelevance.
+Require Stdlib.Logic.PropExtensionality.
+Require Stdlib.Logic.FunctionalExtensionality.
+Require Stdlib.Logic.ProofIrrelevance.
 
 Section cofe.
   Context (SI : indexT).
@@ -1129,8 +1129,8 @@ Section inv_lim_extensional.
     and somehow be able to rewrite with the dependent equalities.
     At least we can use abstract for the irrelevant parts of the proofs, I guess... *)
 
-  Import Coq.Logic.PropExtensionality.
-  Import Coq.Logic.FunctionalExtensionality.
+  Import Stdlib.Logic.PropExtensionality.
+  Import Stdlib.Logic.FunctionalExtensionality.
   Lemma sigO_extensional (A : ofe) (P1 P2 : A → Prop) : (∀ x, P1 x ↔ P2 x) → sigO P1 = sigO P2.
   Proof.
     intros Hext. unfold sigO.

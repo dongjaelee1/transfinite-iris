@@ -3,7 +3,7 @@
 This is the Coq development of the Transfinite Iris project. 
 It is based on the Coq development of the [Iris Project](http://iris-project.org),
 which includes [MoSeL](http://iris-project.org/mosel/), a general proof mode
-for carrying out separation logic proofs in Coq.
+for carrying out separation logic proofs in Stdlib.
 
 For using Transfinite Iris and inspecting the development interactively, it needs to be compiled.
 

@@ -49,8 +49,8 @@ Section satisfiable.
     Proof using Sat.
       induction A as [|a A IH]; simpl.
       - intros [] % sat_elim.
-      - intros [HP|HP] % sat_or; first by eauto using elem_of_list_here.
-        destruct IH as [? []]; eauto using elem_of_list_further.
+      - intros [HP|HP] % sat_or; first by eauto using list_elem_of_here.
+        destruct IH as [? []]; eauto using list_elem_of_further.
     Qed.
 
     Lemma sat_sep `{!BiAffine PROP} P Q:

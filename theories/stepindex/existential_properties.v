@@ -1,5 +1,5 @@
 From iris.algebra Require Export stepindex.
-Require Import Coq.Logic.Classical_Prop.
+Require Import Stdlib.Logic.Classical_Prop.
 
 
 Polymorphic Class TypeExistentialProperty@{i} (X: Type@{i}) (SI: indexT) : Type :=

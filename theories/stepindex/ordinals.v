@@ -14,9 +14,9 @@ From iris.prelude Require Import options.
 From iris.algebra Require Import stepindex.
 From transfinite.prelude Require Import prelude.
 From transfinite.stepindex Require Import existential_properties utils.
-Require Import Coq.Logic.PropExtensionality.
-Require Import Coq.Logic.Classical_Prop.
-Require Import Coq.Logic.Epsilon.
+Require Import Stdlib.Logic.PropExtensionality.
+Require Import Stdlib.Logic.Classical_Prop.
+Require Import Stdlib.Logic.Epsilon.
 
 
 (* Universe polymorphism settings *)

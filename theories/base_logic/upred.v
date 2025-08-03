@@ -1181,7 +1181,7 @@ Section primitive.
     BoundedLimitPreserving (λ P, P ⊢ □ P).
   Proof.
     intros n Hn ch. unseal. intros Hbound; split=>m x Hv HP. rewrite /uPred_persistently_def /=.
-    eapply lbcompl_unfold. intros k Hk Hle Hv'.
+    eapply lbcompl_unfold; auto. intros k Hk Hle Hv'.
     destruct (Hbound k Hk) as [Hm]. eapply Hm; first by eapply cmra_validN_le.
     rewrite lbcompl_unfold in HP. eapply HP; eauto using cmra_validN_le.
   Qed.

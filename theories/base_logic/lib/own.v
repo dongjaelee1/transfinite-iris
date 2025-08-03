@@ -148,7 +148,7 @@ Proof.
   assert (NonExpansive (λ r : iResUR Σ, r (inG_id i) !! γ)).
   { intros n r1 r2 Hr. f_equiv. by specialize (Hr (inG_id i)). }
   rewrite (f_equivI (λ r : iResUR Σ, r (inG_id i) !! γ) r).
-  rewrite {1}/iRes_singleton discrete_fun_lookup_singleton lookup_singleton.
+  rewrite {1}/iRes_singleton discrete_fun_lookup_singleton lookup_singleton_eq.
   rewrite option_equivI. case Hb: (r (inG_id _) !! γ)=> [b|]; last first.
   { by rewrite /bi_except_0 -or_intro_l. }
   rewrite -except_0_intro.
@@ -161,7 +161,7 @@ Proof.
     destruct (decide (i' = inG_id i)) as [->|?].
     + rewrite discrete_fun_lookup_insert discrete_fun_lookup_singleton.
       intros γ'. rewrite lookup_op. destruct (decide (γ' = γ)) as [->|?].
-      * by rewrite lookup_singleton lookup_delete Hb inG_unfold_fold.
+      * by rewrite lookup_singleton_eq lookup_delete_eq Hb inG_unfold_fold.
       * by rewrite lookup_singleton_ne // lookup_delete_ne // left_id.
     + rewrite discrete_fun_lookup_insert_ne //.
       by rewrite discrete_fun_lookup_singleton_ne // left_id.

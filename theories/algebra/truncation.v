@@ -1,7 +1,7 @@
 From iris.algebra Require Export ofe.
 From iris.prelude Require Import options.
 From transfinite.stepindex Require Import ofe utils.
-Require Coq.Logic.ProofIrrelevance.
+Require Stdlib.Logic.ProofIrrelevance.
 Set Primitive Projections.
 
 
@@ -292,10 +292,10 @@ Section proto_truncatable.
 End proto_truncatable.
 
 (** We can show that every OFE is truncatable and every COFE can be equipped with strongly unique limits, using classical logic with choice. *)
-Require Coq.Logic.Epsilon.
-Require Coq.Logic.Classical.
-Require Coq.Logic.FunctionalExtensionality.
-Require Coq.Logic.PropExtensionality.
+Require Stdlib.Logic.Epsilon.
+Require Stdlib.Logic.Classical.
+Require Stdlib.Logic.FunctionalExtensionality.
+Require Stdlib.Logic.PropExtensionality.
 Section classical_truncation.
   Context `{SI : indexT}.
   Context (A : ofe).

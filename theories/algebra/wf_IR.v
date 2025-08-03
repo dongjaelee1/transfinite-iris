@@ -1,6 +1,6 @@
 From iris.algebra Require Import stepindex.
 From iris.prelude Require Import options.
-From Coq.Logic Require Import Eqdep_dec.
+From Stdlib.Logic Require Import Eqdep_dec.
 From transfinite.stepindex Require Import utils.
 
 (** * Well-founded induction-recursion schemes *)
