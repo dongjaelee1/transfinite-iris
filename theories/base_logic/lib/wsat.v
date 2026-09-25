@@ -1,6 +1,5 @@
 From stdpp Require Export coPset.
 From iris.algebra Require Import gmap_view gset coPset.
-From iris.bi Require Import lib.cmra.
 From iris.proofmode Require Import proofmode.
 From transfinite.base_logic.lib Require Export own.
 From iris.prelude Require Import options.
@@ -9,25 +8,25 @@ From iris.prelude Require Import options.
 exception of what's in the [wsatGS] module. The module [wsatGS] is thus exported in
 [fancy_updates], where [wsat] is only imported. *)
 Module wsatGS.
-  Class wsatGpreS `{SI : indexT} (Σ : gFunctors) : Set := WsatGpreS {
+  Class wsatGpreS {SI : sidx} (Σ : gFunctors) : Set := WsatGpreS {
     wsatGpreS_inv : inG Σ (gmap_viewR positive (agreeR $ laterO (iPropO Σ)));
     wsatGpreS_enabled : inG Σ coPset_disjR;
     wsatGpreS_disabled : inG Σ (gset_disjR positive);
   }.
 
-  Class wsatGS `{SI : indexT} (Σ : gFunctors) : Set := WsatG {
+  Class wsatGS {SI : sidx} (Σ : gFunctors) : Set := WsatG {
     wsat_inG : wsatGpreS Σ;
     invariant_name : gname;
     enabled_name : gname;
     disabled_name : gname;
   }.
 
-  Definition wsatΣ `{SI : indexT} : gFunctors :=
+  Definition wsatΣ {SI : sidx} : gFunctors :=
     #[GFunctor (gmap_viewTRF positive (agreeTRF $ laterTF idTF));
       GFunctor coPset_disjR;
       GFunctor (gset_disjR positive)].
 
-  Global Instance subG_wsatΣ `{SI : indexT} {Σ} : subG wsatΣ Σ → wsatGpreS Σ.
+  Global Instance subG_wsatΣ {SI : sidx} {Σ} : subG wsatΣ Σ → wsatGpreS Σ.
   Proof. solve_inG. Qed.
 End wsatGS.
 Import wsatGS.
@@ -36,33 +35,33 @@ Import wsatGS.
 above, as that would make the instances local to the module. *)
 Local Existing Instances wsat_inG wsatGpreS_inv wsatGpreS_enabled wsatGpreS_disabled.
 
-Definition invariant_unfold `{SI : indexT} {Σ} (P : iProp Σ) : later (iProp Σ) :=
+Definition invariant_unfold {SI : sidx} {Σ} (P : iProp Σ) : later (iProp Σ) :=
   Next P.
-Definition ownI `{SI : indexT} `{!wsatGS Σ} (i : positive) (P : iProp Σ) : iProp Σ :=
+Definition ownI {SI : sidx} `{!wsatGS Σ} (i : positive) (P : iProp Σ) : iProp Σ :=
   own invariant_name
     (gmap_view_frag i DfracDiscarded (to_agree $ invariant_unfold P)).
 Global Typeclasses Opaque ownI.
 Global Instance: Params (@invariant_unfold) 2 := {}.
 Global Instance: Params (@ownI) 4 := {}.
 
-Definition ownE `{SI : indexT} `{!wsatGS Σ} (E : coPset) : iProp Σ :=
+Definition ownE {SI : sidx} `{!wsatGS Σ} (E : coPset) : iProp Σ :=
   own enabled_name (CoPset E).
 Global Typeclasses Opaque ownE.
 Global Instance: Params (@ownE) 4 := {}.
 
-Definition ownD `{SI : indexT} `{!wsatGS Σ} (E : gset positive) : iProp Σ :=
+Definition ownD {SI : sidx} `{!wsatGS Σ} (E : gset positive) : iProp Σ :=
   own disabled_name (GSet E).
 Global Typeclasses Opaque ownD.
 Global Instance: Params (@ownD) 4 := {}.
 
-Definition wsat `{SI : indexT} `{!wsatGS Σ} : iProp Σ :=
+Definition wsat {SI : sidx} `{!wsatGS Σ} : iProp Σ :=
   locked (∃ I : gmap positive (iProp Σ),
     own invariant_name
       (gmap_view_auth (DfracOwn 1) (to_agree <$> (invariant_unfold <$> I))) ∗
     [∗ map] i ↦ Q ∈ I, ▷ Q ∗ ownD {[i]} ∨ ownE {[i]})%I.
 
 Section wsat.
-Context `{SI : indexT} `{!wsatGS Σ}.
+Context {SI : sidx} `{!wsatGS Σ}.
 Implicit Types P : iProp Σ.
 
 (* Invariants *)
@@ -190,7 +189,7 @@ Qed.
 End wsat.
 
 (* Allocation of an initial world *)
-Lemma wsat_alloc `{SI : indexT} `{!wsatGpreS Σ} : ⊢ |==> ∃ _ : wsatGS Σ, wsat ∗ ownE ⊤.
+Lemma wsat_alloc {SI : sidx} `{!wsatGpreS Σ} : ⊢ |==> ∃ _ : wsatGS Σ, wsat ∗ ownE ⊤.
 Proof.
   iIntros.
   iMod (own_alloc (gmap_view_auth (DfracOwn 1) ∅)) as (γI) "HI";

@@ -4,11 +4,10 @@ From iris.proofmode Require Import proofmode.
 From transfinite.base_logic.lib Require Export fancy_updates.
 From transfinite.base_logic.lib Require Import wsat.
 From iris.prelude Require Import options.
-Import le_upd_if.
 Import uPred.
 
 (** Semantic Invariants *)
-Local Definition inv_def `{SI : indexT} `{!invGS_gen hlc Σ} (N : namespace) (P : iProp Σ) : iProp Σ :=
+Local Definition inv_def {SI : sidx} `{!invGS_gen hlc Σ} (N : namespace) (P : iProp Σ) : iProp Σ :=
   □ ∀ E, ⌜↑N ⊆ E⌝ → |={E,E ∖ ↑N}=> ▷ P ∗ (▷ P ={E ∖ ↑N,E}=∗ True).
 Local Definition inv_aux : seal (@inv_def). Proof. by eexists. Qed.
 Definition inv := inv_aux.(unseal).
@@ -18,7 +17,7 @@ Global Instance: Params (@inv) 4 := {}.
 
 (** * Invariants *)
 Section inv.
-  Context `{SI : indexT} `{!invGS_gen hlc Σ}.
+  Context {SI : sidx} `{!invGS_gen hlc Σ}.
   Implicit Types i : positive.
   Implicit Types N : namespace.
   Implicit Types E : coPset.
@@ -26,7 +25,7 @@ Section inv.
 
   (** ** Internal model of invariants *)
   Definition own_inv (N : namespace) (P : iProp Σ) : iProp Σ :=
-    ∃ i, ⌜i ∈ (↑N:coPset)⌝ ∧ ownI i P.
+    ∃ i, ⌜i ∈@{coPset} ↑N⌝ ∧ ownI i P.
 
   Lemma own_inv_acc E N P :
     ↑N ⊆ E → own_inv N P ={E,E∖↑N}=∗ ▷ P ∗ (▷ P ={E∖↑N,E}=∗ True).
@@ -36,18 +35,17 @@ Section inv.
     iDestruct "Hi" as % ?%elem_of_subseteq_singleton.
     rewrite {1 4}(union_difference_L (↑ N) E) // ownE_op; last set_solver.
     rewrite {1 5}(union_difference_L {[ i ]} (↑ N)) // ownE_op; last set_solver.
-    iIntros "(Hw & [HE $] & $) !> !>".
+    iIntros "(Hw & [HE $] & $) !>".
     iDestruct (ownI_open i with "[$Hw $HE $HiP]") as "($ & $ & HD)".
-    iIntros "HP [Hw $] !> !>". iApply (ownI_close _ P). by iFrame.
+    iIntros "HP [Hw $] !>". iApply (ownI_close _ P). by iFrame.
   Qed.
 
-  Lemma fresh_inv_name (E : gset positive) N : ∃ i, i ∉ E ∧ i ∈ (↑N:coPset).
+  Lemma fresh_inv_name (E : gset positive) N : ∃ i, i ∉ E ∧ i ∈@{coPset} ↑N.
   Proof.
     exists (coPpick (↑ N ∖ gset_to_coPset E)).
-    rewrite -elem_of_gset_to_coPset (comm and) -elem_of_difference.
-    apply coPpick_elem_of=> Hfin.
-    eapply nclose_infinite, (difference_finite_inv _ _), Hfin.
-    apply gset_to_coPset_finite.
+    opose proof (coPpick_elem_of (↑ N ∖ gset_to_coPset E) _); last set_solver.
+    apply set_infinite_non_empty, difference_infinite, gset_to_coPset_finite.
+    apply nclose_infinite.
   Qed.
 
   Lemma own_inv_alloc N E P : ▷ P ={E}=∗ own_inv N P.
@@ -56,7 +54,7 @@ Section inv.
     iIntros "HP [Hw $]".
     iMod (ownI_alloc (.∈ (↑N : coPset)) P with "[$HP $Hw]")
       as (i ?) "[$ ?]"; auto using fresh_inv_name.
-    do 2 iModIntro. iExists i. auto.
+    iModIntro. iExists i. auto.
   Qed.
 
   (* This does not imply [own_inv_alloc] due to the extra assumption [↑N ⊆ E]. *)
@@ -71,12 +69,12 @@ Section inv.
       with "[HE]" as "(HEi & HEN\i & HE\N)".
     { rewrite -?ownE_op; [|set_solver..].
       rewrite assoc_L -!union_difference_L //. set_solver. }
-    do 2 iModIntro. iFrame "HE\N". iSplitL "Hw HEi"; first by iApply "Hw".
+    iModIntro. iFrame "HE\N". iSplitL "Hw HEi"; first by iApply "Hw".
     iSplitL "Hi".
     { iExists i. auto. }
     iIntros "HP [Hw HE\N]".
     iDestruct (ownI_close with "[$Hw $Hi $HP $HD]") as "[$ HEi]".
-    do 2 iModIntro. iSplitL; [|done].
+    iModIntro. iSplitL; [|done].
     iCombine "HEi HEN\i HE\N" as "HEN".
     rewrite -?ownE_op; [|set_solver..].
     rewrite assoc_L -!union_difference_L //; set_solver.
@@ -101,7 +99,7 @@ Section inv.
   Global Instance inv_persistent N P : Persistent (inv N P).
   Proof. rewrite inv_unseal. apply _. Qed.
 
-  Lemma inv_alter `{!FiniteIndex SI} N P Q : inv N P -∗ ▷ □ (P -∗ Q ∗ (Q -∗ P)) -∗ inv N Q.
+  Lemma inv_alter `{!SIdxFinite SI} N P Q : inv N P -∗ ▷ □ (P -∗ Q ∗ (Q -∗ P)) -∗ inv N Q.
   Proof.
     rewrite inv_unseal. iIntros "#HI #HPQ !>" (E H).
     iMod ("HI" $! E H) as "[HP Hclose]".
@@ -136,7 +134,7 @@ Section inv.
     rewrite inv_unseal /inv_def; iIntros (?) "#HI". by iApply "HI".
   Qed.
 
-  Lemma inv_combine `{!FiniteIndex SI} N1 N2 N P Q :
+  Lemma inv_combine `{!SIdxFinite SI} N1 N2 N P Q :
     N1 ## N2 →
     ↑N1 ∪ ↑N2 ⊆@{coPset} ↑N →
     inv N1 P -∗ inv N2 Q -∗ inv N (P ∗ Q).
@@ -149,7 +147,7 @@ Section inv.
     iMod "Hclose" as % _. iMod ("HcloseQ" with "HQ") as % _. by iApply "HcloseP".
   Qed.
 
-  Lemma inv_combine_dup_l `{!FiniteIndex SI} N P Q :
+  Lemma inv_combine_dup_l `{!SIdxFinite SI} N P Q :
     □ (P -∗ P ∗ P) -∗
     inv N P -∗ inv N Q -∗ inv N (P ∗ Q).
   Proof.
@@ -203,16 +201,16 @@ Section inv.
     iIntros "!> {$HP} HP". iApply "Hclose"; auto.
   Qed.
 
-  Lemma inv_split_l `{!FiniteIndex SI} N P Q : inv N (P ∗ Q) -∗ inv N P.
+  Lemma inv_split_l `{!SIdxFinite SI} N P Q : inv N (P ∗ Q) -∗ inv N P.
   Proof.
     iIntros "#HI". iApply inv_alter; eauto.
     iIntros "!> !> [$ $] $".
   Qed.
-  Lemma inv_split_r `{!FiniteIndex SI} N P Q : inv N (P ∗ Q) -∗ inv N Q.
+  Lemma inv_split_r `{!SIdxFinite SI} N P Q : inv N (P ∗ Q) -∗ inv N Q.
   Proof.
     rewrite (comm _ P Q). eapply inv_split_l.
   Qed.
-  Lemma inv_split `{!FiniteIndex SI} N P Q : inv N (P ∗ Q) -∗ inv N P ∗ inv N Q.
+  Lemma inv_split `{!SIdxFinite SI} N P Q : inv N (P ∗ Q) -∗ inv N P ∗ inv N Q.
   Proof.
     iIntros "#H".
     iPoseProof (inv_split_l with "H") as "$".

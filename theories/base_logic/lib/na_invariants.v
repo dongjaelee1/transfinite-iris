@@ -8,16 +8,16 @@ Import uPred.
 
 Definition na_inv_pool_name := gname.
 
-Class na_invG `{SI: indexT} Σ :=
+Class na_invG {SI : sidx} Σ :=
   #[local] na_inv_inG :: inG Σ (prodR coPset_disjR (gset_disjR positive)).
 
-Definition na_invΣ `{SI: indexT} : gFunctors :=
+Definition na_invΣ {SI : sidx} : gFunctors :=
   #[ GFunctor (constTRF (prodR coPset_disjR (gset_disjR positive))) ].
-Global Instance subG_na_invG `{SI: indexT} {Σ} : subG na_invΣ Σ → na_invG Σ.
+Global Instance subG_na_invG {SI : sidx} {Σ} : subG na_invΣ Σ → na_invG Σ.
 Proof. solve_inG. Qed.
 
 Section defs.
-  Context `{SI: indexT} `{!invGS_gen hlc Σ, !na_invG Σ}.
+  Context {SI : sidx} `{!invGS_gen hlc Σ, !na_invG Σ}.
 
   Definition na_own (p : na_inv_pool_name) (E : coPset) : iProp Σ :=
     own p (CoPset E, GSet ∅).
@@ -31,11 +31,13 @@ Global Instance: Params (@na_inv) 4 := {}.
 Global Typeclasses Opaque na_own na_inv.
 
 Section proofs.
-  Context `{SI: indexT} `{!invGS_gen hlc Σ, !na_invG Σ}.
+  Context {SI : sidx} `{!invGS_gen hlc Σ, !na_invG Σ}.
 
   Global Instance na_own_timeless p E : Timeless (na_own p E).
   Proof. rewrite /na_own; apply _. Qed.
 
+  Global Instance na_inv_contractive p N : Contractive (na_inv p N).
+  Proof. rewrite /na_inv. solve_contractive. Qed.
   Global Instance na_inv_ne p N : NonExpansive (na_inv p N).
   Proof. rewrite /na_inv. solve_proper. Qed.
   Global Instance na_inv_proper p N : Proper ((≡) ==> (≡)) (na_inv p N).
@@ -67,8 +69,7 @@ Section proofs.
   Lemma na_own_union p E1 E2 :
     E1 ## E2 → na_own p (E1 ∪ E2) ⊣⊢ na_own p E1 ∗ na_own p E2.
   Proof.
-    (* FIXME: left_id: this instance should be inferred automatically *)
-    intros ?. by rewrite /na_own -own_op -pair_op (left_id (GSet ∅ : gset_disjUR positive)) coPset_disj_union.
+    intros. rewrite /na_own -own_op -pair_op. by rewrite coPset_disj_union.
   Qed.
 
   Lemma na_own_acc E2 E1 tid :
@@ -93,7 +94,7 @@ Section proofs.
     iNext. iLeft. by iFrame.
   Qed.
 
-  Lemma na_inv_acc `{!FiniteIndex SI} p E F N P :
+  Lemma na_inv_acc `{!SIdxFinite SI} p E F N P :
     ↑N ⊆ E → ↑N ⊆ F →
     na_inv p N P -∗ na_own p F ={E}=∗ ▷ P ∗ na_own p (F∖↑N) ∗
                        (▷ P ∗ na_own p (F∖↑N) ={E}=∗ na_own p F).
@@ -117,7 +118,7 @@ Section proofs.
 
   Global Instance into_inv_na p N P : IntoInv (na_inv p N P) N := {}.
 
-  Global Instance into_acc_na `{!FiniteIndex SI} p F E N P :
+  Global Instance into_acc_na `{!SIdxFinite SI} p F E N P :
     IntoAcc (X:=unit) (na_inv p N P)
             (↑N ⊆ E ∧ ↑N ⊆ F) (na_own p F) (fupd E E) (fupd E E)
             (λ _, ▷ P ∗ na_own p (F∖↑N))%I (λ _, ▷ P ∗ na_own p (F∖↑N))%I
@@ -176,13 +177,13 @@ Section proofs.
     rewrite [X in (X ∪ _)](union_difference_L {[i]} (↑N)) ?na_own_union; [|set_solver..].
     iDestruct "Htoks" as "[[Htoki Q] R]".
     iInv "Hinv" as "Inv" "Hclose".
-    iPoseProof (later_or with "Inv") as "Inv".
+    iPoseProof (uPred.later_or with "Inv") as "Inv".
     iDestruct "Inv" as "[Hl|Htoki2]".
     - iMod ("Hclose" with "[Htoki]") as "_"; first auto.
       iModIntro. iNext. iDestruct "Hl" as "[P Hdis]".
       iFrame. iIntros "[P HNA]".
       iInv "Hinv" as "Inv" "Hclose".
-      iPoseProof (later_or with "Inv") as "Inv".
+      iPoseProof (uPred.later_or with "Inv") as "Inv".
       iDestruct "Inv" as "[Hl|Hitok]".
       + iApply except_0_fupd. unfold bi_except_0. iLeft.
         iNext; simpl. iDestruct "Hl" as "[_ Hdis2]".

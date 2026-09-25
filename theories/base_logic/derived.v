@@ -55,6 +55,22 @@ Section derived.
       [solve_proper|auto using and_elim_l, and_elim_r..].
   Qed.
 
+  (** Upstream's [bi.laterN_or] requires [SIdxFinite] only because it uses
+  [bi.later_or]; with [uPred.later_or] the same proof works at any [SI]. *)
+  Lemma laterN_or n P Q : ▷^n (P ∨ Q) ⊣⊢ ▷^n P ∨ ▷^n Q.
+  Proof. induction n as [|n IH]; simpl; [done|]. by rewrite IH later_or. Qed.
+
+  (** Upstream's [bi.timeless_laterN] requires [SIdxFinite] only because it
+  uses [bi.later_or]; with [uPred.later_or] (which holds for [uPred] at any
+  step-index type) the same proof works. *)
+  Lemma timeless_laterN P n : Timeless P → ▷^n P ⊢ ▷^n False ∨ P.
+  Proof.
+    intros. induction n as [|n IH]; simpl; first by apply or_intro_r.
+    rewrite IH later_or. apply or_elim; first by apply or_intro_l.
+    rewrite later_except_0_only_0 timeless. apply or_mono; [|done].
+    apply later_mono, False_elim.
+  Qed.
+
   (** Persistence *)
   Global Instance ownM_persistent a : CoreId a → Persistent (@uPred_ownM SI M a).
   Proof.

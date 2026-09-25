@@ -7,18 +7,18 @@ From transfinite.base_logic.lib Require Export own.
 From iris.prelude Require Import options.
 
 (** The CMRA we need. *)
-Class tokenG `{SI: indexT} Σ := TokenG {
+Class tokenG {SI : sidx} Σ := TokenG {
   #[local] token_inG :: inG Σ (exclR unitO);
 }.
 Global Hint Mode tokenG - - : typeclass_instances.
 
-Definition tokenΣ `{SI: indexT} : gFunctors :=
+Definition tokenΣ {SI : sidx} : gFunctors :=
   #[ GFunctor (exclR unitO) ].
 
-Global Instance subG_tokenΣ `{SI: indexT} Σ : subG tokenΣ Σ → tokenG Σ.
+Global Instance subG_tokenΣ {SI : sidx} Σ : subG tokenΣ Σ → tokenG Σ.
 Proof. solve_inG. Qed.
 
-Local Definition token_def `{SI: indexT} `{!tokenG Σ} (γ : gname) : iProp Σ :=
+Local Definition token_def {SI : sidx} `{!tokenG Σ} (γ : gname) : iProp Σ :=
   own γ (Excl ()).
 Local Definition token_aux : seal (@token_def). Proof. by eexists. Qed.
 Definition token := token_aux.(unseal).
@@ -29,7 +29,7 @@ Global Arguments token {SI Σ _} γ.
 Local Ltac unseal := rewrite ?token_unseal /token_def.
 
 Section lemmas.
-  Context `{SI: indexT} `{!tokenG Σ}.
+  Context {SI : sidx} `{!tokenG Σ}.
 
   Global Instance token_timeless γ : Timeless (token γ).
   Proof. unseal. apply _. Qed.

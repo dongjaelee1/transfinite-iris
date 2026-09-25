@@ -25,7 +25,7 @@ the agreement CMRA. *)
 (** * Locally contractive functors *)
 (** The type [gFunctor] bundles a functor from the category of COFEs to the
 category of CMRAs with a proof that it is locally contractive. *)
-Structure gFunctor `{SI: indexT} := GFunctor {
+Structure gFunctor {SI : sidx} := GFunctor {
   gFunctor_F :> trFunctor;
   gFunctor_map_contractive : trFunctorContractive gFunctor_F;
 }.
@@ -42,18 +42,18 @@ monomorphic [list] type.
 
 Defining [gFunctors] as a dependent record instead of a [sigT] avoids other
 universe inconsistencies. *)
-Record gFunctors `{SI: indexT} := GFunctors {
+Record gFunctors {SI : sidx} := GFunctors {
   gFunctors_len : nat;
   gFunctors_lookup : fin gFunctors_len → gFunctor
 }.
 
-Definition gid `{SI: indexT} (Σ : gFunctors) := fin (gFunctors_len Σ).
+Definition gid {SI : sidx} (Σ : gFunctors) := fin (gFunctors_len Σ).
 
 Definition gname := positive.
-Canonical Structure gnameO `{SI: indexT} := leibnizO gname.
+Canonical Structure gnameO {SI : sidx} := leibnizO gname.
 
 (** The resources functor [iResF Σ A := ∀ i : gid, gname -fin-> (Σ i) A]. *)
-Definition iResF `{SI: indexT} (Σ : gFunctors) : turFunctor :=
+Definition iResF {SI : sidx} (Σ : gFunctors) : turFunctor :=
   discrete_funTURF (λ i, gmapTURF gname (gFunctors_lookup Σ i)).
 
 
@@ -61,12 +61,12 @@ Definition iResF `{SI: indexT} (Σ : gFunctors) : turFunctor :=
 functors, and the append operator on lists of functors. These are used to
 compose [gFunctors] out of smaller pieces. *)
 Module gFunctors.
-  Definition nil `{SI: indexT} : gFunctors := GFunctors SI 0 (fin_0_inv _).
+  Definition nil {SI : sidx} : gFunctors := GFunctors SI 0 (fin_0_inv _).
 
-  Definition singleton `{SI: indexT} (F : gFunctor) : gFunctors :=
+  Definition singleton {SI : sidx} (F : gFunctor) : gFunctors :=
     GFunctors SI 1 (fin_S_inv (λ _, gFunctor) F (fin_0_inv _)).
 
-  Definition app `{SI: indexT} (Σ1 Σ2 : gFunctors) : gFunctors :=
+  Definition app {SI : sidx} (Σ1 Σ2 : gFunctors) : gFunctors :=
     GFunctors SI (gFunctors_len Σ1 + gFunctors_len Σ2)
       (fin_add_inv _ (gFunctors_lookup Σ1) (gFunctors_lookup Σ2)).
 End gFunctors.
@@ -87,7 +87,7 @@ lock invariant.
 
 The contraints to can be expressed using the type class [subG Σ1 Σ2], which
 expresses that the functors [Σ1] are contained in [Σ2]. *)
-Class subG `{SI: indexT} (Σ1 Σ2 : gFunctors) := in_subG i :
+Class subG {SI : sidx} (Σ1 Σ2 : gFunctors) := in_subG i :
   { j | gFunctors_lookup Σ1 i = gFunctors_lookup Σ2 j }.
 
 (** Avoid trigger happy type class search: this line ensures that type class
@@ -97,21 +97,21 @@ their first parameter to avoid loops. For example, the instances [subG_authΣ]
 and [auth_discrete] otherwise create a cycle that pops up arbitrarily. *)
 Global Hint Mode subG - ! + : typeclass_instances.
 
-Lemma subG_inv `{SI: indexT} Σ1 Σ2 Σ : subG (gFunctors.app Σ1 Σ2) Σ → subG Σ1 Σ * subG Σ2 Σ.
+Lemma subG_inv {SI : sidx} Σ1 Σ2 Σ : subG (gFunctors.app Σ1 Σ2) Σ → subG Σ1 Σ * subG Σ2 Σ.
 Proof.
   move=> H; split.
   - move=> i; move: H=> /(_ (Fin.L _ i)) [j] /=. rewrite fin_add_inv_l; eauto.
   - move=> i; move: H=> /(_ (Fin.R _ i)) [j] /=. rewrite fin_add_inv_r; eauto.
 Qed.
 
-Global Instance subG_refl `{SI: indexT} Σ : subG Σ Σ.
+Global Instance subG_refl {SI : sidx} Σ : subG Σ Σ.
 Proof. move=> i; by exists i. Qed.
-Global Instance subG_app_l `{SI: indexT} Σ Σ1 Σ2 : subG Σ Σ1 → subG Σ (gFunctors.app Σ1 Σ2).
+Global Instance subG_app_l {SI : sidx} Σ Σ1 Σ2 : subG Σ Σ1 → subG Σ (gFunctors.app Σ1 Σ2).
 Proof.
   move=> H i; move: H=> /(_ i) [j ?].
   exists (Fin.L _ j). by rewrite /= fin_add_inv_l.
 Qed.
-Global Instance subG_app_r `{SI: indexT} Σ Σ1 Σ2 : subG Σ Σ2 → subG Σ (gFunctors.app Σ1 Σ2).
+Global Instance subG_app_r {SI : sidx} Σ Σ1 Σ2 : subG Σ Σ2 → subG Σ (gFunctors.app Σ1 Σ2).
 Proof.
   move=> H i; move: H=> /(_ i) [j ?].
   exists (Fin.R _ j). by rewrite /= fin_add_inv_r.
@@ -121,54 +121,55 @@ Qed.
 (** * Solution of the recursive domain equation *)
 (** We first declare a module type and then an instance of it so as to seal all of
 the construction, this way we are sure we do not use any properties of the
-construction, and also avoid Coq from blindly unfolding it. *)
+construction, and also avoid Rocq from blindly unfolding it. *)
 Module Type iProp_solution_sig.
-  Parameter iPrePropO : ∀ {SI: indexT}, gFunctors → ofe.
-  Global Declare Instance iPreProp_cofe `{SI: indexT} {Σ} : Cofe (iPrePropO Σ).
+  Parameter iPrePropO : ∀ {SI : sidx}, gFunctors → ofe.
+  Global Declare Instance iPreProp_cofe {SI : sidx} {Σ} : Cofe (iPrePropO Σ).
 
-  Definition iResUR `{SI: indexT} (Σ : gFunctors) : ucmra :=
+  Definition iResUR {SI : sidx} (Σ : gFunctors) : ucmra :=
     discrete_funUR (λ i,
       gmapUR gname (trFunctor_apply (gFunctors_lookup Σ i) (iPrePropO Σ))).
   Notation iProp Σ := (uPred (iResUR Σ)).
   Notation iPropO Σ := (uPredO (iResUR Σ)).
   Notation iPropI Σ := (uPredI (iResUR Σ)).
 
-  Parameter iProp_unfold: ∀ `{SI: indexT} {Σ}, iPropO Σ -n> iPrePropO Σ.
-  Parameter iProp_fold: ∀ `{SI: indexT} {Σ}, iPrePropO Σ -n> iPropO Σ.
-  Parameter iProp_fold_unfold: ∀ `{SI: indexT} {Σ} (P : iProp Σ),
+  Parameter iProp_unfold: ∀ {SI : sidx} {Σ}, iPropO Σ -n> iPrePropO Σ.
+  Parameter iProp_fold: ∀ {SI : sidx} {Σ}, iPrePropO Σ -n> iPropO Σ.
+  Parameter iProp_fold_unfold: ∀ {SI : sidx} {Σ} (P : iProp Σ),
     iProp_fold (iProp_unfold P) ≡ P.
-  Parameter iProp_unfold_fold: ∀ `{SI: indexT} {Σ} (P : iPrePropO Σ),
+  Parameter iProp_unfold_fold: ∀ {SI : sidx} {Σ} (P : iPrePropO Σ),
     iProp_unfold (iProp_fold P) ≡ P.
 End iProp_solution_sig.
 
 Module Export iProp_solution : iProp_solution_sig.
   Import cofe_solver.
   (* TODO: check this *)
-  Definition iProp_result `{SI: indexT} (Σ : gFunctors) :
+  Definition iProp_result {SI : sidx} (Σ : gFunctors) :
     solution (uPredOF (iResF Σ)) := solver.solution_F (uPredOF (iResF Σ)) (uPred_pure True).
-  Definition iPrePropO `{SI: indexT} (Σ : gFunctors) : ofe := iProp_result Σ.
-  Global Instance iPreProp_cofe `{SI: indexT} {Σ} : Cofe (iPrePropO Σ) := _.
+  Definition iPrePropO {SI : sidx} (Σ : gFunctors) : ofe := iProp_result Σ.
+  Global Instance iPreProp_cofe {SI : sidx} {Σ} : Cofe (iPrePropO Σ) := _.
 
-  Definition iResUR `{SI: indexT} (Σ : gFunctors) : ucmra :=
+  Definition iResUR {SI : sidx} (Σ : gFunctors) : ucmra :=
     discrete_funUR (λ i,
       gmapUR gname (trFunctor_apply (gFunctors_lookup Σ i) (iPrePropO Σ))).
   Notation iProp Σ := (uPred (iResUR Σ)).
   Notation iPropO Σ := (uPredO (iResUR Σ)).
 
-  Definition iProp_unfold `{SI: indexT} {Σ} : iPropO Σ -n> iPrePropO Σ :=
+  Definition iProp_unfold {SI : sidx} {Σ} : iPropO Σ -n> iPrePropO Σ :=
     solution_fold _ (iProp_result Σ).
-  Definition iProp_fold `{SI: indexT} {Σ} : iPrePropO Σ -n> iPropO Σ :=
+  Definition iProp_fold {SI : sidx} {Σ} : iPrePropO Σ -n> iPropO Σ :=
     solution_unfold _ _.
-  Lemma iProp_fold_unfold `{SI: indexT} {Σ} (P : iProp Σ) : iProp_fold (iProp_unfold P) ≡ P.
+  Lemma iProp_fold_unfold {SI : sidx} {Σ} (P : iProp Σ) : iProp_fold (iProp_unfold P) ≡ P.
   Proof. apply @solution_unfold_fold. Qed.
-  Lemma iProp_unfold_fold `{SI: indexT} {Σ} (P : iPrePropO Σ) : iProp_unfold (iProp_fold P) ≡ P.
+  Lemma iProp_unfold_fold {SI : sidx} {Σ} (P : iPrePropO Σ) : iProp_unfold (iProp_fold P) ≡ P.
   Proof. apply @solution_fold_unfold. Qed.
 End iProp_solution.
 
 
 (** * Properties of the solution to the recursive domain equation *)
-Lemma iProp_unfold_equivI `{SI: indexT} {Σ} (P Q : iProp Σ) :
+Lemma iProp_unfold_equivI {SI : sidx} {Σ} (P Q : iProp Σ) :
   iProp_unfold P ≡ iProp_unfold Q ⊢@{iPropI Σ} P ≡ Q.
 Proof.
-  rewrite -{2}(iProp_fold_unfold P) -{2}(iProp_fold_unfold Q). apply @f_equivI, _.
+  rewrite -{2}(iProp_fold_unfold P) -{2}(iProp_fold_unfold Q).
+  apply (f_equivI iProp_fold).
 Qed.

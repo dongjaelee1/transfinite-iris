@@ -8,7 +8,7 @@ Import uPred.
 
 
 (* we first lift satisfiability from uPred to iProp *)
-Definition iProp_sat_def `{SI: indexT} {Σ: gFunctors} := @uPred_primitive.uPred_sat SI (iResUR Σ).
+Definition iProp_sat_def {SI : sidx} {Σ: gFunctors} := @uPred_primitive.uPred_sat SI (iResUR Σ).
 Local Definition iProp_sat_aux : seal (@iProp_sat_def). Proof. by eexists. Qed.
 Definition iProp_sat := iProp_sat_aux.(unseal).
 Global Arguments iProp_sat {SI Σ} P.
@@ -16,7 +16,7 @@ Local Definition iProp_sat_eq : @iProp_sat = @iProp_sat_def := iProp_sat_aux.(se
 Local Instance: Params (@iProp_sat) 2 := {}.
 
 Section iProp_sat.
-  Context `{SI: indexT} {Σ: gFunctors}.
+  Context {SI : sidx} {Σ: gFunctors}.
 
   Global Instance iProp_sat_instance: Satisfiable (@iProp_sat SI Σ).
   Proof. rewrite iProp_sat_eq /iProp_sat_def; apply _. Qed.
@@ -42,7 +42,7 @@ End iProp_sat.
 
 (* We develop a validity judgement where we can explicitly control
    the ghost names that are allocated *)
-Definition alloc_names_def `{SI: indexT} {Σ: gFunctors} (G: gset gname) (P: iProp Σ): Prop :=
+Definition alloc_names_def {SI : sidx} {Σ: gFunctors} (G: gset gname) (P: iProp Σ): Prop :=
   (∃ m: iResUR Σ, ✓ m ∧ (∀ i, dom (m i) ⊆ G) ∧ (uPred_ownM m ⊢ P)).
 Definition alloc_names_aux : seal (@alloc_names_def). by eexists. Qed.
 Definition alloc_names := alloc_names_aux.(unseal).
@@ -51,16 +51,16 @@ Definition alloc_names_eq : @alloc_names = @alloc_names_def := alloc_names_aux.(
 Global Instance: Params (@alloc_names) 4 := {}.
 
 (* we hide the names *)
-Definition alloc `{SI: indexT} {Σ: gFunctors} (P: iProp Σ) := ∃ G, alloc_names G P.
+Definition alloc {SI : sidx} {Σ: gFunctors} (P: iProp Σ) := ∃ G, alloc_names G P.
 
-Class Alloc `{SI: indexT} {Σ: gFunctors} (X: Type) (Φ: X → iProp Σ) (φ: Type):=
+Class Alloc {SI : sidx} {Σ: gFunctors} (X: Type) (Φ: X → iProp Σ) (φ: Type):=
   can_alloc: ∀ P, φ → alloc P → ∃ x: X, alloc (P ∗ Φ x).
 
 Global Hint Mode Alloc - - + ! - : typeclass_instances.
 Global Arguments can_alloc {SI Σ X} Φ {φ _ _} _ _.
 
 Section alloc.
-  Context `{SI: indexT} {Σ: gFunctors}.
+  Context {SI : sidx} {Σ: gFunctors}.
 
   Lemma alloc_names_empty : alloc_names ∅ (True%I: iProp Σ).
   Proof.
@@ -207,11 +207,11 @@ End alloc.
 
 
 (* we create a notion of satisfiability which includes invariant masks *)
-Class SatisfiableAtFupd `{SI: indexT} {Σ: gFunctors} `{!invGS Σ} (sat_at: coPset → iProp Σ → Prop) := {
+Class SatisfiableAtFupd {SI : sidx} {Σ: gFunctors} `{!invGS Σ} (sat_at: coPset → iProp Σ → Prop) := {
   sat_fupd E1 E2 P: sat_at E1 (|={E1, E2}=> P)%I → sat_at E2 P
 }.
 
-Class SatisfiableAt `{SI: indexT} {Σ: gFunctors} `{!invGS Σ} (sat_at: coPset → iProp Σ → Prop) := {
+Class SatisfiableAt {SI : sidx} {Σ: gFunctors} `{!invGS Σ} (sat_at: coPset → iProp Σ → Prop) := {
   #[global] sat_at_satisfiable E :: Satisfiable (sat_at E);
   #[global] sat_at_bupd E :: SatisfiableBUpd (sat_at E);
   #[global] sat_at_later E :: SatisfiableLater (sat_at E);
@@ -224,7 +224,7 @@ Notation SatisfiableAtExists X sat_at := (∀ E, SatisfiableExists X (sat_at E))
 
 (* (* there is a canonical satisfiability instance for every notion of satisfiable *) *)
 (* Section canonical_sat_at. *)
-(*   Context `{SI: indexT} {Σ: gFunctors} `{!invGS Σ} {sat: iProp Σ → Prop} `{!Satisfiable sat} `{!SatisfiableBUpd sat} `{!SatisfiableLater sat}. *)
+(*   Context {SI : sidx} {Σ: gFunctors} `{!invGS Σ} {sat: iProp Σ → Prop} `{!Satisfiable sat} `{!SatisfiableBUpd sat} `{!SatisfiableLater sat}. *)
 
 (*   Definition sat_at E := (sat_frame (sat := sat) (wsat ∗ ownE E)%I). *)
 
@@ -252,7 +252,7 @@ Notation SatisfiableAtExists X sat_at := (∀ E, SatisfiableExists X (sat_at E))
 
 (* (* framing preserves SatisfiableAtFUpd *) *)
 (* Section sat_at_frame. *)
-(*   Context `{SI: indexT} {Σ: gFunctors} `{!invG Σ} {sat_at: coPset → iProp Σ → Prop}. *)
+(*   Context {SI : sidx} {Σ: gFunctors} `{!invG Σ} {sat_at: coPset → iProp Σ → Prop}. *)
 
 (*   Definition sat_at_frame F E P := sat_frame (sat := sat_at E) F P. *)
 

@@ -65,13 +65,13 @@ these can be matched up with the invariant namespaces. *)
 
 (** The CMRAs we need, and the global ghost names we are using. *)
 
-Class gen_heapGpreS `{SI: indexT} (L V : Type) (Σ : gFunctors) `{Countable L} := {
+Class gen_heapGpreS {SI : sidx} (L V : Type) (Σ : gFunctors) `{Countable L} := {
   #[local] gen_heapGpreS_heap :: ghost_mapG Σ L V;
   #[local] gen_heapGpreS_meta :: ghost_mapG Σ L gname;
   #[local] gen_heapGpreS_meta_data :: inG Σ (reservation_mapR (agreeR positiveO));
 }.
 
-Class gen_heapGS `{SI: indexT} (L V : Type) (Σ : gFunctors) `{Countable L} := GenHeapGS {
+Class gen_heapGS {SI : sidx} (L V : Type) (Σ : gFunctors) `{Countable L} := GenHeapGS {
   #[local] gen_heap_inG :: gen_heapGpreS L V Σ;
   gen_heap_name : gname;
   gen_meta_name : gname
@@ -80,45 +80,46 @@ Global Arguments GenHeapGS {SI} L V Σ {_ _ _} _ _.
 Global Arguments gen_heap_name {SI L V Σ _ _} _ : assert.
 Global Arguments gen_meta_name {SI L V Σ _ _} _ : assert.
 
-Definition gen_heapΣ `{SI: indexT} (L V : Type) `{Countable L} : gFunctors := #[
+Definition gen_heapΣ {SI : sidx} (L V : Type) `{Countable L} : gFunctors := #[
   ghost_mapΣ L V;
   ghost_mapΣ L gname;
   GFunctor (reservation_mapR (agreeR positiveO))
 ].
 
-Global Instance subG_gen_heapGpreS `{SI: indexT} {Σ L V} `{Countable L} :
+Global Instance subG_gen_heapGpreS {SI : sidx} {Σ L V} `{Countable L} :
   subG (gen_heapΣ L V) Σ → gen_heapGpreS L V Σ.
 Proof. solve_inG. Qed.
 
 Section definitions.
-  Context `{SI: indexT} `{Countable L, hG : !gen_heapGS L V Σ}.
+  Context {SI : sidx} `{Countable L, hG : !gen_heapGS L V Σ}.
 
   Definition gen_heap_interp (σ : gmap L V) : iProp Σ := ∃ m : gmap L gname,
     (* The [⊆] is used to avoid assigning ghost information to the locations in
     the initial heap (see [gen_heap_init]). *)
     ⌜ dom m ⊆ dom σ ⌝ ∗
-    ghost_map_auth (gen_heap_name hG) 1 σ ∗
-    ghost_map_auth (gen_meta_name hG) 1 m.
+    gen_heap_name hG ↪●MAP σ ∗
+    gen_meta_name hG ↪●MAP m.
 
   Local Definition pointsto_def (l : L) (dq : dfrac) (v: V) : iProp Σ :=
-    l ↪[gen_heap_name hG]{dq} v.
+    gen_heap_name hG ↪◯MAP[l]{dq} v.
   Local Definition pointsto_aux : seal (@pointsto_def). Proof. by eexists. Qed.
   Definition pointsto := pointsto_aux.(unseal).
   Local Definition pointsto_unseal : @pointsto = @pointsto_def :=
     pointsto_aux.(seal_eq).
 
   Local Definition meta_token_def (l : L) (E : coPset) : iProp Σ :=
-    ∃ γm, l ↪[gen_meta_name hG]□ γm ∗ own γm (reservation_map_token E).
+    ∃ γm, gen_meta_name hG ↪◯MAP[l]□ γm ∗ own γm (reservation_map_token E).
   Local Definition meta_token_aux : seal (@meta_token_def). Proof. by eexists. Qed.
   Definition meta_token := meta_token_aux.(unseal).
   Local Definition meta_token_unseal :
     @meta_token = @meta_token_def := meta_token_aux.(seal_eq).
 
-  (** TODO: The use of [positives_flatten] violates the namespace abstraction
-  (see the proof of [meta_set]. *)
+  (** [reservation_map_data] uses a [positive] instead of a [namespace] as key.
+  For [meta_set] to hold, we can pick any positive in [↑ N], which we obtain
+  using [coPpick]. *)
   Local Definition meta_def `{Countable A} (l : L) (N : namespace) (x : A) : iProp Σ :=
-    ∃ γm, l ↪[gen_meta_name hG]□ γm ∗
-          own γm (reservation_map_data (positives_flatten N) (to_agree (encode x))).
+    ∃ γm, gen_meta_name hG ↪◯MAP[l]□ γm ∗
+          own γm (reservation_map_data (coPpick (↑ N)) (to_agree (encode x))).
   Local Definition meta_aux : seal (@meta_def). Proof. by eexists. Qed.
   Definition meta := meta_aux.(unseal).
   Local Definition meta_unseal : @meta = @meta_def := meta_aux.(seal_eq).
@@ -129,7 +130,7 @@ Local Notation "l ↦ dq v" := (pointsto l dq v)
   (at level 20, dq custom dfrac at level 1, format "l  ↦ dq  v") : bi_scope.
 
 Section gen_heap.
-  Context `{SI: indexT} {L V} `{Countable L, !gen_heapGS L V Σ}.
+  Context {SI : sidx} {L V} `{Countable L, !gen_heapGS L V Σ}.
   Implicit Types P Q : iProp Σ.
   Implicit Types Φ : V → iProp Σ.
   Implicit Types σ : gmap L V.
@@ -228,6 +229,28 @@ Section gen_heap.
     intros; iSplit; first by iApply meta_token_union_1.
     iIntros "[Hm1 Hm2]". by iApply (meta_token_union_2 with "Hm1 Hm2").
   Qed.
+  Lemma meta_token_valid_2 l E1 E2 :
+    meta_token l E1 -∗ meta_token l E2 -∗ ⌜E1 ## E2⌝.
+  Proof.
+    rewrite meta_token_unseal /meta_token_def.
+    iIntros "(%γm1 & #Hγm1 & Hm1) (%γm2 & #Hγm2 & Hm2)".
+    iCombine "Hγm1 Hγm2" gives %[_ ->].
+    by iCombine "Hm1 Hm2" gives %?%reservation_map_token_valid_op.
+  Qed.
+
+  Global Instance meta_token_combine_as l E1 E2 :
+    CombineSepGives (meta_token l E1) (meta_token l E2) ⌜E1 ## E2⌝.
+  Proof.
+    rewrite /CombineSepGives. iIntros "[H1 H2]".
+    iDestruct (meta_token_valid_2 with "H1 H2") as %?; auto.
+  Qed.
+
+  Lemma meta_token_ne l1 l2 E :
+    E ≠ ∅ → meta_token l1 ⊤ -∗ meta_token l2 E -∗ ⌜l1 ≠ l2⌝.
+  Proof.
+    iIntros "%HE H1 H2" (->). iCombine "H1 H2" gives %Hdisj.
+    destruct HE. by apply disjoint_top_l_L.
+  Qed.
 
   Lemma meta_token_difference l E1 E2 :
     E1 ⊆ E2 → meta_token l E2 ⊣⊢ meta_token l E1 ∗ meta_token l (E2 ∖ E1).
@@ -253,10 +276,42 @@ Section gen_heap.
     iDestruct 1 as (γm) "[Hγm Hm]". iExists γm. iFrame "Hγm".
     iApply (own_update with "Hm").
     apply reservation_map_alloc; last done.
-    cut (positives_flatten N ∈@{coPset} ↑N); first by set_solver.
-    (* TODO: Avoid unsealing here. *)
-    rewrite namespaces.nclose_unseal. apply elem_coPset_suffixes.
-    exists 1%positive. by rewrite left_id_L.
+    pose proof (coPpick_elem_of (↑ N) (nclose_non_empty _)); set_solver.
+  Qed.
+
+  Lemma meta_meta_token_valid `{Countable A} l (x : A) N E :
+    meta l N x -∗ meta_token l E -∗ ⌜↑N ⊈ E⌝.
+  Proof.
+    rewrite meta_token_unseal meta_unseal /meta_token_def /meta_def.
+    iIntros "(%γm & #Hγm & Hm1) (%γm' & #Hγm' & Hm2) %Hsub".
+    iCombine "Hγm Hγm'" gives %[_ <-].
+    iCombine "Hm1 Hm2" gives %Hvalid. iPureIntro.
+    rewrite reservation_map_valid_eq /= left_id_L right_id_L in Hvalid.
+    destruct Hvalid as [_ Hvalid]. specialize (Hvalid (coPpick (↑ N))).
+    rewrite lookup_singleton_eq in Hvalid.
+    pose proof (coPpick_elem_of (↑ N) (nclose_non_empty _)); set_solver.
+  Qed.
+  Lemma meta_meta_token_valid' `{Countable A} l (x : A) N E :
+    ↑N ⊆ E → meta l N x -∗ meta_token l E -∗ False.
+  Proof.
+    iIntros (?) "#Hmeta Htoken".
+    by iDestruct (meta_meta_token_valid with "Hmeta Htoken") as %?.
+  Qed.
+
+  Global Instance combine_sep_gives_meta_meta_token_1
+      `{Countable A} l (x : A) N E :
+    CombineSepGives (meta l N x) (meta_token l E) ⌜↑N ⊈ E⌝.
+  Proof.
+    rewrite /CombineSepGives. iIntros "[#Hmeta Htoken]".
+    iDestruct (meta_meta_token_valid with "Hmeta Htoken") as %?. by eauto.
+  Qed.
+
+  Global Instance combine_sep_gives_meta_meta_token_2
+      `{Countable A} l (x : A) N E :
+    CombineSepGives (meta_token l E) (meta l N x) ⌜↑N ⊈ E⌝.
+  Proof.
+    rewrite /CombineSepGives. iIntros "[Htoken #Hmeta]".
+    iCombine "Hmeta Htoken" gives %?; eauto.
   Qed.
 
   (** Update lemmas *)
@@ -315,7 +370,7 @@ End gen_heap.
 The key difference to [gen_heap_init] is that the [inG] instances in the new
 [gen_heapGS] instance are related to the original [gen_heapGpreS] instance,
 whereas [gen_heap_init] forgets about that relation. *)
-Lemma gen_heap_init_names `{SI: indexT} `{Countable L, !gen_heapGpreS L V Σ} σ :
+Lemma gen_heap_init_names {SI : sidx} `{Countable L, !gen_heapGpreS L V Σ} σ :
   ⊢ |==> ∃ γh γm : gname,
     let hG := GenHeapGS L V Σ γh γm in
     gen_heap_interp σ ∗ ([∗ map] l ↦ v ∈ σ, l ↦ v) ∗ ([∗ map] l ↦ _ ∈ σ, meta_token l ⊤).
@@ -330,7 +385,7 @@ Proof.
   rewrite right_id_L. done.
 Qed.
 
-Lemma gen_heap_init `{SI: indexT} `{Countable L, !gen_heapGpreS L V Σ} σ :
+Lemma gen_heap_init {SI : sidx} `{Countable L, !gen_heapGpreS L V Σ} σ :
   ⊢ |==> ∃ _ : gen_heapGS L V Σ,
     gen_heap_interp σ ∗ ([∗ map] l ↦ v ∈ σ, l ↦ v) ∗ ([∗ map] l ↦ _ ∈ σ, meta_token l ⊤).
 Proof.

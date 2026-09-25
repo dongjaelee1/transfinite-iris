@@ -8,9 +8,9 @@ Import uPred.
 (** The class [inG Σ A] expresses that the CMRA [A] is in the list of functors
 [Σ]. This class is similar to the [subG] class, but written down in terms of
 individual CMRAs instead of (lists of) CMRA *functors*. This additional class is
-needed because Coq is otherwise unable to solve type class constraints due to
+needed because Rocq is otherwise unable to solve type class constraints due to
 higher-order unification problems. *)
-Class inG `{SI: indexT} (Σ : gFunctors) (A : cmra) := InG {
+Class inG {SI : sidx} (Σ : gFunctors) (A : cmra) := InG {
   inG_id : gid Σ;
   inG_apply := trFunctor_apply (gFunctors_lookup Σ inG_id);
   inG_prf : A = inG_apply (iPropO Σ) _;
@@ -20,10 +20,10 @@ Global Arguments inG_apply {_ _ _} _ _ {_}.
 
 (** We use the mode [-] for [Σ] since there is always a unique [Σ]. We use the
 mode [!] for [A] since we can have multiple [inG]s for different [A]s, so we do
-not want Coq to pick one arbitrarily. *)
+not want Rocq to pick one arbitrarily. *)
 Global Hint Mode inG - - ! : typeclass_instances.
 
-Lemma subG_inG `{SI: indexT} Σ (F : gFunctor) : subG F Σ → inG Σ (trFunctor_apply F (iPropO Σ)).
+Lemma subG_inG {SI : sidx} Σ (F : gFunctor) : subG F Σ → inG Σ (trFunctor_apply F (iPropO Σ)).
 Proof. move=> /(_ 0%fin) /= [j ->]. by exists j. Qed.
 
 (** This tactic solves the usual obligations "subG ? Σ → {in,?}G ? Σ" *)
@@ -58,19 +58,19 @@ Ltac solve_inG :=
   split; (assumption || by apply _).
 
 (** * Definition of the connective [own] *)
-Local Definition inG_unfold `{SI: indexT} {Σ A} {i : inG Σ A} :
+Local Definition inG_unfold {SI : sidx} {Σ A} {i : inG Σ A} :
     inG_apply i (iPropO Σ) -n> inG_apply i (iPrePropO Σ) :=
   trFunctor_map _ (iProp_fold, iProp_unfold).
-Local Definition inG_fold `{SI: indexT} {Σ A} {i : inG Σ A} :
+Local Definition inG_fold {SI : sidx} {Σ A} {i : inG Σ A} :
     inG_apply i (iPrePropO Σ) -n> inG_apply i (iPropO Σ) :=
   trFunctor_map _ (iProp_unfold, iProp_fold).
 
-Local Definition iRes_singleton `{SI: indexT} {Σ A} {i : inG Σ A} (γ : gname) (a : A) : iResUR Σ :=
+Local Definition iRes_singleton {SI : sidx} {Σ A} {i : inG Σ A} (γ : gname) (a : A) : iResUR Σ :=
   discrete_fun_singleton (inG_id i)
     {[ γ := inG_unfold (cmra_transport inG_prf a) ]}.
 Global Instance: Params (@iRes_singleton) 4 := {}.
 
-Local Definition own_def `{SI: indexT} `{!inG Σ A} (γ : gname) (a : A) : iProp Σ :=
+Local Definition own_def {SI : sidx} `{!inG Σ A} (γ : gname) (a : A) : iProp Σ :=
   uPred_ownM (iRes_singleton γ a).
 Local Definition own_aux : seal (@own_def). Proof. by eexists. Qed.
 Definition own := own_aux.(unseal).
@@ -80,7 +80,7 @@ Local Instance: Params (@own) 5 := {}.
 
 (** * Properties about ghost ownership *)
 Section global.
-Context `{SI: indexT} `{i : !inG Σ A}.
+Context {SI : sidx} `{i : !inG Σ A}.
 Implicit Types a : A.
 
 (** ** Properties of [iRes_singleton] *)
@@ -112,11 +112,9 @@ Proof.
 Qed.
 Local Lemma iRes_singleton_validI γ a : ✓ (iRes_singleton γ a) ⊢@{iPropI Σ} ✓ a.
 Proof.
-  rewrite /iRes_singleton.
-  rewrite discrete_fun_validI (forall_elim (inG_id i)) discrete_fun_lookup_singleton.
-  rewrite singleton_validI.
-  trans (✓ cmra_transport inG_prf a : iProp Σ)%I; last by destruct inG_prf.
-  apply valid_entails=> n. apply inG_unfold_validN.
+  sbi_unfold=> n. rewrite /iRes_singleton.
+  rewrite discrete_fun_singleton_validN singleton_validN inG_unfold_validN.
+  by destruct inG_prf.
 Qed.
 Local Lemma iRes_singleton_op γ a1 a2 :
   iRes_singleton γ (a1 ⋅ a2) ≡ iRes_singleton γ a1 ⋅ iRes_singleton γ a2.
@@ -201,7 +199,7 @@ Proof. rewrite !own_eq /own_def. apply _. Qed.
 Global Instance own_core_persistent γ a : CoreId a → Persistent (own γ a).
 Proof. rewrite !own_eq /own_def; apply _. Qed.
 
-Lemma later_own `{!FiniteIndex SI} γ a : ▷ own γ a ⊢ ◇ ∃ b, own γ b ∧ ▷ (a ≡ b).
+Lemma later_own `{!SIdxFinite SI} γ a : ▷ own γ a ⊢ ◇ ∃ b, own γ b ∧ ▷ (a ≡ b).
 Proof.
   rewrite own_eq /own_def later_ownM. apply exist_elim=> r.
   assert (NonExpansive (λ r : iResUR Σ, r (inG_id i) !! γ)).
@@ -211,7 +209,7 @@ Proof.
   rewrite and_exist_l. f_equiv=> b. rewrite and_exist_l. apply exist_elim=> r'.
   rewrite assoc. apply and_mono_l.
   etrans; [|apply ownM_mono, (cmra_included_l _ r')].
-  eapply (internal_eq_rewrite' _ _ uPred_ownM _); [apply and_elim_r|].
+  eapply (internal_eq_rewrite' _ _ uPred_ownM _ _); [apply and_elim_r|].
   apply and_elim_l.
 Qed.
 
@@ -307,7 +305,7 @@ Global Arguments own_update {_ _ _} [_] _ _ _ _.
 Global Arguments own_update_2 {_ _ _} [_] _ _ _ _ _.
 Global Arguments own_update_3 {_ _ _} [_] _ _ _ _ _ _.
 
-Lemma own_unit `{SI: indexT} A `{i : !inG Σ (A:ucmra)} γ : ⊢ |==> own γ (ε:A).
+Lemma own_unit {SI : sidx} A `{i : !inG Σ (A:ucmra)} γ : ⊢ |==> own γ (ε:A).
 Proof.
   rewrite /bi_emp_valid (ownM_unit emp) !own_eq /own_def.
   apply bupd_ownM_update, discrete_fun_singleton_update_empty.
@@ -321,7 +319,7 @@ Qed.
 
 (** Big op class instances *)
 Section big_op_instances.
-  Context `{SI: indexT} `{!inG Σ (A:ucmra)}.
+  Context {SI : sidx} `{!inG Σ (A:ucmra)}.
 
   Global Instance own_cmra_sep_homomorphism γ :
     WeakMonoidHomomorphism op uPred_sep (≡) (own γ).
@@ -368,7 +366,7 @@ End big_op_instances.
 
 (** Proofmode class instances *)
 Section proofmode_instances.
-  Context `{SI: indexT} `{!inG Σ A}.
+  Context {SI : sidx} `{!inG Σ A}.
   Implicit Types a b : A.
 
   Global Instance into_sep_own γ a b1 b2 :
@@ -403,3 +401,145 @@ Section proofmode_instances.
     destruct Hb; by rewrite persistent_and_sep.
   Qed.
 End proofmode_instances.
+
+Section own_forall.
+  Context {SI : sidx} `{i : !inG Σ A}.
+  Implicit Types a c : A.
+  Implicit Types x z : iResUR Σ.
+
+  (** Our main goal in this section is to prove [own_forall]:
+
+    (∀ b, own γ (f b)) ⊢ ∃ c : A, own γ c ∗ (∀ b, Some (f b) ≼ Some c)
+
+  We have the analogue in the global ucmra, from [ownM_forall]:
+
+    (∀ a, uPred_ownM (f a)) ⊢ ∃ z : iRes Σ, uPred_ownM z ∧ (∀ a, f a ≼ z)
+
+  We need to relate [uPred_ownM (iRes_singleton γ _)] to [own γ _] so that we
+  can bring this theorem from the global ucmra world to the [A] world.
+  In particular, [ownM_forall] gives us some [z] in the ucmra world, but to prove
+  the theorem in the end, we need to supply a witness [z'] in the [A] world.
+  We start by defining the [iRes_project] function to map from the ucmra world
+  to the [A] world, basically an inverse of [iRes_singleton]: *)
+
+  Local Definition iRes_project (γ : gname) (x : iResUR Σ) : option A :=
+    cmra_transport (eq_sym inG_prf) ∘ inG_fold <$> x (inG_id i) !! γ.
+
+  (* Now we prove some properties about [iRes_project] *)
+  Local Lemma iRes_project_op γ x y :
+    iRes_project γ (x ⋅ y) ≡@{option A} iRes_project γ x ⋅ iRes_project γ y.
+  Proof.
+    rewrite /iRes_project lookup_op.
+    case: (x (inG_id i) !! γ)=> [x1|]; case: (y (inG_id i) !! γ)=> [y1|] //=.
+    rewrite -Some_op -cmra_transport_op. do 2 f_equiv. apply: cmra_morphism_op.
+  Qed.
+
+  Local Instance iRes_project_ne γ : NonExpansive (iRes_project γ).
+  Proof. intros n x1 x2 Hx. rewrite /iRes_project. do 2 f_equiv. apply Hx. Qed.
+
+  Local Lemma iRes_project_singleton γ a :
+    iRes_project γ (iRes_singleton γ a) ≡ Some a.
+  Proof.
+    rewrite /iRes_project /iRes_singleton discrete_fun_lookup_singleton.
+    rewrite lookup_singleton_eq /= inG_fold_unfold.
+    by rewrite cmra_transport_trans eq_trans_sym_inv_r.
+  Qed.
+
+  (** The singleton result [c] of [iRes_project γ z] is below [z] *)
+  Local Lemma iRes_project_below γ z c :
+    iRes_project γ z = Some c → iRes_singleton γ c ≼ z.
+  Proof.
+    rewrite /iRes_project /iRes_singleton fmap_Some.
+    intros (a' & Hγ & ->). rewrite cmra_transport_trans eq_trans_sym_inv_l /=.
+    exists (discrete_fun_insert (inG_id i) (delete γ (z (inG_id i))) z).
+    intros j. rewrite discrete_fun_lookup_op.
+    destruct (decide (j = inG_id i)) as [->|]; last first.
+    { rewrite discrete_fun_lookup_singleton_ne //.
+      rewrite discrete_fun_lookup_insert_ne //. by rewrite left_id. }
+    rewrite discrete_fun_lookup_singleton discrete_fun_lookup_insert.
+    intros γ'. rewrite lookup_op. destruct (decide (γ' = γ)) as [->|].
+    - by rewrite lookup_singleton_eq lookup_delete_eq Hγ inG_unfold_fold.
+    - by rewrite lookup_singleton_ne // lookup_delete_ne // left_id.
+  Qed.
+
+  (** If another singleton [c] is below [z], [iRes_project] is above [c]. *)
+  Local Lemma iRes_project_above γ z c :
+    iRes_singleton γ c ≼ z ⊢@{iProp Σ} Some c ≼ iRes_project γ z.
+  Proof.
+    iIntros "#[%x Hincl]". iExists (iRes_project γ x).
+    rewrite -(iRes_project_singleton γ) -iRes_project_op.
+    by iRewrite "Hincl".
+  Qed.
+
+  (** Finally we tie it all together.
+  As usual, we use [Some a ≼ Some c] for the reflexive closure of [a ≼ c]. *)
+  Lemma own_forall `{!Inhabited B} γ (f : B → A) :
+    (∀ b, own γ (f b)) ⊢ ∃ c, own γ c ∗ (∀ b, Some (f b) ≼ Some c).
+  Proof.
+    rewrite own_eq /own_def. iIntros "Hown".
+    iDestruct (ownM_forall with "Hown") as (z) "[Hown Hincl]".
+    destruct (iRes_project γ z) as [c|] eqn:Hc.
+    - iExists c. iSplitL "Hown".
+      { iApply (ownM_mono with "Hown"). by apply iRes_project_below. }
+      iIntros (b). rewrite -Hc. by iApply iRes_project_above.
+    - iDestruct ("Hincl" $! inhabitant) as "Hincl".
+      iDestruct (iRes_project_above with "Hincl") as "Hincl".
+      rewrite Hc. iDestruct "Hincl" as (mx) "H".
+      rewrite option_equivI. by destruct mx.
+  Qed.
+
+  (** Now some corollaries. *)
+  Lemma own_forall_total `{!CmraTotal A, !Inhabited B} γ (f : B → A) :
+    (∀ b, own γ (f b)) ⊢ ∃ c, own γ c ∗ (∀ b, f b ≼ c).
+  Proof. setoid_rewrite <-Some_included_totalI. apply own_forall. Qed.
+
+  Lemma own_and γ a1 a2 :
+    own γ a1 ∧ own γ a2 ⊢ ∃ c, own γ c ∗ Some a1 ≼ Some c ∗ Some a2 ≼ Some c.
+  Proof.
+    iIntros "Hown". iDestruct (own_forall γ (λ b, if b : bool then a1 else a2)
+      with "[Hown]") as (c) "[$ Hincl]".
+    { rewrite and_alt.
+      iIntros ([]); [iApply ("Hown" $! true)|iApply ("Hown" $! false)]. }
+    iSplit; [iApply ("Hincl" $! true)|iApply ("Hincl" $! false)].
+  Qed.
+  Lemma own_and_total `{!CmraTotal A} γ a1 a2 :
+    own γ a1 ∧ own γ a2 ⊢ ∃ c, own γ c ∗ a1 ≼ c ∗ a2 ≼ c.
+  Proof. setoid_rewrite <-Some_included_totalI. apply own_and. Qed.
+
+  (** A version of [own_forall] for bounded quantification. Here [φ : B → Prop]
+  is a pure predicate that restricts the elements of [B]. *)
+  Lemma own_forall_pred {B} γ (φ : B → Prop) (f : B → A) :
+    (∃ b, φ b) → (* [φ] is non-empty *)
+    (∀ b, ⌜ φ b ⌝ -∗ own γ (f b)) ⊢
+    ∃ c, own γ c ∗ (∀ b, ⌜ φ b ⌝ -∗ Some (f b) ≼ Some c).
+  Proof.
+    iIntros ([b0 pb0]) "Hown".
+    iAssert (∀ b : { b | φ b }, own γ (f (`b)))%I with "[Hown]" as "Hown".
+    { iIntros ([b pb]). by iApply ("Hown" $! b). }
+    iDestruct (@own_forall _ with "Hown") as (c) "[$ Hincl]".
+    { split. apply (b0 ↾ pb0). }
+    iIntros (b pb). iApply ("Hincl" $! (b ↾ pb)).
+  Qed.
+  Lemma own_forall_pred_total `{!CmraTotal A} {B} γ (φ : B → Prop) (f : B → A) :
+    (∃ b, φ b) →
+    (∀ b, ⌜ φ b ⌝ -∗ own γ (f b)) ⊢ ∃ c, own γ c ∗ (∀ b, ⌜ φ b ⌝ -∗ f b ≼ c).
+  Proof. setoid_rewrite <-Some_included_totalI. apply own_forall_pred. Qed.
+
+  Lemma own_and_discrete_total `{!CmraDiscrete A, !CmraTotal A} γ a1 a2 c :
+    (∀ c', ✓ c' → a1 ≼ c' → a2 ≼ c' → c ≼ c') →
+    own γ a1 ∧ own γ a2 ⊢ own γ c.
+  Proof.
+    iIntros (Hvalid) "Hown".
+    iDestruct (own_and_total with "Hown") as (c') "[Hown [%Ha1 %Ha2]]".
+    iDestruct (own_valid with "Hown") as %?.
+    iApply (own_mono with "Hown"); eauto.
+  Qed.
+  Lemma own_and_discrete_total_False `{!CmraDiscrete A, !CmraTotal A} γ a1 a2 :
+    (∀ c', ✓ c' → a1 ≼ c' → a2 ≼ c' → False) →
+    own γ a1 ∧ own γ a2 ⊢ False.
+  Proof.
+    iIntros (Hvalid) "Hown".
+    iDestruct (own_and_total with "Hown") as (c) "[Hown [%Ha1 %Ha2]]".
+    iDestruct (own_valid with "Hown") as %?; eauto.
+  Qed.
+End own_forall.

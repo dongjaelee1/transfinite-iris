@@ -5,15 +5,15 @@ From transfinite.base_logic.lib Require Export invariants.
 From iris.prelude Require Import options.
 Import uPred.
 
-Class cinvG `{SI: indexT} Σ := { #[local] cinv_inG :: inG Σ fracR }.
+Class cinvG {SI : sidx} Σ := { #[local] cinv_inG :: inG Σ fracR }.
 
-Definition cinvΣ `{SI: indexT} : gFunctors := #[GFunctor fracR].
+Definition cinvΣ {SI : sidx} : gFunctors := #[GFunctor fracR].
 
-Global Instance subG_cinvΣ `{SI: indexT} {Σ} : subG cinvΣ Σ → cinvG Σ.
+Global Instance subG_cinvΣ {SI : sidx} {Σ} : subG cinvΣ Σ → cinvG Σ.
 Proof. solve_inG. Qed.
 
 Section defs.
-  Context `{SI: indexT} `{!invGS_gen hlc Σ, !cinvG Σ}.
+  Context {SI : sidx} `{!invGS_gen hlc Σ, !cinvG Σ}.
 
   Definition cinv_own (γ : gname) (p : frac) : iProp Σ := own γ p.
 
@@ -24,7 +24,7 @@ End defs.
 Global Instance: Params (@cinv) 6 := {}.
 
 Section proofs.
-  Context `{SI: indexT} `{!invGS_gen hlc Σ, !cinvG Σ}.
+  Context {SI : sidx} `{!invGS_gen hlc Σ, !cinvG Σ}.
 
   Global Instance cinv_own_timeless γ p : Timeless (cinv_own γ p).
   Proof. rewrite /cinv_own; apply _. Qed.
@@ -46,7 +46,7 @@ Section proofs.
   Proof. split; [done|]. apply _. Qed.
 
   Lemma cinv_own_valid γ q1 q2 : cinv_own γ q1 -∗ cinv_own γ q2 -∗ ⌜q1 + q2 ≤ 1⌝%Qp.
-  Proof. rewrite -frac_valid -uPred.discrete_valid. apply (own_valid_2 γ q1 q2). Qed.
+  Proof. rewrite -frac_valid -internal_cmra_valid_discrete. apply (own_valid_2 γ q1 q2). Qed.
 
   Lemma cinv_own_1_l γ q : cinv_own γ 1 -∗ cinv_own γ q -∗ False.
   Proof.

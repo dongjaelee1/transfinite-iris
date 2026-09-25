@@ -7,224 +7,203 @@ From iris.algebra Require Export auth numbers.
 From transfinite.base_logic.lib Require Import iprop own.
 Import uPred.
 
+(** The [hlc : has_lc] parameter indicates whether later credits are enabled
+or not. From a user's point of view there are two differences:
+
+- If later credits are enabled ([hlc = HasLc]), we obtain the rule
+  [lc_le_upd_elim_later : £ 1 -∗ (▷ P) -∗ |==£> P], which allows us strip a
+  later by spending a credit. This rule is used to prove the similar rule for
+  the fancy update modality.
+- If later credits are disabled ([hlc = HasNoLc]), we obtain the rule
+  [le_upd_keep : (|==£|■> P) ∧ (P -∗ |==£> Q) ⊢ |==£> Q] without the
+  side-condition that [P] should be timeless (the "finally" modality [|==£|■>]
+  is described further below in this file). This rule is used to derive the
+  plain interaction rules [BiFUpdSbi] of the fancy update modality.
+
+In the model, if later credits are disabled ([hlc = HasNoLc]), we simply define
+the credit [£ n] as [True] and the supply [lc_supply n] as [n = 0]. This choice
+gives uniform proofs, where we do not have to case split on [hlc] for nearly all
+rules. *)
+
+Inductive has_lc := HasLc | HasNoLc.
 
 (** The ghost state for later credits *)
-Class lcGpreS `{SI : indexT} (Σ : gFunctors) := LcGpreS {
+Class lcGpreS {SI : sidx} (Σ : gFunctors) := LcGpreS {
   #[local] lcGpreS_inG :: inG Σ (authR natUR)
 }.
 
-Class lcGS `{SI : indexT} (Σ : gFunctors) := LcGS {
+Class lcGS {SI : sidx} (hlc : has_lc) (Σ : gFunctors) := LcGS {
   #[local] lcGS_inG :: inG Σ (authR natUR);
   lcGS_name : gname;
 }.
-Global Hint Mode lcGS - - : typeclass_instances.
+Global Hint Mode lcGS - - - : typeclass_instances.
 
-Definition lcΣ `{SI : indexT} := #[GFunctor (authR (natUR))].
-Global Instance subG_lcΣ `{SI : indexT} {Σ} : subG lcΣ Σ → lcGpreS Σ.
+Definition lcΣ {SI : sidx} := #[GFunctor (authR (natUR))].
+Global Instance subG_lcΣ {SI : sidx} {Σ} : subG lcΣ Σ → lcGpreS Σ.
 Proof. solve_inG. Qed.
 
+(** The user-facing credit resource, denoting ownership of [n] credits
+(but only if later credits are enabled). *)
+Local Definition uPred_lc_def {SI : sidx} `{!lcGS hlc Σ} (n : nat) : iProp Σ :=
+  if hlc is HasLc then own lcGS_name (◯ n) else True.
+Local Definition uPred_lc_aux : seal (@uPred_lc_def). Proof. by eexists. Qed.
+Definition uPred_lc := uPred_lc_aux.(unseal).
+Global Arguments uPred_lc {SI hlc Σ _} n.
+Local Lemma uPred_lc_unseal {SI : sidx} `{!lcGS hlc Σ} :
+  @lc _ uPred_lc = uPred_lc_def.
+Proof. rewrite -uPred_lc_aux.(seal_eq) //. Qed.
 
-(** The user-facing credit resource, denoting ownership of [n] credits. *)
-Local Definition lc_def `{SI : indexT} `{!lcGS Σ} (n : nat) : iProp Σ := own lcGS_name (◯ n).
-Local Definition lc_aux : seal (@lc_def). Proof. by eexists. Qed.
-Definition lc := lc_aux.(unseal).
-Local Definition lc_unseal :
-  @lc = @lc_def := lc_aux.(seal_eq).
-Global Arguments lc {SI Σ _} n.
-
-Notation "'£'  n" := (lc n) (at level 1).
-
-(** The internal authoritative part of the credit ghost state,
-  tracking how many credits are available in total.
-  Users should not directly interface with this. *)
-Local Definition lc_supply_def `{SI : indexT} `{!lcGS Σ} (n : nat) : iProp Σ := own lcGS_name (● n).
+(** The internal authoritative part of the credit ghost state, tracking how many
+credits are available in total. Users should not directly interface with this. *)
+Local Definition lc_supply_def {SI : sidx} `{!lcGS hlc Σ} (n : nat) : iProp Σ :=
+  if hlc is HasLc then own lcGS_name (● n) else ⌜ n = 0 ⌝.
 Local Definition lc_supply_aux : seal (@lc_supply_def). Proof. by eexists. Qed.
 Local Definition lc_supply := lc_supply_aux.(unseal).
 Local Definition lc_supply_unseal :
   @lc_supply = @lc_supply_def := lc_supply_aux.(seal_eq).
-Global Arguments lc_supply {SI Σ _} n.
+Global Arguments lc_supply {SI hlc Σ _} n.
 
-
-Section later_credit_theory.
-  Context `{SI : indexT} `{!lcGS Σ}.
-  Implicit Types (P Q : iProp Σ).
-
-  (** Later credit rules *)
-  Lemma lc_split n m :
-    £ (n + m) ⊣⊢ £ n ∗ £ m.
-  Proof.
-    rewrite lc_unseal /lc_def.
+(** The primitive rules for [£] hold regardless of whether later credits are
+enabled. If later credits are disabled ([hlc = HasNoLc], these rules are not
+useful on their own, but they can be used to write adequacy/soundness proof that
+are generic in the choice of [hlc]. *)
+Lemma uPred_lc_mixin {SI : sidx} `{!lcGS hlc Σ} : BiLaterCreditsMixin (iPropI Σ) uPred_lc.
+Proof.
+  split.
+  - rewrite uPred_lc_unseal /uPred_lc_def=> n m.
+    destruct hlc; [|by iSplit; auto].
     rewrite -own_op auth_frag_op //=.
-  Qed.
+  - rewrite uPred_lc_unseal /uPred_lc_def=> n. apply _.
+  - rewrite uPred_lc_unseal /uPred_lc_def. apply _.
+  - rewrite uPred_lc_unseal /uPred_lc_def=> n. apply _.
+Qed.
+Global Instance uPred_bi_lc {SI : sidx} `{!lcGS hlc Σ} : BiLaterCredits (iPropI Σ) :=
+  {| bi_lc_mixin := uPred_lc_mixin |}.
 
-  Lemma lc_zero : ⊢ |==> £ 0.
-  Proof.
-    rewrite lc_unseal /lc_def. iApply own_unit.
-  Qed.
+Local Lemma lc_no_lc {SI : sidx} `{!lcGS HasNoLc Σ} n : £ n ⊣⊢@{iPropI Σ} True.
+Proof. by rewrite uPred_lc_unseal. Qed.
+Local Lemma lc_supply_no_lc {SI : sidx} `{!lcGS HasNoLc Σ} n : lc_supply n ⊣⊢ ⌜ n = 0 ⌝.
+Proof. by rewrite lc_supply_unseal. Qed.
 
-  Lemma lc_supply_bound n m :
-    lc_supply m -∗ £ n -∗ ⌜n ≤ m⌝.
+(** The (internal) [lc_supply] rules are only valid if later credits are enabled. *)
+Section lc_supply_rules.
+  Context {SI : sidx} `{!lcGS HasLc Σ}.
+
+  Local Lemma lc_supply_bound n m : lc_supply m -∗ £ n -∗ ⌜n ≤ m⌝.
   Proof.
-    rewrite lc_unseal /lc_def.
-    rewrite lc_supply_unseal /lc_supply_def.
-    iIntros "H1 H2".
-    iCombine "H1 H2" gives %Hop.
+    rewrite uPred_lc_unseal /uPred_lc_def lc_supply_unseal /lc_supply_def.
+    iIntros "H1 H2". iCombine "H1 H2" gives %Hop.
     iPureIntro. eapply auth_both_valid_discrete in Hop as [Hlt _].
     by eapply nat_included.
   Qed.
 
-  Lemma lc_decrease_supply n m :
-    lc_supply (n + m) -∗ £ n -∗ |==> lc_supply m.
+  Local Lemma lc_decrease_supply n m :
+    lc_supply (n + m) -∗ £ n ==∗ lc_supply m.
   Proof.
-    rewrite lc_unseal /lc_def.
-    rewrite lc_supply_unseal /lc_supply_def.
-    iIntros "H1 H2".
-    iMod (own_update_2 with "H1 H2") as "Hown".
+    rewrite uPred_lc_unseal /uPred_lc_def lc_supply_unseal /lc_supply_def.
+    iIntros "H1 H2". iMod (own_update_2 with "H1 H2") as "Hown".
     { eapply auth_update. eapply (nat_local_update _ _ m 0). lia. }
     by iDestruct "Hown" as "[Hm _]".
   Qed.
 
-  Lemma lc_succ n :
-    £ (S n) ⊣⊢ £ 1 ∗ £ n.
-  Proof. rewrite -lc_split //=. Qed.
+ Local Lemma lc_increase_supply n m :
+    lc_supply m ==∗ lc_supply (n + m) ∗ £ n.
+  Proof.
+    rewrite uPred_lc_unseal /uPred_lc_def lc_supply_unseal /lc_supply_def.
+    iIntros "H"; iMod (own_update with "H") as "Hown".
+    { eapply auth_update_alloc. eapply (nat_local_update m 0 (n + m) n). lia. }
+    iDestruct "Hown" as "[Hm ?]"; by iFrame.
+  Qed.
+End lc_supply_rules.
 
-  Lemma lc_weaken {n} m :
-    m ≤ n → £ n -∗ £ m.
-  Proof.
-    intros [k ->]%Nat.le_sum. rewrite lc_split. iIntros "[$ _]".
-  Qed.
-
-  Global Instance lc_timeless n : Timeless (£ n).
-  Proof.
-    rewrite lc_unseal /lc_def. apply _.
-  Qed.
-
-  Global Instance lc_0_persistent : Persistent (£ 0).
-  Proof.
-    rewrite lc_unseal /lc_def. apply _.
-  Qed.
-
-  (** Make sure that the rule for [+] is used before [S], otherwise Coq's
-  unification applies the [S] hint too eagerly. See Iris issue #470. *)
-  Global Instance from_sep_lc_add n m :
-    FromSep (£ (n + m)) (£ n) (£ m) | 0.
-  Proof.
-    by rewrite /FromSep lc_split.
-  Qed.
-  Global Instance from_sep_lc_S n :
-    FromSep (£ (S n)) (£ 1) (£ n) | 1.
-  Proof.
-    by rewrite /FromSep (lc_succ n).
-  Qed.
-  (** When combining later credits with [iCombine], the priorities are
-  reversed when compared to [FromSep] and [IntoSep]. This causes
-  [£ n] and [£ 1] to be combined as [£ (S n)], not as [£ (n + 1)]. *)
-  Global Instance combine_sep_lc_add n m :
-    CombineSepAs (£ n) (£ m) (£ (n + m)) | 1.
-  Proof.
-    by rewrite /CombineSepAs lc_split.
-  Qed.
-  Global Instance combine_sep_lc_S_l n :
-    CombineSepAs (£ n) (£ 1) (£ (S n)) | 0.
-  Proof.
-    by rewrite /CombineSepAs comm (lc_succ n).
-  Qed.
-
-  Global Instance into_sep_lc_add n m :
-    IntoSep (£ (n + m)) (£ n) (£ m) | 0.
-  Proof.
-    by rewrite /IntoSep lc_split.
-  Qed.
-  Global Instance into_sep_lc_S n :
-    IntoSep (£ (S n)) (£ 1) (£ n) | 1.
-  Proof.
-    by rewrite /IntoSep (lc_succ n).
-  Qed.
-End later_credit_theory.
-
+(** The later-elimination update *)
 (** Let users import the above without also getting the below laws.
-  This should only be imported by the internal development of fancy updates. *)
+This should only be imported by the internal development of fancy updates. *)
 Module le_upd.
-  (** Definition of the later-elimination update *)
-  Definition le_upd_pre `{SI : indexT} `{!lcGS Σ}
-      (le_upd : iProp Σ -d> iPropO Σ) : iProp Σ -d> iPropO Σ := λ P,
-    (∀ n, lc_supply n ==∗
-          (lc_supply n ∗ P) ∨ (∃ m, ⌜m < n⌝ ∗ lc_supply m ∗ ▷ le_upd P))%I.
+  Definition le_upd_pre {SI : sidx} `{!lcGS hlc Σ} (P le_upd : iProp Σ) : iProp Σ :=
+    ∀ n, lc_supply n ==∗
+      (** Case 1: Generalization of except-0 [◇], needed for proving the rule
+      [le_upd_keep]. There we obtain [▷^n ◇ P] for a timeless [P], and need to
+      eliminate [n] laters and one except-0, which can be done by having a
+      disjunct [▷^(S n) False] in the goal. *)
+      ▷^(S n) False ∨
+      (** Case 2: No credits are spent. *)
+      (lc_supply n ∗ P) ∨
+      (** Case 3: Eliminate a later by decreasing the credit supply (which
+      means at least one credit needs to be spent). This case is impossible if
+      later credits are disabled ([HasNoLc]), because [m < 0] is false. *)
+      (∃ m, ⌜m < n⌝ ∗ lc_supply m ∗ ▷ le_upd).
 
-  Local Instance le_upd_pre_contractive `{SI : indexT} `{!lcGS Σ} : Contractive le_upd_pre.
+  Local Instance le_upd_pre_contractive {SI : sidx} `{!lcGS hlc Σ} P : Contractive (le_upd_pre P).
   Proof. solve_contractive. Qed.
-  Local Definition le_upd_def `{SI : indexT} `{!lcGS Σ} :
-    iProp Σ -d> iPropO Σ := fixpoint le_upd_pre.
+  Local Definition le_upd_def {SI : sidx} `{!lcGS hlc Σ} (P : iProp Σ) : iProp Σ :=
+    fixpoint (le_upd_pre P).
   Local Definition le_upd_aux : seal (@le_upd_def). Proof. by eexists. Qed.
   Definition le_upd := le_upd_aux.(unseal).
   Local Definition le_upd_unseal : @le_upd = @le_upd_def := le_upd_aux.(seal_eq).
-  Global Arguments le_upd {_ _ _} _.
-  Notation "'|==£>' P" := (le_upd P%I) (at level 99, P at level 200, format "|==£>  P") : bi_scope.
+  Global Arguments le_upd {_ _ _ _} _.
+  Notation "'|==£>' P" := (le_upd P)
+    (at level 20, P at level 200, format "|==£>  P") : bi_scope.
 
-  Local Lemma le_upd_unfold `{SI : indexT} `{!lcGS Σ} P:
+  Local Lemma le_upd_unfold {SI : sidx} `{!lcGS hlc Σ} P :
     (|==£> P) ⊣⊢
     ∀ n, lc_supply n ==∗
-         (lc_supply n ∗ P) ∨ (∃ m, ⌜m < n⌝ ∗ lc_supply m ∗ ▷ le_upd P).
+         ▷^(S n) False ∨ (lc_supply n ∗ P) ∨ (∃ m, ⌜m < n⌝ ∗ lc_supply m ∗ ▷ |==£> P).
   Proof.
     by rewrite le_upd_unseal
-      /le_upd_def {1}(fixpoint_unfold le_upd_pre P) {1}/le_upd_pre.
+      /le_upd_def {1}(fixpoint_unfold (le_upd_pre P)) {1}/le_upd_pre.
+  Qed.
+
+  (** If later credits are disabled, this lemma shows that [le_upd] is just the
+  basic update + except-0 modality, i.e., fancy updates are like Iris 3.0. *)
+  Local Lemma le_upd_unfold_no_le {SI : sidx} `{!lcGS HasNoLc Σ} P : (|==£> P) ⊣⊢ |==> ◇ P.
+  Proof.
+    rewrite le_upd_unfold. setoid_rewrite lc_supply_no_lc. iSplit.
+    - iIntros "H".
+      iMod ("H" $! 0 with "[//]") as "[>[]|[[_ ?]|(%m&%Hm&_)]]"; auto with lia.
+    - iIntros "H %n ->". rewrite /bi_except_0. iMod "H" as "[?|?]"; auto.
   Qed.
 
   Section le_upd.
-    Context `{SI : indexT} `{!lcGS Σ}.
+    Context {SI : sidx} `{!lcGS hlc Σ}.
     Implicit Types (P Q : iProp Σ).
 
     (** Rules for the later elimination update *)
     Global Instance le_upd_ne : NonExpansive le_upd.
     Proof.
-      intros n; induction (index_lt_wf n) as [n _ IH].
+      intros n; induction (SIdx.lt_wf n) as [n _ IH].
       intros P1 P2 HP. rewrite (le_upd_unfold P1) (le_upd_unfold P2).
-      do 9 (done || f_equiv).
-      f_contractive. simpl in *; eapply IH; [auto|].
-      stepindex using dist_le.
+      do 10 (done || f_equiv). f_contractive. by eapply IH, dist_lt.
     Qed.
 
-    Lemma bupd_le_upd P : (|==> P) ⊢ (|==£> P).
+    Lemma bupd_le_upd P : (|==> P) ⊢ |==£> P.
     Proof.
-      rewrite le_upd_unfold; iIntros "Hupd" (x) "Hpr".
-      iMod "Hupd" as "P". iModIntro. iLeft. by iFrame.
+      rewrite le_upd_unfold; iIntros "HP" (n) "Hpr".
+      iMod "HP" as "HP". auto with iFrame.
     Qed.
 
-    Lemma le_upd_intro P : P ⊢ |==£> P.
+    Lemma except_0_le_upd P : ◇ (|==£> P) ⊢ |==£> P.
     Proof.
-      iIntros "H"; by iApply bupd_le_upd.
+      rewrite /bi_except_0. iIntros "[HFalse|$]".
+      iApply le_upd_unfold; iIntros (n) "_ !>". iLeft. by iNext.
     Qed.
 
-    Lemma le_upd_bind P Q :
-      (P -∗ |==£> Q) -∗ (|==£> P) -∗ (|==£> Q).
+    Lemma le_upd_bind P Q : (P -∗ |==£> Q) -∗ (|==£> P) -∗ |==£> Q.
     Proof.
-      iLöb as "IH". iIntros "PQ".
+      iLöb as "IH". iIntros "HPQ".
       iEval (rewrite (le_upd_unfold P) (le_upd_unfold Q)).
-      iIntros "Hupd" (x) "Hpr". iMod ("Hupd" with "Hpr") as "[Hupd|Hupd]".
-      - iDestruct "Hupd" as "[Hpr Hupd]".
-        iSpecialize ("PQ" with "Hupd").
-        iEval (rewrite le_upd_unfold) in "PQ".
-        iMod ("PQ" with "Hpr") as "[Hupd|Hupd]".
-        + iModIntro. by iLeft.
-        + iModIntro. iRight. iDestruct "Hupd" as  (x'' Hstep'') "[Hpr Hupd]".
-          iExists _; iFrame. by iPureIntro.
-      - iModIntro. iRight. iDestruct "Hupd" as (x') "(Hstep & Hpr & Hupd)".
-        iExists _; iFrame. iNext. by iApply ("IH" with "PQ Hupd").
-    Qed.
-
-    Lemma le_upd_later_elim P :
-      £ 1 -∗ (▷ |==£> P) -∗ |==£> P.
-    Proof.
-      iIntros "Hc Hl".
-      iEval (rewrite le_upd_unfold). iIntros (n) "Hs".
-      iDestruct (lc_supply_bound with "Hs Hc") as "%".
-      destruct n as [ | n]; first by lia.
-      replace (S n) with (1 + n) by lia.
-      iMod (lc_decrease_supply with "Hs Hc") as "Hs". eauto 10 with iFrame lia.
+      iIntros "HP" (n) "Hpr".
+      iMod ("HP" with "Hpr") as "[?|[[Hpr HP]|HP]]"; first by auto.
+      - iEval (rewrite le_upd_unfold) in "HPQ". by iApply ("HPQ" with "HP").
+      - iModIntro. do 2 iRight. iDestruct "HP" as (n') "($ & $ & HP)".
+        iNext. by iApply ("IH" with "HPQ HP").
     Qed.
 
     (** Derived lemmas *)
-    Lemma le_upd_mono P Q : (P ⊢ Q) → (|==£> P) ⊢ (|==£> Q).
+    Lemma le_upd_intro P : P ⊢ |==£> P.
+    Proof. iIntros "H". by iApply bupd_le_upd. Qed.
+
+    Lemma le_upd_mono P Q : (P ⊢ Q) → (|==£> P) ⊢ |==£> Q.
     Proof.
       intros Hent. iApply le_upd_bind.
       iIntros "P"; iApply le_upd_intro; by iApply Hent.
@@ -237,7 +216,7 @@ Module le_upd.
     Global Instance le_upd_equiv_proper : Proper ((≡) ==> (≡)) le_upd.
     Proof. apply ne_proper. apply _. Qed.
 
-    Lemma le_upd_trans P :  (|==£> |==£> P) ⊢ |==£> P.
+    Lemma le_upd_trans P : (|==£> |==£> P) ⊢ |==£> P.
     Proof.
       iIntros "HP". iApply le_upd_bind; eauto.
     Qed.
@@ -248,19 +227,6 @@ Module le_upd.
     Qed.
     Lemma le_upd_frame_l P R : R ∗ (|==£> P) ⊢ |==£> R ∗ P.
     Proof. rewrite comm le_upd_frame_r comm //. Qed.
-
-    Lemma le_upd_later P :
-      £ 1 -∗ ▷ P -∗ |==£> P.
-    Proof.
-      iIntros "H1 H2". iApply (le_upd_later_elim with "H1").
-      iNext. by iApply le_upd_intro.
-    Qed.
-
-    Lemma except_0_le_upd P : ◇ (le_upd P) ⊢ le_upd (◇ P).
-    Proof.
-      rewrite /bi_except_0. apply or_elim; eauto using le_upd_mono, or_intro_r.
-      by rewrite -le_upd_intro -or_intro_l.
-    Qed.
 
     (** A safety check that later-elimination updates can replace basic updates *)
     (** We do not use this to build an instance, because it would conflict
@@ -275,52 +241,10 @@ Module le_upd.
       - apply le_upd_frame_r.
     Qed.
 
-    (** unfolding the later elimination update *)
-    Lemma le_upd_elim n P :
-      lc_supply n -∗
-      (|==£> P) -∗
-      Nat.iter n (λ P, |==> ▷ P) (|==> ◇ (∃ m, ⌜m ≤ n⌝ ∗ lc_supply m ∗ P)).
-    Proof.
-      induction (Nat.lt_wf_0 n) as [n _ IH].
-      iIntros "Ha". rewrite (le_upd_unfold P) //=.
-      iIntros "Hupd". iSpecialize ("Hupd" with "Ha").
-      destruct n as [|n]; simpl.
-      - iMod "Hupd" as "[[H● ?]| Hf]".
-        { do 2 iModIntro. iExists 0. iFrame. done. }
-        iDestruct "Hf" as (x' Hlt) "_". lia.
-      - iMod "Hupd" as "[[Hc P]|Hupd]".
-        + iModIntro. iNext. iApply iter_modal_intro; last first.
-          { do 2 iModIntro. iExists (S n); iFrame; done. }
-          iIntros (Q) "Q"; iModIntro; by iNext.
-        + iModIntro. iDestruct "Hupd" as (m Hstep) "[Hown Hupd]". iNext.
-          iPoseProof (IH with "Hown Hupd") as "Hit"; first done.
-          clear IH.
-          assert (m ≤ n) as [k ->]%Nat.le_sum by lia.
-          rewrite Nat.add_comm Nat.iter_add.
-          iApply iter_modal_intro.
-          { by iIntros (Q) "$". }
-          iApply (iter_modal_mono with "[] Hit").
-          { iIntros (R S) "Hent H". by iApply "Hent". }
-          iIntros "H". iMod "H". iModIntro. iMod "H" as (m' Hle) "H".
-          iModIntro. iExists m'. iFrame. iPureIntro. lia.
-    Qed.
-
-    Lemma le_upd_elim_complete n P :
-      lc_supply n -∗
-      (|==£> P) -∗
-      Nat.iter (S n) (λ Q, |==> ▷ Q) P.
-    Proof.
-      iIntros "Hlc Hupd". iPoseProof (le_upd_elim with "Hlc Hupd") as "Hit".
-      rewrite Nat.iter_succ_r. iApply (iter_modal_mono with "[] Hit").
-      { clear. iIntros (P Q) "Hent HP". by iApply "Hent". }
-      iIntros "Hupd". iMod "Hupd". iModIntro. iMod "Hupd".
-      iNext. iDestruct "Hupd" as "[%m (_ & _ & $)]".
-    Qed.
-
     (** Proof mode class instances internally needed for people defining their
     [fupd] with [le_upd]. *)
     Global Instance elim_bupd_le_upd p P Q :
-      ElimModal True p false (bupd P) P (le_upd Q) (le_upd Q)%I.
+      ElimModal True p false (|==> P) P (|==£> Q) (|==£> Q).
     Proof.
       rewrite /ElimModal bi.intuitionistically_if_elim //=.
       rewrite bupd_le_upd. iIntros "_ [HP HPQ]".
@@ -328,164 +252,205 @@ Module le_upd.
     Qed.
 
     Global Instance from_assumption_le_upd p P Q :
-      FromAssumption p P Q → KnownRFromAssumption p P (le_upd Q).
+      FromAssumption p P Q → KnownRFromAssumption p P (|==£> Q).
     Proof.
       rewrite /KnownRFromAssumption /FromAssumption=>->. apply le_upd_intro.
     Qed.
 
     Global Instance from_pure_le_upd a P φ :
-      FromPure a P φ → FromPure a (le_upd P) φ.
+      FromPure a P φ → FromPure a (|==£> P) φ.
     Proof. rewrite /FromPure=> <-. apply le_upd_intro. Qed.
 
-    Global Instance is_except_0_le_upd P : IsExcept0 P → IsExcept0 (le_upd P).
-    Proof.
-      rewrite /IsExcept0=> HP.
-      by rewrite -{2}HP -(except_0_idemp P) -except_0_le_upd -(except_0_intro P).
-    Qed.
+    Global Instance is_except_0_le_upd P : IsExcept0 (le_upd P).
+    Proof. apply except_0_le_upd. Qed.
 
     Global Instance from_modal_le_upd P :
-      FromModal True modality_id (le_upd P) (le_upd P) P.
+      FromModal True modality_id (|==£> P) (|==£> P) P.
     Proof. by rewrite /FromModal /= -le_upd_intro. Qed.
 
     Global Instance elim_modal_le_upd p P Q :
-      ElimModal True p false (le_upd P) P (le_upd Q) (le_upd Q).
+      ElimModal True p false (|==£> P) P (|==£> Q) (|==£> Q).
     Proof.
       by rewrite /ElimModal
         intuitionistically_if_elim le_upd_frame_r wand_elim_r le_upd_trans.
     Qed.
 
     Global Instance frame_le_upd p R P Q :
-      Frame p R P Q → Frame p R (le_upd P) (le_upd Q).
+      Frame p R P Q → Frame p R (|==£> P) (|==£> Q).
     Proof. rewrite /Frame=><-. by rewrite le_upd_frame_l. Qed.
   End le_upd.
 
-  (** You probably do NOT want to use this lemma; use [lc_soundness] if you want
-  to actually use [le_upd]! *)
-  Local Lemma lc_alloc `{SI : indexT} `{!lcGpreS Σ} n :
-    ⊢ |==> ∃ _ : lcGS Σ, lc_supply n ∗ £ n.
+  Lemma lc_le_upd_elim_later {SI : sidx} `{!lcGS HasLc Σ} P : £ 1 -∗ (▷ P) -∗ |==£> P.
   Proof.
-    rewrite lc_unseal /lc_def lc_supply_unseal /lc_supply_def.
+    iIntros "Hc Hl". iApply le_upd_unfold. iIntros (n) "Hs". do 2 iRight.
+    iDestruct (lc_supply_bound with "Hs Hc") as "%".
+    replace n with (1 + (n - 1)) by lia.
+    iMod (lc_decrease_supply with "Hs Hc") as "$"; iModIntro.
+    iSplit; [by eauto with lia|]. iNext. by iApply bupd_le_upd.
+  Qed.
+
+  Lemma lc_le_upd_add_later {SI : sidx} `{!lcGS HasLc Σ} P : £ 1 -∗ ▷ (|==£> P) -∗ |==£> P.
+  Proof.
+    iIntros "H£ H". iApply le_upd_trans.
+    by iApply (lc_le_upd_elim_later with "H£").
+  Qed.
+
+  (** You probably do NOT want to use these lemmas; use [lc_soundness] if you
+  want to actually use [le_upd]! *)
+  Local Lemma lc_alloc {SI : sidx} `{!lcGpreS Σ} n :
+    ⊢ |==> ∃ _ : lcGS HasLc Σ, lc_supply n ∗ £ n.
+  Proof.
     iMod (own_alloc (● n ⋅ ◯ n)) as (γLC) "[H● H◯]";
       first (apply auth_both_valid; split; done).
-    pose (C := LcGS _ _ _ γLC).
-    iModIntro. iExists C. iFrame.
+    iModIntro. iExists (LcGS _ HasLc _ _ γLC).
+    rewrite uPred_lc_unseal /uPred_lc_def lc_supply_unseal /lc_supply_def.
+    iFrame.
+  Qed.
+  Local Lemma lc_alloc_no_lc {SI : sidx} `{!lcGpreS Σ} n :
+    ⊢ ∃ _ : lcGS HasNoLc Σ, lc_supply 0 ∗ £ n.
+  Proof.
+    (* Use [fresh] to pick *any* ghost name (it is unused anyway). *)
+    iExists (LcGS _ HasNoLc _ _ (fresh (∅ : gset gname))).
+    by rewrite uPred_lc_unseal /uPred_lc_def lc_supply_unseal /lc_supply_def.
   Qed.
 
-  Lemma lc_soundness `{SI : indexT} `{!lcGpreS Σ} m (P : iProp Σ) `{!Plain P} :
-    (∀ {Hc: lcGS Σ}, £ m -∗ |==£> P) → ⊢ P.
+  (** Flexible soundness theorem through "finally" modality. *)
+  (** The later-elimination finally modality [le_upd_finally] is used internally
+  in the finally modality for fancy updates ([fupd_finally]). It should not be
+  used directly by end-users. See the file [fancy_updates] for documentation how
+  to prove soundness/adequacy results using the user-facing finally modality.
+
+  Compared to the later-elimination modality [le_upd] itself, this modality
+  only consumes the supply [lc_supply], but does not give it back. This change
+  allows us to prove the rules [le_upd_finally_later], [le_upd_finally_keep],
+  and [le_upd_finally_forall], which cannot be proven for [le_upd]. For instance,
+  to prove [le_upd_finally_forall] the goal is [▷^m ◇ ■ ∀ x, Φ x] where we can
+  just commute out the [∀]. Such a proof does not work for a corresponding lemma
+  for [le_upd] because we cannot commute out the [∀].
+
+  Due to the plain modality [■], we can perform basic updates around
+  [le_upd_finally] (we have [(|==> ■ P) ⊣⊢ ■ P]). This fact is exposed by the
+  rule [le_upd_le_upd_finally] combined with the rule [bupd_le_upd]. *)
+  Definition le_upd_finally_def {SI : sidx} `{!lcGS hlc Σ} (P : iProp Σ) : iProp Σ :=
+    ∀ m, lc_supply m -∗ ▷^m ◇ ■ P.
+  Local Definition le_upd_finally_aux : seal (@le_upd_finally_def).
+  Proof. by eexists. Qed.
+  Local Definition le_upd_finally := le_upd_finally_aux.(unseal).
+  Local Definition le_upd_finally_unseal :
+    @le_upd_finally = @le_upd_finally_def := le_upd_finally_aux.(seal_eq).
+  Global Arguments le_upd_finally {SI hlc Σ _}.
+
+  Notation "|==£|■> Q" := (le_upd_finally Q) (at level 20, Q at level 200,
+     format "'[  ' |==£|■>  '/' Q ']'") : bi_scope.
+
+  Section le_upd_finally.
+    Context {SI : sidx} `{!lcGS hlc Σ}.
+
+    Global Instance le_upd_finally_ne : NonExpansive le_upd_finally.
+    Proof. rewrite le_upd_finally_unseal. solve_proper. Qed.
+
+    Lemma le_upd_finally_mono P Q : (P ⊢ Q) → (|==£|■> P) ⊢ (|==£|■> Q).
+    Proof. rewrite le_upd_finally_unseal. solve_proper. Qed.
+
+    Lemma le_upd_finally_intro P : ■ P ⊢ |==£|■> P.
+    Proof. rewrite le_upd_finally_unseal. iIntros "#HP %m _ !> !>". done. Qed.
+
+    Lemma le_upd_le_upd_finally P : (|==£> |==£|■> P) ⊢ |==£|■> P.
+    Proof.
+      rewrite le_upd_finally_unseal /le_upd_finally_def. iIntros "HP %m Hlc".
+      iLöb as "IH" forall (m).
+      iEval (rewrite le_upd_unfold) in "HP".
+      iMod ("HP" with "Hlc") as "[HFalse|[[Hlc H]|(%m' & %Hm & Hlc & H)]]".
+      { iNext. by iMod "HFalse". }
+      { by iApply "H". }
+      replace m with (S ((m - m' - 1) + m')) by lia. rewrite /= laterN_add.
+      do 2 iNext. iApply ("IH" with "H Hlc").
+    Qed.
+
+    Lemma le_upd_finally_except_0 P : (|==£|■> ◇ P) ⊢ |==£|■> P.
+    Proof.
+      rewrite le_upd_finally_unseal /le_upd_finally_def. iIntros "HP %m Hlc".
+      iEval (rewrite -except_0_idemp except_0_plainly). by iApply "HP".
+    Qed.
+
+    (** Commute a later out of the modality. This only works if the proposition
+    below the later can be turned into an except-0 [◇]. *)
+    Lemma le_upd_finally_later P : ▷ (|==£|■> P) ⊢ |==£|■> ▷ ◇ P.
+    Proof.
+      rewrite le_upd_finally_unseal /le_upd_finally_def. iIntros "H %m Hlc".
+      iEval (rewrite -later_plainly -except_0_plainly
+        -except_0_intro -laterN_succ_r /=).
+      iNext. by iApply "H".
+    Qed.
+
+    (** Add a later credit by removing a later below the modality. This
+    only works if the proposition below the later can be turned into an
+    except-0 [◇]. *)
+    Lemma le_upd_finally_add_lc P : (£ 1 -∗ |==£|■> P) ⊢ |==£|■> ▷ ◇ P.
+    Proof.
+      rewrite le_upd_finally_unseal. iIntros "H %m Hlc".
+      rewrite -except_0_intro -later_plainly -except_0_plainly -laterN_succ_r.
+      destruct hlc.
+      - iMod (later_credits.lc_increase_supply 1 with "Hlc") as "[Hlc H£]".
+        iApply ("H" with "H£ Hlc").
+      - iIntros "/= !>". iApply ("H" with "[] Hlc"). by iApply lc_no_lc.
+    Qed.
+
+    Lemma le_upd_finally_forall {A} (Φ : A → iProp Σ) :
+      (∀ x, |==£|■> Φ x) ⊢ |==£|■> ∀ x, Φ x.
+    Proof.
+      rewrite le_upd_finally_unseal.
+      iIntros "H %m Hlc %x". iApply ("H" with "Hlc").
+    Qed.
+
+    (* [iApply] this lemma to use your current context for proving a (timeless)
+    assertion [P] *without* actually using up the context. You can then continue
+    the proof in the second conjunct. *)
+    Lemma le_upd_keep P `{!TCOr (TCEq hlc HasNoLc) (Timeless P)} Q :
+      (|==£|■> P) ∧ (P -∗ |==£> Q) ⊢ |==£> Q.
+    Proof.
+      iIntros "H". iApply le_upd_unfold; iIntros (n) "Hc".
+      iAssert (▷^(S n) False ∨ ■ P)%I as "#[Hfalse|HP]"; [|by auto|].
+      { iDestruct "H" as "[H _]". rewrite le_upd_finally_unseal.
+        destruct select (TCOr _ _) as [->%TCEq_eq|?].
+        - iDestruct (lc_supply_no_lc with "Hc") as %->; simpl.
+          iApply ("H" with "Hc").
+        - iApply (uPred.timeless_laterN _ (S n)). iSpecialize ("H" with "Hc").
+          by iEval (rewrite except_0_into_later -laterN_succ_r) in "H". }
+      iDestruct "H" as "[_ H]". by iApply (le_upd_unfold with "(H [//])").
+    Qed.
+
+    (** Derived rules *)
+    (** Since the modality is used only internally in the version for fancy
+    updates, we do not provide instances of the proof mode classes. *)
+    Global Instance le_upd_finally_proper : Proper ((⊣⊢) ==> (⊣⊢)) le_upd_finally.
+    Proof. apply: ne_proper. Qed.
+    Global Instance le_upd_finally_mono' : Proper ((⊢) ==> (⊢)) le_upd_finally.
+    Proof. intros P Q. apply le_upd_finally_mono. Qed.
+    Global Instance le_upd_finally_flip_mono' :
+      Proper (flip (⊢) ==> flip (⊢)) le_upd_finally.
+    Proof. intros P Q. apply le_upd_finally_mono. Qed.
+  End le_upd_finally.
+
+  Lemma le_upd_finally_soundness {SI : sidx} hlc `{!lcGpreS Σ} n P :
+    (∀ `{!lcGS hlc Σ}, £ n ⊢ |==£|■> P) → ⊢ P.
   Proof.
-    intros H. apply (laterN_soundness _ (S m)).
-    eapply bupd_soundness; first apply _.
-    iStartProof.
-    iMod (lc_alloc m) as (C) "[H● H◯]".
-    iPoseProof (H C) as "Hc". iSpecialize ("Hc" with "H◯").
-    iPoseProof (le_upd_elim_complete m with "H● Hc") as "H".
-    simpl. iMod "H". iModIntro. iNext.
-    clear H. iInduction m as [|m IH]; simpl; [done|].
-    iMod "H". iNext. by iApply "IH".
+    rewrite le_upd_finally_unseal. intros HP. destruct hlc.
+    - apply (laterN_soundness _ (S n)).
+      rewrite laterN_succ_r -except_0_into_later -(plainly_elim P).
+      iMod (lc_alloc n) as (Hc) "[Hlc H£]". iApply (HP with "H£ Hlc").
+    - apply (laterN_soundness _ 1).
+      iDestruct (lc_alloc_no_lc n) as (Hc) "[Hlc H£]".
+      by iMod (HP with "H£ Hlc") as "H".
+  Qed.
+
+  #[deprecated(note="Internal result, will be removed in the future. Use
+  `le_upd_finally_soundness` if you build a custom update modality.")]
+  Lemma lc_soundness {SI : sidx} hlc `{!lcGpreS Σ} m (P : iProp Σ) `{!Plain P} :
+    (∀ `{!lcGS hlc Σ}, £ m -∗ |==£> P) → ⊢ P.
+  Proof.
+    intros H. apply (le_upd_finally_soundness hlc m); iIntros (?) "H£".
+    iApply le_upd_le_upd_finally. iMod (H with "H£") as "HP"; iModIntro.
+    iApply le_upd_finally_intro. by iApply plain_plainly.
   Qed.
 End le_upd.
-
-(** This should only be imported by the internal development of fancy updates. *)
-Module le_upd_if.
-  Export le_upd.
-
-  Section le_upd_if.
-    Context `{SI : indexT} `{!lcGS Σ}.
-
-    Definition le_upd_if (b : bool) : iProp Σ → iProp Σ :=
-      if b then le_upd else bupd.
-
-    Global Instance le_upd_if_mono' b : Proper ((⊢) ==> (⊢)) (le_upd_if b).
-    Proof. destruct b; apply _. Qed.
-    Global Instance le_upd_if_flip_mono' b :
-      Proper (flip (⊢) ==> flip (⊢)) (le_upd_if b).
-    Proof. destruct b; apply _. Qed.
-    Global Instance le_upd_if_proper b : Proper ((≡) ==> (≡)) (le_upd_if b).
-    Proof. destruct b; apply _. Qed.
-    Global Instance le_upd_if_ne b : NonExpansive (le_upd_if b).
-    Proof. destruct b; apply _. Qed.
-
-    Lemma le_upd_if_intro b P : P ⊢ le_upd_if b P.
-    Proof.
-      destruct b; [apply le_upd_intro | apply bupd_intro].
-    Qed.
-
-    Lemma le_upd_if_bind b P Q :
-      (P -∗ le_upd_if b Q) -∗ (le_upd_if b P) -∗ (le_upd_if b Q).
-    Proof.
-      destruct b; first apply le_upd_bind. simpl.
-      iIntros "HPQ >HP". by iApply "HPQ".
-    Qed.
-
-    Lemma le_upd_if_mono b P Q : (P ⊢ Q) → (le_upd_if b P) ⊢ (le_upd_if b Q).
-    Proof.
-      destruct b; [apply le_upd_mono | apply bupd_mono].
-    Qed.
-    Lemma le_upd_if_trans b P : (le_upd_if b (le_upd_if b P)) ⊢ le_upd_if b P.
-    Proof.
-      destruct b; [apply le_upd_trans | apply bupd_trans].
-    Qed.
-    Lemma le_upd_if_frame_r b P R : (le_upd_if b P) ∗ R ⊢ le_upd_if b (P ∗ R).
-    Proof.
-      destruct b; [apply le_upd_frame_r | apply bupd_frame_r].
-    Qed.
-
-    Lemma bupd_le_upd_if b P : (|==> P) ⊢ (le_upd_if b P).
-    Proof.
-      destruct b; [apply bupd_le_upd | done].
-    Qed.
-
-    Lemma le_upd_if_frame_l b R Q : (R ∗ le_upd_if b Q) ⊢ le_upd_if b (R ∗ Q).
-    Proof.
-      rewrite comm le_upd_if_frame_r comm //.
-    Qed.
-
-    Lemma except_0_le_upd_if b P : ◇ (le_upd_if b P) ⊢ le_upd_if b (◇ P).
-    Proof.
-      rewrite /bi_except_0. apply or_elim; eauto using le_upd_if_mono, or_intro_r.
-      by rewrite -le_upd_if_intro -or_intro_l.
-    Qed.
-
-    (** Proof mode class instances that we need for the internal development,
-    i.e. for the definition of fancy updates. *)
-    Global Instance elim_bupd_le_upd_if b p P Q :
-      ElimModal True p false (bupd P) P (le_upd_if b Q) (le_upd_if b Q)%I.
-    Proof.
-      rewrite /ElimModal bi.intuitionistically_if_elim //=.
-      rewrite bupd_le_upd_if. iIntros "_ [HP HPQ]".
-      iApply (le_upd_if_bind with "HPQ HP").
-    Qed.
-
-    Global Instance from_assumption_le_upd_if b p P Q :
-      FromAssumption p P Q → KnownRFromAssumption p P (le_upd_if b Q).
-    Proof.
-      rewrite /KnownRFromAssumption /FromAssumption=>->. apply le_upd_if_intro.
-    Qed.
-
-    Global Instance from_pure_le_upd_if b a P φ :
-      FromPure a P φ → FromPure a (le_upd_if b P) φ.
-    Proof. rewrite /FromPure=> <-. apply le_upd_if_intro. Qed.
-
-    Global Instance is_except_0_le_upd_if b P : IsExcept0 P → IsExcept0 (le_upd_if b P).
-    Proof.
-      rewrite /IsExcept0=> HP.
-      by rewrite -{2}HP -(except_0_idemp P) -except_0_le_upd_if -(except_0_intro P).
-    Qed.
-
-    Global Instance from_modal_le_upd_if b P :
-      FromModal True modality_id (le_upd_if b P) (le_upd_if b P) P.
-    Proof. by rewrite /FromModal /= -le_upd_if_intro. Qed.
-
-    Global Instance elim_modal_le_upd_if b p P Q :
-      ElimModal True p false (le_upd_if b P) P (le_upd_if b Q) (le_upd_if b Q).
-    Proof.
-      by rewrite /ElimModal
-        intuitionistically_if_elim le_upd_if_frame_r wand_elim_r le_upd_if_trans.
-    Qed.
-
-    Global Instance frame_le_upd_if b p R P Q :
-      Frame p R P Q → Frame p R (le_upd_if b P) (le_upd_if b Q).
-    Proof. rewrite /Frame=><-. by rewrite le_upd_if_frame_l. Qed.
-  End le_upd_if.
-End le_upd_if.
