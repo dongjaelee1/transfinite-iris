@@ -729,19 +729,19 @@ Section ordinal_instance.
   Universe iris.
 
   (* an ordinal index instance *)
-  Lemma ord_index_mixin : IndexMixin ord@{iris} ord_lt (rc ord_lt) ordinals.zero_def ordinals.succ_def.
+  Lemma ord_index_mixin : SIdxMixin (I:=ord@{iris}) ord_lt (rc ord_lt) ordinals.zero_def ordinals.succ_def.
   Proof.
     constructor.
     - apply _.
     - apply wf_ord_lt.
-    - apply ord_linear_strong.
+    - intros n m. destruct (ord_linear_strong n m) as [[|]|]; auto.
     - intros n m; rewrite rc_iff; naive_solver.
     - intros n Hn. eapply no_smaller_than_zero. by eexists _.
     - apply succ_greater.
     - apply succ_least_greater.
     - apply ord_case_succ_strong.
   Qed.
-  Canonical Structure ordI : indexT := IndexT (ord@{iris}) ord_lt (rc ord_lt) zero_def succ_def ord_index_mixin.
+  Canonical Structure ordI : sidx := SIdx (ord@{iris}) ord_index_mixin.
 
   Global Instance ordinals_large_index: ExistentialProperty@{iris} ordI.
   Proof.

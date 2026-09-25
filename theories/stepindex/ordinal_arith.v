@@ -76,7 +76,7 @@ Section ordinals.
   Lemma zero_succ α: zero ≺ succ α.
   Proof.
     eapply ord_lt_leq; first apply succ_greater.
-    eapply succ_mono_leq, index_zero_minimum.
+    eapply succ_mono_leq, SIdx.le_0_l.
   Qed.
 
 
@@ -88,7 +88,7 @@ Section ordinals.
 
   Lemma one_elements_are_zero x: ordinals (succ zero) x = zero.
   Proof.
-    apply ord_leq_eq; split; last apply index_zero_minimum.
+    apply ord_leq_eq; split; last apply SIdx.le_0_l.
     apply succ_inj_leq, succ_least_greater, ordinals_lt.
   Qed.
 
@@ -374,7 +374,7 @@ Section ordinals.
       Set Printing All.
       replace α with (zero ⊕ α) at 1 by apply natural_addition_zero_left_id.
       rewrite [α ⊕ β]natural_addition_comm.
-      apply natural_addition_compat, index_zero_minimum.
+      apply natural_addition_compat, SIdx.le_0_l.
     Qed.
 
     Lemma natural_addition_cancel α β γ: α ⊕ γ = β ⊕ γ → α = β.

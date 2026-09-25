@@ -5,7 +5,7 @@ From iris.prelude Require Import options.
 
 (** Ordinals *)
 Section ordinals.
-  Context `{SI : indexT}.
+  Context {SI : sidx}.
 
   Local Open Scope ordinals.
   Canonical Structure ordO := leibnizO ordinals.ord.

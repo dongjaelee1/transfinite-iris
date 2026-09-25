@@ -10,8 +10,8 @@ Section IR.
   Variable (X : Type).  (* the type of indices *)
   Variable (lt : X → X → Prop).
   Variable (le : X → X → Prop).
-  Notation "a ≺ᵢ b" := (lt a b).
-  Notation "a ⪯ᵢ b" := (le a b).
+  Notation "a ≺ᵢ b" := (lt a b) (at level 60).
+  Notation "a ⪯ᵢ b" := (le a b) (at level 60).
 
 
   Variable (rel_le_lt_iff : ∀ x y, x ⪯ᵢ y ↔ (x = y ∨ x ≺ᵢ y)).
@@ -113,42 +113,43 @@ End IR.
 
 (** we now specialize this construction to stepindices *)
 Section IR_wf_index.
-  Variable (SI : indexT).
-  Variable (A : ∀ (P : index → Prop), Type).
+  Local Open Scope sidx_scope.
+  Variable (SI : sidx).
+  Variable (A : ∀ (P : SI → Prop), Type).
   Variable (A_agree : ∀ {P1 P2}, A P1 → A P2 → Prop).
-  Variable (A_agree_transitive : ∀ (P0 P1 P2 : index → Prop) A0 A1 A2, (∀ γ, P0 γ → P2 γ → P1 γ)
+  Variable (A_agree_transitive : ∀ (P0 P1 P2 : SI → Prop) A0 A1 A2, (∀ γ, P0 γ → P2 γ → P1 γ)
       → @A_agree P0 P1 A0 A1 → @A_agree P1 P2 A1 A2 → @A_agree P0 P2 A0 A2).
   Variable (A_agree_symmetric : ∀ P0 P1 A0 A1, @A_agree P0 P1 A0 A1 → @A_agree P1 P0 A1 A0).
 
-  Implicit Type (P : index → Prop).
+  Implicit Type (P : SI → Prop).
 
   (* we can merge previous approximations coherently *)
-  Variable (step_merge : ∀ P (IH : ∀ x, P x → A (λ y, y ⪯ᵢ x)), (∀ x0 x1 H0 H1, A_agree (IH x0 H0) (IH x1 H1)) → A P).
+  Variable (step_merge : ∀ P (IH : ∀ x, P x → A (λ y, y ≤ x)), (∀ x0 x1 H0 H1, A_agree (IH x0 H0) (IH x1 H1)) → A P).
   Variable (merge_agree : ∀ P Hlt, ∀ x Hx H, A_agree (Hlt x Hx) (step_merge P Hlt H)).
-  Variable (merge_preserve : ∀ P (Hlt1 : ∀ x, P x → A (λ y, y ⪯ᵢ x)) (Hlt2 : ∀ x, P x → A (λ y, y ⪯ᵢ x)),
+  Variable (merge_preserve : ∀ P (Hlt1 : ∀ x, P x → A (λ y, y ≤ x)) (Hlt2 : ∀ x, P x → A (λ y, y ≤ x)),
     ∀ (H1 : ∀ x1 x2 Hx1 Hx2, A_agree (Hlt1 x1 Hx1) (Hlt1 x2 Hx2))
     (H2 : ∀ x1 x2 Hx1 Hx2, A_agree (Hlt2 x1 Hx1) (Hlt2 x2 Hx2)),
     (∀ x Hx, A_agree (Hlt1 x Hx) (Hlt2 x Hx))
     → A_agree (step_merge P Hlt1 H1) (step_merge P Hlt2 H2)).
 
-  Variable (step : ∀ x, A (λ y, y ≺ᵢ x) → A (λ y, y ⪯ᵢ x)).
+  Variable (step : ∀ x, A (λ y, y < x) → A (λ y, y ≤ x)).
   Variable (step_agree : ∀ x IH, A_agree IH (step x IH) ).
   Variable (step_preserve : ∀ x IH1 IH2, A_agree IH1 IH2 → A_agree (step x IH1) (step x IH2)).
 
-  Lemma existT_index_inj2 (p : index → Type) (x : index) (H1 H2 : p x) : existT x H1 = existT x H2 → H1 = H2.
+  Lemma existT_index_inj2 (p : SI → Type) (x : SI) (H1 H2 : p x) : existT x H1 = existT x H2 → H1 = H2.
   Proof.
-    apply inj_pair2_eq_dec. apply index_eq_dec.
+    apply inj_pair2_eq_dec. apply SIdx.eq_dec.
   Qed.
   Definition full_A_SI : A (λ _, True).
   Proof using step_preserve step_merge step_agree step merge_preserve merge_agree A_agree_transitive A_agree_symmetric A_agree.
     unshelve eapply full_A.
-    - by apply index_lt.
-    - by apply index_le.
+    - by apply sidx_lt.
+    - by apply sidx_le.
     - by exact (@A_agree).
     - intros ???. eapply step_merge, H.
     - by exact step.
-    - intros ??. rewrite index_le_lt_iff. naive_solver.
-    - apply index_lt_wf.
+    - intros ??. rewrite SIdx.le_lteq. naive_solver.
+    - apply SIdx.lt_wf.
     - apply _.
     - apply existT_index_inj2.
     - intros x1 x2. destruct (index_le_lt_dec x1 x2) as [H1 | H1].
@@ -166,49 +167,50 @@ End IR_wf_index.
 
 (** Finally, we can derive a transfinite induction scheme which relies on an extension operation for the inductive step *)
 Section IR_transfinite_index_cons.
-  Variable (SI : indexT).
+  Local Open Scope sidx_scope.
+  Variable (SI : sidx).
 
-  Variable (A : ∀ (P : index → Prop), Type).
+  Variable (A : ∀ (P : SI → Prop), Type).
   Variable (A_agree : ∀ {P1 P2}, A P1 → A P2 → Prop).
   Variable (A_agree_trivial : ∀ P1 P2 (A1 : A P1) (A2 : A P2), (∀ γ, P1 γ → P2 γ → False) → A_agree A1 A2).
-  Variable (A_agree_transitive : ∀ (P0 P1 P2 : index → Prop) A0 A1 A2, (∀ γ, P0 γ → P2 γ → P1 γ)
+  Variable (A_agree_transitive : ∀ (P0 P1 P2 : SI → Prop) A0 A1 A2, (∀ γ, P0 γ → P2 γ → P1 γ)
       → @A_agree P0 P1 A0 A1 → @A_agree P1 P2 A1 A2 → @A_agree P0 P2 A0 A2).
   Variable (A_agree_symmetric : ∀ P0 P1 A0 A1, @A_agree P0 P1 A0 A1 → @A_agree P1 P0 A1 A0).
   Variable (A_agree_reflexive : ∀ P A, @A_agree P P A A).
 
   (** extension operation -- it is always relative to a particular approximation *)
-  Variable (E : ∀ γ (approx : A (λ y, y ≺ᵢ γ)), Type).
+  Variable (E : ∀ γ (approx : A (λ y, y < γ)), Type).
   (** agreement of extensions is dependent on the agreement of the approximations they are based on *)
   Variable (E_agree : ∀ γ ap0 ap1, E γ ap0 → E γ ap1 → A_agree ap0 ap1 → Prop).
 
-  Variable (extend : ∀ γ ap (ext : E γ ap) (succ_or_limit : {γ' | γ = succ γ'} + {index_is_limit γ}), A (λ y, y ⪯ᵢ γ)).
+  Variable (extend : ∀ γ ap (ext : E γ ap) (succ_or_limit : {γ' | γ = Sᵢ γ'} + {index_is_limit γ}), A (λ y, y ≤ γ)).
   Variable (extend_agree : ∀ γ ap ext succ_or_limit, A_agree ap (extend γ ap ext succ_or_limit)).
   Variable (extend_coherent : ∀ γ ap0 ap1 ext0 ext1 succ_or_limit,
     ∀ H: A_agree ap0 ap1,
     E_agree γ ap0 ap1 ext0 ext1 H
     → A_agree (extend γ ap0 ext0 succ_or_limit) (extend γ ap1 ext1 succ_or_limit)).
 
-  Implicit Type (P : index → Prop).
+  Implicit Type (P : SI → Prop).
 
   (** we can merge previous approximations coherently *)
-  Variable (step_merge : ∀ P (IH : ∀ x, P x → A (λ y, y ⪯ᵢ x)), (∀ x0 x1 H0 H1, A_agree (IH x0 H0) (IH x1 H1)) →  A P).
+  Variable (step_merge : ∀ P (IH : ∀ x, P x → A (λ y, y ≤ x)), (∀ x0 x1 H0 H1, A_agree (IH x0 H0) (IH x1 H1)) →  A P).
   Variable (merge_agree : ∀ P Hlt , ∀ x Hx H, A_agree (Hlt x Hx) (step_merge P Hlt H)).
-  Variable (merge_coherent : ∀ P (Hlt1 : ∀ x, P x → A (λ y, y ⪯ᵢ x)) (Hlt2 : ∀ x, P x → A (λ y, y ⪯ᵢ x)),
+  Variable (merge_coherent : ∀ P (Hlt1 : ∀ x, P x → A (λ y, y ≤ x)) (Hlt2 : ∀ x, P x → A (λ y, y ≤ x)),
     ∀ (H1 : ∀ x1 x2 Hx1 Hx2, A_agree (Hlt1 x1 Hx1) (Hlt1 x2 Hx2))
       (H2 : ∀ x1 x2 Hx1 Hx2, A_agree (Hlt2 x1 Hx1) (Hlt2 x2 Hx2)),
    (∀ x Hx, A_agree (Hlt1 x Hx) (Hlt2 x Hx))
     → A_agree (step_merge P Hlt1 H1) (step_merge P Hlt2 H2)).
 
   (** base case*)
-  Variable (base : A (λ y, y ⪯ᵢ zero)).
+  Variable (base : A (λ y, y ≤ 0ᵢ)).
 
   (** successor case *)
-  Variable (succ_step : ∀ β (IH : A (λ y, y ≺ᵢ succ β)), E (succ β) IH).
+  Variable (succ_step : ∀ β (IH : A (λ y, y < Sᵢ β)), E (Sᵢ β) IH).
   Variable (succ_extension_coherent : ∀ β IH0 IH1 (H : A_agree IH0 IH1),
-    E_agree (succ β) IH0 IH1 (succ_step β IH0) (succ_step β IH1) H).
+    E_agree (Sᵢ β) IH0 IH1 (succ_step β IH0) (succ_step β IH1) H).
 
   (** limit case *)
-  Variable (limit_step : ∀ (β : limit_idx) (IH : A (λ y, y ≺ᵢ β)), E β IH).
+  Variable (limit_step : ∀ (β : limit_idx) (IH : A (λ y, y < β)), E β IH).
   Variable (limit_extension_coherent : ∀ (β : limit_idx) IH0 IH1 (H : A_agree IH0 IH1),
     E_agree β IH0 IH1 (limit_step β IH0) (limit_step β IH1) H).
 
@@ -228,12 +230,12 @@ Section IR_transfinite_index_cons.
     - apply merge_coherent.
     - intros x IH. unfold ord_match. destruct index_is_zero as [-> | Hnt]; cbn.
       { apply A_agree_trivial. intros. index_contra_solve. }
-      destruct index_dec_limit as [[β ->] | H2]; cbn.
+      destruct SIdx.weak_case as [[β ->] | H2]; cbn.
       { apply extend_agree. }
       { apply extend_agree. }
     - intros x IH1 IH2 H. unfold ord_match. destruct index_is_zero as [-> | Hnt]; cbn.
       { intros. apply A_agree_reflexive. }
-      destruct index_dec_limit as [[β ->] | H2]; cbn.
+      destruct SIdx.weak_case as [[β ->] | H2]; cbn.
       { unshelve eapply extend_coherent; first exact H. eapply succ_extension_coherent. }
       { unshelve eapply extend_coherent; first exact H.
         set (xlim := mklimitidx _ _ _).

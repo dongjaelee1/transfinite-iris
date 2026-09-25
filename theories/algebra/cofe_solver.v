@@ -6,8 +6,10 @@ Require Stdlib.Logic.PropExtensionality.
 Require Stdlib.Logic.FunctionalExtensionality.
 Require Stdlib.Logic.ProofIrrelevance.
 
+Local Open Scope sidx_scope.
+
 Section cofe.
-  Context (SI : indexT).
+  Context (SI : sidx).
   (* Shorthand notation to avoid making a distinction between Cofes and ofes *)
   Definition COFE := { C : ofe & Cofe C }.
   Global Coercion projCOFE (C: COFE) : ofe := (projT1 C).
@@ -19,17 +21,17 @@ Definition proj_id {SI} {A B : COFE SI} (Heq : A = B) : projCOFE _ A = projCOFE 
 Proof. by rewrite Heq. Qed.
 
 (* non-expansive maps commute with bounded limits only in a restricted way *)
-Lemma bounded_ne_bcompl `{SI : indexT} {A B : ofe} {Hc : Cofe A} {Hb : Cofe B} (f : A -n> B):
-  ∀ β (c : bchain _ β) Hβ γ (Hγ : γ ≺ᵢ β), f (bcompl Hβ c) ≡{γ}≡ bcompl Hβ (bchain_map f c).
+Lemma bounded_ne_bcompl {SI : sidx} {A B : ofe} {Hc : Cofe A} {Hb : Cofe B} (f : A -n> B):
+  ∀ β (c : bchain _ β) Hβ γ (Hγ : γ < β), f (bcompl_pos Hβ c) ≡{γ}≡ bcompl_pos Hβ (bchain_map f c).
 Proof.
   intros β c Hβ γ Hγ.
   etrans.
   (* FIXME: why does the apply shelve the goal ? *)
-  - rewrite ofe_mor_ne; last by unshelve apply conv_bcompl. reflexivity.
-  - rewrite conv_bcompl /bchain_map. cbn. reflexivity.
+  - rewrite ofe_mor_ne; last by unshelve apply conv_bcompl_pos. reflexivity.
+  - rewrite conv_bcompl_pos /bchain_map. cbn. reflexivity.
 Qed.
 
-Record solution `{SI: indexT} (F : tFunctor) := Solution {
+Record solution {SI : sidx} (F : tFunctor) := Solution {
   solution_car :> ofe;
   solution_cofe : Cofe solution_car;
   solution_unfold : solution_car -n> F solution_car;
@@ -43,7 +45,7 @@ Arguments solution_fold {_} _.
 Global Existing Instance solution_cofe.
 
 Module solver. Section solver.
-Context `{SI : indexT} (F : tFunctor) `{Fcontr : !tFunctorContractive F}.
+Context {SI : sidx} (F : tFunctor) `{Fcontr : !tFunctorContractive F}.
 Context `{Fcofe : !∀ (T1 T2 : ofe), Cofe (tFunctor_car F T1 T2)}.
 Context `{Ftrunc : !∀ (T1 T2 : ofe), Truncatable (tFunctor_car F T1 T2)}.
 Context `{Funique : !∀ (T1 T2 : ofe), BcomplUniqueLim (tFunctor_car F T1 T2)}.
@@ -372,13 +374,13 @@ Ltac clear_transports := compose_transports; clear_id_transports; cbn -[trunc_ma
 Definition unfold_transport {Y Z: ofe} (Heq : ofe_eq Y Z) := transport_id Y Z.
 Definition fold_transport {Y Z : ofe} (Heq : ofe_eq Y Z) := @transport_id Z Y (ofe_eq_symm Heq).
 
-(** casts between OFEs commute with bcompl *)
+(** casts between OFEs commute with bcompl_pos *)
 (*the COFEs really need to be equal so that the limits are also equal *)
-Lemma transport_id_bcompl {A B : COFE SI} (Heq : A = B) (Heq' : projCOFE _ A = projCOFE _ B) α (Hα : zero ≺ᵢ α) (ch : bchain A α)
-  : @transport_id A B Heq' (bcompl Hα ch) ≡{α}≡ bcompl Hα (bchain_map (@transport_id A B Heq') ch).
+Lemma transport_id_bcompl {A B : COFE SI} (Heq : A = B) (Heq' : projCOFE _ A = projCOFE _ B) α (Hα : 0ᵢ < α) (ch : bchain A α)
+  : @transport_id A B Heq' (bcompl_pos Hα ch) ≡{α}≡ bcompl_pos Hα (bchain_map (@transport_id A B Heq') ch).
 Proof.
   unfold ofe_eq in *. subst. rewrite (transport_id_identity _ _).
-  cbn. apply bcompl_ne. intros. cbn. by clear_transports.
+  cbn. apply bcompl_pos_ne. intros. cbn. by clear_transports.
 Qed.
 
 (** * Preliminary definitions for the induction *)
@@ -386,11 +388,11 @@ Qed.
 (** A record for the inductive hypothesis.
   Parameterised by a predicate P (instead of an ordinal β and specialising to the predicate ⪯ β) as we have different instantiations (with ≺ β and True) for the two limit cases.
 *)
-Record is_bounded_approx {P : index -> Prop} {X : ∀ α, P α → COFE SI}
-  {e : ∀ α₁ α₂ (Hα₁ : P α₁) (Hα₂ : P α₂), α₁ ≺ᵢ α₂ → X α₁ Hα₁ -n> X α₂ Hα₂}
-  {p : ∀ α₁ α₂ (Hα₁ : P α₁) (Hα₂ : P α₂), α₁ ≺ᵢ α₂ → X α₂ Hα₂ -n> X α₁ Hα₁}
-  {ϕ : ∀ α (Hα : P α), X α Hα -n> [G (X α Hα)]_{succ α}}
-  {ψ : ∀ α (Hα : P α), [G (X α Hα)]_{succ α} -n> X α Hα}
+Record is_bounded_approx {P : SI -> Prop} {X : ∀ α, P α → COFE SI}
+  {e : ∀ α₁ α₂ (Hα₁ : P α₁) (Hα₂ : P α₂), α₁ < α₂ → X α₁ Hα₁ -n> X α₂ Hα₂}
+  {p : ∀ α₁ α₂ (Hα₁ : P α₁) (Hα₂ : P α₂), α₁ < α₂ → X α₂ Hα₂ -n> X α₁ Hα₁}
+  {ϕ : ∀ α (Hα : P α), X α Hα -n> [G (X α Hα)]_{Sᵢ α}}
+  {ψ : ∀ α (Hα : P α), [G (X α Hα)]_{Sᵢ α} -n> X α Hα}
   := mk_is_bounded_approx
   {
     approx_p_e_id α₁ α₂ Hα₁ Hα₂ Hlt : (p α₁ α₂ Hα₁ Hα₂ Hlt) ◎ (e α₁ α₂ Hα₁ Hα₂ Hlt) ≡ cid;
@@ -402,44 +404,44 @@ Record is_bounded_approx {P : index -> Prop} {X : ∀ α, P α → COFE SI}
     approx_ψ_ϕ_id α Hα: (ψ α Hα) ◎ (ϕ α Hα) ≡ cid;
     approx_ϕ_ψ_id α Hα : (ϕ α Hα) ◎ (ψ α Hα) ≡{α}≡ cid;
 
-    approx_eq {α} Hα Hsα: projCOFE _ (X (succ α) Hsα) = [G (X α Hα)]_{succ α};
+    approx_eq {α} Hα Hsα: projCOFE _ (X (Sᵢ α) Hsα) = [G (X α Hα)]_{Sᵢ α};
     approx_X_truncated α Hα : OfeTruncated (X α Hα) α;
 
 
     (* only interesting for the successor case *)
-    approx_Fep_p γ0 γ1 (Hγ0 : P γ0) (Hγ1 : P γ1) (Hsγ0 : P (succ γ0)) (Hsγ1 : P (succ γ1))
-      (Hlt : γ0 ≺ᵢ γ1) (Hlts : succ γ0 ≺ᵢ succ γ1):
+    approx_Fep_p γ0 γ1 (Hγ0 : P γ0) (Hγ1 : P γ1) (Hsγ0 : P (Sᵢ γ0)) (Hsγ1 : P (Sᵢ γ1))
+      (Hlt : γ0 < γ1) (Hlts : Sᵢ γ0 < Sᵢ γ1):
       fold_transport (approx_eq Hγ0 Hsγ0)
       ◎ (trunc_map _ _ (map (e γ0 γ1 Hγ0 Hγ1 Hlt, p γ0 γ1 Hγ0 Hγ1 Hlt)))
       ◎ unfold_transport (approx_eq Hγ1 Hsγ1)
-      ≡ p (succ γ0) (succ γ1) Hsγ0 Hsγ1 Hlts;
-    approx_p_ψ_unfold γ Hγ Hsγ (Hlt : γ ≺ᵢ succ γ): p γ (succ γ) Hγ Hsγ Hlt ≡ ψ γ Hγ ◎ unfold_transport (approx_eq Hγ Hsγ);
-    approx_e_fold_ϕ γ Hγ Hsγ (Hlt : γ ≺ᵢ succ γ): e γ (succ γ) Hγ Hsγ Hlt ≡ fold_transport (approx_eq Hγ Hsγ) ◎ ϕ γ Hγ;
+      ≡ p (Sᵢ γ0) (Sᵢ γ1) Hsγ0 Hsγ1 Hlts;
+    approx_p_ψ_unfold γ Hγ Hsγ (Hlt : γ < Sᵢ γ): p γ (Sᵢ γ) Hγ Hsγ Hlt ≡ ψ γ Hγ ◎ unfold_transport (approx_eq Hγ Hsγ);
+    approx_e_fold_ϕ γ Hγ Hsγ (Hlt : γ < Sᵢ γ): e γ (Sᵢ γ) Hγ Hsγ Hlt ≡ fold_transport (approx_eq Hγ Hsγ) ◎ ϕ γ Hγ;
     approx_ϕ_succ_id γ Hle Hsle :
-      ϕ (succ γ) Hsle
-      ≡ trunc_map (succ γ) (succ (succ γ)) (map (ψ γ Hle ◎ unfold_transport (approx_eq Hle Hsle),
+      ϕ (Sᵢ γ) Hsle
+      ≡ trunc_map (Sᵢ γ) (Sᵢ (Sᵢ γ)) (map (ψ γ Hle ◎ unfold_transport (approx_eq Hle Hsle),
           fold_transport (approx_eq Hle Hsle) ◎ ϕ γ Hle))
         ◎ unfold_transport (approx_eq Hle Hsle);
     approx_ψ_succ_id γ Hle Hsle :
-      ψ (succ γ) Hsle
+      ψ (Sᵢ γ) Hsle
       ≡ fold_transport (approx_eq Hle Hsle)
-        ◎ trunc_map (succ (succ γ)) (succ γ) (map (fold_transport (approx_eq Hle Hsle) ◎ ϕ γ Hle, ψ γ Hle ◎ unfold_transport (approx_eq Hle Hsle) ));
+        ◎ trunc_map (Sᵢ (Sᵢ γ)) (Sᵢ γ) (map (fold_transport (approx_eq Hle Hsle) ◎ ϕ γ Hle, ψ γ Hle ◎ unfold_transport (approx_eq Hle Hsle) ));
 
     (* only interesting for the limit case *)
     approx_Fep_p_limit γ0 γ1 (Hlim: index_is_limit γ1) Hγ0 Hsγ0 Hγ1 Hlt Hslt:
       fold_transport (approx_eq Hγ0 Hsγ0)
-      ◎ (trunc_map (succ γ1) (succ γ0) (map (e γ0 γ1 Hγ0 Hγ1 Hlt, p γ0 γ1 Hγ0 Hγ1 Hlt)))
-      ≡ p (succ γ0) γ1 Hsγ0 Hγ1 Hslt ◎ ψ γ1 Hγ1;
+      ◎ (trunc_map (Sᵢ γ1) (Sᵢ γ0) (map (e γ0 γ1 Hγ0 Hγ1 Hlt, p γ0 γ1 Hγ0 Hγ1 Hlt)))
+      ≡ p (Sᵢ γ0) γ1 Hsγ0 Hγ1 Hslt ◎ ψ γ1 Hγ1;
   }.
 Arguments is_bounded_approx {_} _ _ _ _ _.
 
-Record bounded_approx {P : index → Prop} := mk_bounded_approx
+Record bounded_approx {P : SI → Prop} := mk_bounded_approx
   {
     bounded_approx_X : ∀ α, P α → COFE SI;
-    bounded_approx_e : ∀ α₁ α₂ (Hα₁ : P α₁) (Hα₂ : P α₂), α₁ ≺ᵢ α₂ → bounded_approx_X α₁ Hα₁ -n> bounded_approx_X α₂ Hα₂;
-    bounded_approx_p : ∀ α₁ α₂ (Hα₁ : P α₁) (Hα₂ : P α₂), α₁ ≺ᵢ α₂ → bounded_approx_X α₂ Hα₂ -n> bounded_approx_X α₁ Hα₁;
-    bounded_approx_ϕ : ∀ α (Hα : P α), bounded_approx_X α Hα -n> [G (bounded_approx_X α Hα)]_{succ α};
-    bounded_approx_ψ : ∀ α (Hα : P α), [G (bounded_approx_X α Hα)]_{succ α} -n> bounded_approx_X α Hα;
+    bounded_approx_e : ∀ α₁ α₂ (Hα₁ : P α₁) (Hα₂ : P α₂), α₁ < α₂ → bounded_approx_X α₁ Hα₁ -n> bounded_approx_X α₂ Hα₂;
+    bounded_approx_p : ∀ α₁ α₂ (Hα₁ : P α₁) (Hα₂ : P α₂), α₁ < α₂ → bounded_approx_X α₂ Hα₂ -n> bounded_approx_X α₁ Hα₁;
+    bounded_approx_ϕ : ∀ α (Hα : P α), bounded_approx_X α Hα -n> [G (bounded_approx_X α Hα)]_{Sᵢ α};
+    bounded_approx_ψ : ∀ α (Hα : P α), [G (bounded_approx_X α Hα)]_{Sᵢ α} -n> bounded_approx_X α Hα;
     bounded_approx_props : is_bounded_approx bounded_approx_X bounded_approx_e bounded_approx_p bounded_approx_ϕ bounded_approx_ψ
   }.
 Arguments bounded_approx _ : clear implicits.
@@ -465,21 +467,21 @@ Arguments bounded_approx _ : clear implicits.
   We implement this by requiring actual Leibniz equality between the OFEs and wrapping this equality in fold_transport, unfold_transport for easier handling.
   That way, we can use the type cast like isomorphisms (without nasty eq_rect stuff), but can still prove properties using the information that the transports are just typecasts.
 *)
-Inductive approx_agree {P0 P1 : index → Prop} {A0 : bounded_approx P0} {A1 : bounded_approx P1} : Prop :=
+Inductive approx_agree {P0 P1 : SI → Prop} {A0 : bounded_approx P0} {A1 : bounded_approx P1} : Prop :=
   {
     agree_eq : ∀ γ (H0 : P0 γ) (H1 : P1 γ), projCOFE _ (bounded_approx_X A0 γ H0) = projCOFE _ (bounded_approx_X A1 γ H1);
 
     agree_bcompl_nat : ∀ γ H0 H1,
-      ∀ α (Hα : zero ≺ᵢ α) (ch : bchain (bounded_approx_X A0 γ H0) α),
-        bcompl Hα ch ≡{α}≡ fold_transport (agree_eq γ H0 H1) (bcompl Hα (bchain_map (unfold_transport (agree_eq γ H0 H1)) ch));
+      ∀ α (Hα : 0ᵢ < α) (ch : bchain (bounded_approx_X A0 γ H0) α),
+        bcompl_pos Hα ch ≡{α}≡ fold_transport (agree_eq γ H0 H1) (bcompl_pos Hα (bchain_map (unfold_transport (agree_eq γ H0 H1)) ch));
 
-    agree_e_nat : ∀ γ0 γ1 (Hlt : γ0 ≺ᵢ γ1) (Hγ0 : P0 γ0) (Hγ0' : P1 γ0) (Hγ1 : P0 γ1) (Hγ1' : P1 γ1),
+    agree_e_nat : ∀ γ0 γ1 (Hlt : γ0 < γ1) (Hγ0 : P0 γ0) (Hγ0' : P1 γ0) (Hγ1 : P0 γ1) (Hγ1' : P1 γ1),
       bounded_approx_e A0 γ0 γ1 Hγ0 Hγ1 Hlt ≡
       fold_transport (agree_eq γ1 Hγ1 Hγ1')
       ◎ bounded_approx_e A1 γ0 γ1 Hγ0' Hγ1' Hlt
       ◎ unfold_transport (agree_eq γ0 Hγ0 Hγ0');
 
-    agree_p_nat : ∀ γ0 γ1 (Hlt : γ0 ≺ᵢ γ1) (Hγ0 : P0 γ0) (Hγ0' : P1 γ0) (Hγ1 : P0 γ1) (Hγ1' : P1 γ1),
+    agree_p_nat : ∀ γ0 γ1 (Hlt : γ0 < γ1) (Hγ0 : P0 γ0) (Hγ0' : P1 γ0) (Hγ1 : P0 γ1) (Hγ1' : P1 γ1),
       bounded_approx_p A0 γ0 γ1 Hγ0 Hγ1 Hlt ≡
       fold_transport (agree_eq γ0 Hγ0 Hγ0')
       ◎ bounded_approx_p A1 γ0 γ1 Hγ0' Hγ1' Hlt
@@ -504,7 +506,7 @@ Proof with (cbn; unfold fold_transport, unfold_transport; by clear_transports).
   { intros. symmetry. apply Hag. }
   exists X_eq.
   - intros. rewrite (agree_bcompl_nat Hag _ _ _ _ _ _).
-    unfold fold_transport; clear_transports. apply bcompl_ne. intros...
+    unfold fold_transport; clear_transports. apply bcompl_pos_ne. intros...
   - intros. cbn. rewrite (agree_e_nat Hag _ _ _ _ _ _ _); intros x...
   - intros. cbn. rewrite (agree_p_nat Hag _ _ _ _ _ _ _); intros x...
   - intros. cbn. rewrite (agree_ϕ_nat Hag _ _ _); intros x...
@@ -517,7 +519,7 @@ Proof.
   { intros. pi_clear. reflexivity. }
   exists X_eq.
   { intros. unfold fold_transport, unfold_transport. pi_clear. clear_transports.
-    apply bcompl_ne. intros. cbn. by clear_transports. }
+    apply bcompl_pos_ne. intros. cbn. by clear_transports. }
   all: intros; unfold fold_transport, unfold_transport; intros x; cbn; repeat pi_clear; by clear_transports.
 Qed.
 
@@ -526,7 +528,7 @@ Qed.
    thus A0 and A2 can only agree on P0 ∧ P1 ∧ P2.
   This is captured by the requirement P0 → P2 → P1
 *)
-Lemma approx_agree_transitive (P0 P1 P2 : index → Prop) A0 A1 A2: (∀ γ, P0 γ → P2 γ → P1 γ)
+Lemma approx_agree_transitive (P0 P1 P2 : SI → Prop) A0 A1 A2: (∀ γ, P0 γ → P2 γ → P1 γ)
   → @approx_agree P0 P1 A0 A1 → @approx_agree P1 P2 A1 A2 → @approx_agree P0 P2 A0 A2.
 Proof with (intros x; cbn; unfold fold_transport, unfold_transport; clear_transports; equalise_pi).
   intros Hs Hag0 Hag1.
@@ -536,7 +538,7 @@ Proof with (intros x; cbn; unfold fold_transport, unfold_transport; clear_transp
   - intros. unshelve rewrite (agree_bcompl_nat Hag0  _ _ _ _ _ _); first by auto.
     unshelve rewrite (agree_bcompl_nat Hag1 _ _ _ _ _ _); first by auto.
     unfold fold_transport, unfold_transport. clear_transports. equalise_pi_head. apply ofe_mor_ne.
-    apply bcompl_ne. intros. cbn. clear_transports. equalise_pi.
+    apply bcompl_pos_ne. intros. cbn. clear_transports. equalise_pi.
   - intros. unshelve rewrite (agree_e_nat Hag0 _ _ _ _ _ _ _); [by auto | by auto | ].
     rewrite (agree_e_nat Hag1 _ _ _ _ _ _ _)...
   - intros. unshelve rewrite (agree_p_nat Hag0 _ _ _ _ _ _ _); [by auto | by auto |].
@@ -547,8 +549,8 @@ Proof with (intros x; cbn; unfold fold_transport, unfold_transport; clear_transp
     rewrite (agree_ψ_nat Hag1 _ _ _)...
 Qed.
 
-Lemma bounded_approx_eq {P : index → Prop} (A : bounded_approx P) α Hα Hsα :
-  projCOFE _ (bounded_approx_X A (succ α) Hsα) = [G (bounded_approx_X A α Hα)]_{succ α}.
+Lemma bounded_approx_eq {P : SI → Prop} (A : bounded_approx P) α Hα Hsα :
+  projCOFE _ (bounded_approx_X A (Sᵢ α) Hsα) = [G (bounded_approx_X A α Hα)]_{Sᵢ α}.
 Proof. eapply approx_eq, A. Defined.
 
 Fact agree_transport_functorial P0 P1 P2 (A0 : bounded_approx P0) (A1 : bounded_approx P1)
@@ -558,13 +560,13 @@ Fact agree_transport_functorial P0 P1 P2 (A0 : bounded_approx P0) (A1 : bounded_
 Proof. rewrite transport_id_compose. apply transport_id_pi. Qed.
 
 (** * One-step Extensions *)
-Record extension {γ : index} {A : bounded_approx (λ γ', γ' ≺ᵢ γ)} :=
+Record extension {γ : SI} {A : bounded_approx (λ γ', γ' < γ)} :=
   {
     ext_Xγ : COFE SI;
-    ext_eγ : ∀ γ0 (Hγ0 : γ0 ≺ᵢ γ), bounded_approx_X A γ0 Hγ0 -n> ext_Xγ;
-    ext_pγ : ∀ γ0 (Hγ0 : γ0 ≺ᵢ γ), ext_Xγ -n> bounded_approx_X A γ0 Hγ0;
-    ext_ϕγ : ext_Xγ -n> [G ext_Xγ]_{succ γ};
-    ext_ψγ : [G ext_Xγ]_{succ γ} -n> ext_Xγ;
+    ext_eγ : ∀ γ0 (Hγ0 : γ0 < γ), bounded_approx_X A γ0 Hγ0 -n> ext_Xγ;
+    ext_pγ : ∀ γ0 (Hγ0 : γ0 < γ), ext_Xγ -n> bounded_approx_X A γ0 Hγ0;
+    ext_ϕγ : ext_Xγ -n> [G ext_Xγ]_{Sᵢ γ};
+    ext_ψγ : [G ext_Xγ]_{Sᵢ γ} -n> ext_Xγ;
 
     ext_pγ_eγ_id γ0 Hγ0 : ext_pγ γ0 Hγ0 ◎ ext_eγ γ0 Hγ0 ≡ cid;
     ext_eγ_pγ_id γ0 Hγ0 : ext_eγ γ0 Hγ0 ◎ ext_pγ γ0 Hγ0 ≡{γ0}≡ cid;
@@ -577,48 +579,48 @@ Record extension {γ : index} {A : bounded_approx (λ γ', γ' ≺ᵢ γ)} :=
     ext_Xγ_truncated : OfeTruncated ext_Xγ γ;
 
     (* if γ is a successor ordinal....: *)
-    ext_eq γ' (Hlt : γ' ≺ᵢ γ) : γ = succ γ' → projCOFE _ ext_Xγ = [G (bounded_approx_X A γ' Hlt)]_{succ γ'};
-    ext_Fep_p γ0 γ1 (Hγ0 : γ0 ≺ᵢ γ) (Hγ1 : γ1 ≺ᵢ γ) (Hsγ0 : succ γ0 ≺ᵢ γ) (Hsγ1 : γ = succ γ1) (Hlt: γ0 ≺ᵢ γ1):
+    ext_eq γ' (Hlt : γ' < γ) : γ = Sᵢ γ' → projCOFE _ ext_Xγ = [G (bounded_approx_X A γ' Hlt)]_{Sᵢ γ'};
+    ext_Fep_p γ0 γ1 (Hγ0 : γ0 < γ) (Hγ1 : γ1 < γ) (Hsγ0 : Sᵢ γ0 < γ) (Hsγ1 : γ = Sᵢ γ1) (Hlt: γ0 < γ1):
       fold_transport (bounded_approx_eq A γ0 Hγ0 Hsγ0)
-      ◎ trunc_map (succ γ1) (succ γ0) (map (bounded_approx_e A γ0 γ1 Hγ0 Hγ1 Hlt, bounded_approx_p A γ0 γ1 Hγ0 Hγ1 Hlt))
+      ◎ trunc_map (Sᵢ γ1) (Sᵢ γ0) (map (bounded_approx_e A γ0 γ1 Hγ0 Hγ1 Hlt, bounded_approx_p A γ0 γ1 Hγ0 Hγ1 Hlt))
       ◎ unfold_transport (ext_eq γ1 Hγ1 Hsγ1)
-      ≡ ext_pγ (succ γ0) Hsγ0;
-    ext_p_ψ_unfold γ' (Hlt : γ' ≺ᵢ γ) (Heq : γ = succ γ') :
+      ≡ ext_pγ (Sᵢ γ0) Hsγ0;
+    ext_p_ψ_unfold γ' (Hlt : γ' < γ) (Heq : γ = Sᵢ γ') :
       ext_pγ γ' Hlt ≡ bounded_approx_ψ A γ' Hlt ◎ unfold_transport (ext_eq γ' Hlt Heq);
     ext_e_fold_ϕ γ' Hlt Heq :
       ext_eγ γ' Hlt ≡ fold_transport (ext_eq γ' Hlt Heq) ◎ bounded_approx_ϕ A γ' Hlt;
-    ext_ϕ_succ_id γ' (Hlt : γ' ≺ᵢ γ) (Heq : γ = succ γ') :
+    ext_ϕ_succ_id γ' (Hlt : γ' < γ) (Heq : γ = Sᵢ γ') :
       ext_ϕγ
-      ≡ trunc_map (succ γ') (succ γ) (map (bounded_approx_ψ A γ' Hlt ◎ unfold_transport (ext_eq γ' Hlt Heq),
+      ≡ trunc_map (Sᵢ γ') (Sᵢ γ) (map (bounded_approx_ψ A γ' Hlt ◎ unfold_transport (ext_eq γ' Hlt Heq),
                                            fold_transport (ext_eq γ' Hlt Heq) ◎ bounded_approx_ϕ A γ' Hlt))
         ◎ unfold_transport (ext_eq γ' Hlt Heq);
     ext_ψ_succ_id γ' Hlt Heq :
       ext_ψγ
       ≡ fold_transport (ext_eq γ' Hlt Heq)
-        ◎ trunc_map (succ γ) (succ γ') (map (fold_transport (ext_eq γ' Hlt Heq) ◎ bounded_approx_ϕ A γ' Hlt,
+        ◎ trunc_map (Sᵢ γ) (Sᵢ γ') (map (fold_transport (ext_eq γ' Hlt Heq) ◎ bounded_approx_ϕ A γ' Hlt,
                                              bounded_approx_ψ A γ' Hlt ◎ unfold_transport (ext_eq γ' Hlt Heq)));
 
     (* if γ is a limit ordinal *)
     ext_Fep_p_limit γ0 Hγ0 Hsγ0 : index_is_limit γ →
       fold_transport (bounded_approx_eq A γ0 Hγ0 Hsγ0)
-        ◎ trunc_map (succ γ) (succ γ0) (map (ext_eγ γ0 Hγ0, ext_pγ γ0 Hγ0))
-      ≡ ext_pγ (succ γ0) Hsγ0 ◎ ext_ψγ;
+        ◎ trunc_map (Sᵢ γ) (Sᵢ γ0) (map (ext_eγ γ0 Hγ0, ext_pγ γ0 Hγ0))
+      ≡ ext_pγ (Sᵢ γ0) Hsγ0 ◎ ext_ψγ;
   }.
 Arguments extension {_} _.
 
-Record extension_agree {γ} {A0 A1 : bounded_approx (λ γ', γ' ≺ᵢ γ)} {E0 : extension A0} {E1 : extension A1} {H : approx_agree A0 A1} : Prop :=
+Record extension_agree {γ} {A0 A1 : bounded_approx (λ γ', γ' < γ)} {E0 : extension A0} {E1 : extension A1} {H : approx_agree A0 A1} : Prop :=
   {
     eagree_eq : projCOFE _ (ext_Xγ E0) = projCOFE _ (ext_Xγ E1);
-    eagree_bcompl_nat : ∀ α (Hα : zero ≺ᵢ α) (ch : bchain (ext_Xγ E0) α),
-                         bcompl Hα ch ≡{α}≡
-                         fold_transport eagree_eq (bcompl Hα (bchain_map (unfold_transport eagree_eq) ch));
+    eagree_bcompl_nat : ∀ α (Hα : 0ᵢ < α) (ch : bchain (ext_Xγ E0) α),
+                         bcompl_pos Hα ch ≡{α}≡
+                         fold_transport eagree_eq (bcompl_pos Hα (bchain_map (unfold_transport eagree_eq) ch));
     eagree_e_nat γ' Hγ' : ext_eγ E0 γ' Hγ'
       ≡ fold_transport eagree_eq ◎ ext_eγ E1 γ' Hγ' ◎ unfold_transport (agree_eq H γ' Hγ' Hγ');
     eagree_p_nat γ' Hγ' : ext_pγ E0 γ' Hγ'
       ≡ fold_transport (agree_eq H γ' Hγ' Hγ') ◎ ext_pγ E1 γ' Hγ' ◎ unfold_transport eagree_eq;
-    eagree_ϕ_nat : ext_ϕγ E0 ≡ fold_transport (ofe_eq_funct (α := succ γ) (α' := succ γ) eq_refl eagree_eq)
+    eagree_ϕ_nat : ext_ϕγ E0 ≡ fold_transport (ofe_eq_funct (α := Sᵢ γ) (α' := Sᵢ γ) eq_refl eagree_eq)
       ◎ ext_ϕγ E1 ◎ unfold_transport eagree_eq;
-    eagree_ψ_nat : ext_ψγ E0 ≡ fold_transport eagree_eq ◎ ext_ψγ E1 ◎ unfold_transport (ofe_eq_funct (α := succ γ) (α' := succ γ) eq_refl eagree_eq)
+    eagree_ψ_nat : ext_ψγ E0 ≡ fold_transport eagree_eq ◎ ext_ψγ E1 ◎ unfold_transport (ofe_eq_funct (α := Sᵢ γ) (α' := Sᵢ γ) eq_refl eagree_eq)
   }.
 Arguments extension_agree {_ _ _} _ _ _.
 
@@ -626,7 +628,7 @@ Lemma extension_agree_reflexive γ A E H: @extension_agree γ A A E E H.
 Proof.
   unshelve eexists; first reflexivity.
   { intros. unfold fold_transport, unfold_transport. clear_transports.
-    apply bcompl_ne. intros. cbn. by clear_transports. }
+    apply bcompl_pos_ne. intros. cbn. by clear_transports. }
   all: intros; unfold fold_transport, unfold_transport; intros x; cbn; by clear_transports.
 Qed.
 
@@ -637,7 +639,7 @@ Proof with (cbn; unfold fold_transport, unfold_transport; by clear_transports).
   exists Heq.
   - intros. rewrite (eagree_bcompl_nat H0 _ _ _).
     unfold fold_transport, unfold_transport. clear_transports.
-    apply bcompl_ne. intros; cbn...
+    apply bcompl_pos_ne. intros; cbn...
   - intros. rewrite (eagree_e_nat H0 _ _); intros x...
   - intros. rewrite (eagree_p_nat H0 _ _); intros x...
   - intros. rewrite (eagree_ϕ_nat H0); intros x...
@@ -654,7 +656,7 @@ Proof with (unfold fold_transport, unfold_transport; intros x; cbn; clear_transp
   exists X_eq.
   - intros. rewrite (eagree_bcompl_nat Hag0 _ _ _). rewrite (eagree_bcompl_nat Hag1 _ _ _).
     unfold fold_transport, unfold_transport. clear_transports. equalise_pi_head. apply ofe_mor_ne.
-    apply bcompl_ne. intros. cbn. clear_transports. equalise_pi.
+    apply bcompl_pos_ne. intros. cbn. clear_transports. equalise_pi.
   - intros. rewrite (eagree_e_nat Hag0 _ _). rewrite (eagree_e_nat Hag1 _ _)...
   - intros. rewrite (eagree_p_nat Hag0 _ _). rewrite (eagree_p_nat Hag1 _ _)...
   - intros. rewrite (eagree_ϕ_nat Hag0). rewrite (eagree_ϕ_nat Hag1)...
@@ -662,11 +664,11 @@ Proof with (unfold fold_transport, unfold_transport; intros x; cbn; clear_transp
 Qed.
 
 (** * Base case *)
-Lemma zero_e_p (α₁ α₂ : index) : α₁ ⪯ᵢ zero → α₂ ⪯ᵢ zero → α₁ ≺ᵢ α₂ → False.
+Lemma zero_e_p (α₁ α₂ : SI) : α₁ ≤ 0ᵢ → α₂ ≤ 0ᵢ → α₁ < α₂ → False.
 Proof.
-  intros Hα₁%index_le_lt_iff Hα₂%index_le_lt_iff Hlt.
-  destruct Hα₁ as [ H%index_zero_least | ->]; [ easy | ].
-  destruct Hα₂ as [ H%index_zero_least | ->]; [ easy| ].
+  intros Hα₁%SIdx.le_lteq Hα₂%SIdx.le_lteq Hlt.
+  destruct Hα₁ as [ H%SIdx.nlt_0_r | ->]; [ easy | ].
+  destruct Hα₂ as [ H%SIdx.nlt_0_r | ->]; [ easy| ].
   by eapply index_lt_irrefl.
 Qed.
 
@@ -676,15 +678,15 @@ Notation "'[' f ']^{' a '}_{' b '}'" := (trunc_map a b f).
 
 Section base_case.
   Let X0' : COFE SI := cofe _ (unitO).
-  Let X0 : COFE SI := cofe _ ([ G X0']_{zero}).
+  Let X0 : COFE SI := cofe _ ([ G X0']_{0ᵢ}).
 
-  Let ϕ0' : X0' -n> X0 := λne _, ⌊inh_Funit⌋_{zero}.
+  Let ϕ0' : X0' -n> X0 := λne _, ⌊inh_Funit⌋_{0ᵢ}.
   Let ψ0' : X0 -n> X0' := λne _, ().
 
-  Let ϕ0 : X0 -n> [G X0]_{succ zero} := [map (ψ0' , ϕ0')]^{zero}_{succ zero}.
-  Let ψ0 : [G X0]_{succ zero} -n> X0 := [map (ϕ0', ψ0')]^{succ zero}_{zero}.
+  Let ϕ0 : X0 -n> [G X0]_{Sᵢ 0ᵢ} := [map (ψ0' , ϕ0')]^{0ᵢ}_{Sᵢ 0ᵢ}.
+  Let ψ0 : [G X0]_{Sᵢ 0ᵢ} -n> X0 := [map (ϕ0', ψ0')]^{Sᵢ 0ᵢ}_{0ᵢ}.
 
-  Lemma bounded_inverse_ϕ0_ψ0 : boundedInverse ϕ0 ψ0 zero.
+  Lemma bounded_inverse_ϕ0_ψ0 : boundedInverse ϕ0 ψ0 0ᵢ.
   Proof using Fcontr.
     unfold ϕ0, ψ0. apply trunc_map_inv; first by eauto with index.
     split; rewrite map_compose_dist.
@@ -696,7 +698,7 @@ Section base_case.
       intros x; by rewrite (tFunctor_map_id _ _).
   Qed.
 
-  Program Definition approx_base : @bounded_approx (λ x, x ⪯ᵢ zero) := mk_bounded_approx _
+  Program Definition approx_base : @bounded_approx (λ x, x ≤ 0ᵢ) := mk_bounded_approx _
     (λ _ _, X0)
     (λ α1 α2 Hα1 Hα2 Hlt, _)
     (λ α1 α2 Hα1 Hα2 Hlt, _)
@@ -721,8 +723,8 @@ Section base_case.
     all: try (intros; subst; index_contra_solve).
     3: { intros ? Hα. apply index_le_zero in Hα. subst. apply _. }
     all: intros ? Hα; specialize (index_le_zero _ Hα); intros; subst.
-    all: generalize (approx_base_obligation_4 zero Hα) => Ha;
-      generalize (approx_base_obligation_3 zero Hα) => Hb; simpl.
+    all: generalize (approx_base_obligation_4 0ᵢ Hα) => Ha;
+      generalize (approx_base_obligation_3 0ᵢ Hα) => Hb; simpl.
     all: rewrite (UIP_refl _ _ Ha) (UIP_refl _ _ Hb); simpl.
     - rewrite ofe_truncated_equiv. apply bounded_inverse_ϕ0_ψ0.
     - apply bounded_inverse_ϕ0_ψ0.
@@ -749,8 +751,8 @@ Ltac autorew :=
 (** * Successor case *)
 
 Section succ_case_X.
-  Context (β : index).
-  Context (IH : @bounded_approx (λ γ, γ ≺ᵢ succ β)).
+  Context (β : SI).
+  Context (IH : @bounded_approx (λ γ, γ < Sᵢ β)).
 
   Let X := bounded_approx_X IH.
   Let ϕ := bounded_approx_ϕ IH.
@@ -758,56 +760,56 @@ Section succ_case_X.
   Let e := bounded_approx_e IH.
   Let p := bounded_approx_p IH.
 
-  Instance Xsucc_eq α Hα Hsα : ofe_eq (X (succ α) Hsα) ([G (X α Hα)]_{succ α}).
+  Instance Xsucc_eq α Hα Hsα : ofe_eq (X (Sᵢ α) Hsα) ([G (X α Hα)]_{Sᵢ α}).
   Proof. eapply approx_eq, IH. Defined. (* defined transparently so the IH lemmas depending on approx_eq can be used *)
   Arguments Xsucc_eq: simpl never.
 
   Let unfold α Hα Hsα := unfold_transport (Xsucc_eq α Hα Hsα).
   Let fold α Hα Hsα := fold_transport (Xsucc_eq α Hα Hsα).
 
-  Let ϕ_ψ_id : ∀ α (Hα : α ≺ᵢ succ β), ϕ α Hα ◎ ψ α Hα ≡{α}≡ cid.
+  Let ϕ_ψ_id : ∀ α (Hα : α < Sᵢ β), ϕ α Hα ◎ ψ α Hα ≡{α}≡ cid.
   Proof. eapply approx_ϕ_ψ_id, IH. Defined.
-  Let ψ_ϕ_id : ∀ α (Hα : α ≺ᵢ succ β), ψ α Hα ◎ ϕ α Hα ≡ cid.
+  Let ψ_ϕ_id : ∀ α (Hα : α < Sᵢ β), ψ α Hα ◎ ϕ α Hα ≡ cid.
   Proof. eapply approx_ψ_ϕ_id, IH. Defined.
-  Let p_e_id : ∀ α1 α2 (Hα1 : α1 ≺ᵢ succ β) (Hα2 : α2 ≺ᵢ succ β) (Hlt : α1 ≺ᵢ α2), p α1 α2 Hα1 Hα2 Hlt ◎ e α1 α2 Hα1 Hα2 Hlt≡ cid.
+  Let p_e_id : ∀ α1 α2 (Hα1 : α1 < Sᵢ β) (Hα2 : α2 < Sᵢ β) (Hlt : α1 < α2), p α1 α2 Hα1 Hα2 Hlt ◎ e α1 α2 Hα1 Hα2 Hlt≡ cid.
   Proof. eapply approx_p_e_id, IH. Defined.
-  Let e_p_id : ∀ α1 α2 (Hα1 : α1 ≺ᵢ succ β) (Hα2 : α2 ≺ᵢ succ β) (Hlt : α1 ≺ᵢ α2), e α1 α2 Hα1 Hα2 Hlt ◎ p α1 α2 Hα1 Hα2 Hlt ≡{α1}≡ cid.
+  Let e_p_id : ∀ α1 α2 (Hα1 : α1 < Sᵢ β) (Hα2 : α2 < Sᵢ β) (Hlt : α1 < α2), e α1 α2 Hα1 Hα2 Hlt ◎ p α1 α2 Hα1 Hα2 Hlt ≡{α1}≡ cid.
   Proof. eapply approx_e_p_id, IH. Defined.
-  Let e_funct : ∀ α1 α2 α3 (Hα1 : α1 ≺ᵢ succ β) (Hα2 : α2 ≺ᵢ succ β) (Hα3 : α3 ≺ᵢ succ β) (Hlt1 : α1 ≺ᵢ α2) (Hlt2 : α2 ≺ᵢ α3) (Hlt3 : α1 ≺ᵢ α3), e α2 α3 Hα2 Hα3 Hlt2 ◎ e α1 α2 Hα1 Hα2 Hlt1 ≡ e α1 α3 Hα1 Hα3 Hlt3.
+  Let e_funct : ∀ α1 α2 α3 (Hα1 : α1 < Sᵢ β) (Hα2 : α2 < Sᵢ β) (Hα3 : α3 < Sᵢ β) (Hlt1 : α1 < α2) (Hlt2 : α2 < α3) (Hlt3 : α1 < α3), e α2 α3 Hα2 Hα3 Hlt2 ◎ e α1 α2 Hα1 Hα2 Hlt1 ≡ e α1 α3 Hα1 Hα3 Hlt3.
   Proof. eapply approx_e_funct, IH. Defined.
-  Let p_funct : ∀ α1 α2 α3 (Hα1 : α1 ≺ᵢ succ β) (Hα2 : α2 ≺ᵢ succ β) (Hα3 : α3 ≺ᵢ succ β) (Hlt1 : α1 ≺ᵢ α2) (Hlt2 : α2 ≺ᵢ α3) (Hlt3 : α1 ≺ᵢ α3), p α1 α2 Hα1 Hα2 Hlt1 ◎ p α2 α3 Hα2 Hα3 Hlt2  ≡ p α1 α3 Hα1 Hα3 Hlt3.
+  Let p_funct : ∀ α1 α2 α3 (Hα1 : α1 < Sᵢ β) (Hα2 : α2 < Sᵢ β) (Hα3 : α3 < Sᵢ β) (Hlt1 : α1 < α2) (Hlt2 : α2 < α3) (Hlt3 : α1 < α3), p α1 α2 Hα1 Hα2 Hlt1 ◎ p α2 α3 Hα2 Hα3 Hlt2  ≡ p α1 α3 Hα1 Hα3 Hlt3.
   Proof. eapply approx_p_funct, IH. Defined.
   Let X_truncated : ∀ α Hα, OfeTruncated (X α Hα) α.
   Proof. eapply approx_X_truncated, IH. Defined.
   Existing Instance X_truncated.
-  Let ϕ_succ_id : ∀ γ Hle Hsle, ϕ (succ γ) Hsle ≡ trunc_map (succ γ) (succ (succ γ)) (map (ψ γ Hle ◎ unfold γ Hle Hsle, fold γ Hle Hsle ◎ ϕ γ Hle)) ◎ unfold γ Hle Hsle.
-  Proof. eapply (approx_ϕ_succ_id (P:= λ γ, γ ≺ᵢ succ β)). Defined.
-  Let ψ_succ_id : ∀ γ Hle Hsle, ψ (succ γ) Hsle ≡ fold γ Hle Hsle ◎ trunc_map (succ (succ γ)) (succ γ) (map (fold γ Hle Hsle ◎ ϕ γ Hle, ψ γ Hle ◎ unfold γ Hle Hsle)).
-  Proof. eapply (approx_ψ_succ_id (P:= λ γ, γ ≺ᵢ succ β)). Defined.
+  Let ϕ_succ_id : ∀ γ Hle Hsle, ϕ (Sᵢ γ) Hsle ≡ trunc_map (Sᵢ γ) (Sᵢ (Sᵢ γ)) (map (ψ γ Hle ◎ unfold γ Hle Hsle, fold γ Hle Hsle ◎ ϕ γ Hle)) ◎ unfold γ Hle Hsle.
+  Proof. eapply (approx_ϕ_succ_id (P:= λ γ, γ < Sᵢ β)). Defined.
+  Let ψ_succ_id : ∀ γ Hle Hsle, ψ (Sᵢ γ) Hsle ≡ fold γ Hle Hsle ◎ trunc_map (Sᵢ (Sᵢ γ)) (Sᵢ γ) (map (fold γ Hle Hsle ◎ ϕ γ Hle, ψ γ Hle ◎ unfold γ Hle Hsle)).
+  Proof. eapply (approx_ψ_succ_id (P:= λ γ, γ < Sᵢ β)). Defined.
   Let Fep_p : ∀ γ0 γ1 Hγ0 Hγ1 Hsγ0 Hsγ1 Hlt Hlts,
-    fold γ0 Hγ0 Hsγ0 ◎ trunc_map (succ γ1) (succ γ0) (map (e γ0 γ1 Hγ0 Hγ1 Hlt, p γ0 γ1 Hγ0 Hγ1 Hlt)) ◎ unfold γ1 Hγ1 Hsγ1
-    ≡ p (succ γ0) (succ γ1) Hsγ0 Hsγ1 Hlts.
-  Proof. eapply (approx_Fep_p (P := λ γ, γ ≺ᵢ succ β)). Defined.
+    fold γ0 Hγ0 Hsγ0 ◎ trunc_map (Sᵢ γ1) (Sᵢ γ0) (map (e γ0 γ1 Hγ0 Hγ1 Hlt, p γ0 γ1 Hγ0 Hγ1 Hlt)) ◎ unfold γ1 Hγ1 Hsγ1
+    ≡ p (Sᵢ γ0) (Sᵢ γ1) Hsγ0 Hsγ1 Hlts.
+  Proof. eapply (approx_Fep_p (P := λ γ, γ < Sᵢ β)). Defined.
   Let Fep_p_limit : ∀ γ0 γ1 (Hlim: index_is_limit γ1) Hγ0 Hsγ0 Hγ1 Hlt Hslt,
-    fold γ0 Hγ0 Hsγ0 ◎ trunc_map (succ γ1) (succ γ0) (map (e γ0 γ1 Hγ0 Hγ1 Hlt, p γ0 γ1 Hγ0 Hγ1 Hlt))
-    ≡ p (succ γ0) γ1 Hsγ0 Hγ1 Hslt ◎ ψ γ1 Hγ1.
-  Proof. eapply (approx_Fep_p_limit (P := λ γ, γ ≺ᵢ succ β)). Defined.
-  Let e_fold_ϕ : ∀ γ Hγ Hsγ Hlt, e γ (succ γ) Hγ Hsγ Hlt ≡ fold γ Hγ Hsγ ◎ ϕ γ Hγ.
-  Proof. eapply (approx_e_fold_ϕ (P := λ γ, γ ≺ᵢ succ β)). Defined.
-  Let p_ψ_unfold : ∀ γ Hγ Hsγ Hlt, p γ (succ γ) Hγ Hsγ Hlt ≡ ψ γ Hγ ◎ unfold γ Hγ Hsγ.
-  Proof. eapply (approx_p_ψ_unfold (P := λ γ, γ ≺ᵢ succ β)). Defined.
+    fold γ0 Hγ0 Hsγ0 ◎ trunc_map (Sᵢ γ1) (Sᵢ γ0) (map (e γ0 γ1 Hγ0 Hγ1 Hlt, p γ0 γ1 Hγ0 Hγ1 Hlt))
+    ≡ p (Sᵢ γ0) γ1 Hsγ0 Hγ1 Hslt ◎ ψ γ1 Hγ1.
+  Proof. eapply (approx_Fep_p_limit (P := λ γ, γ < Sᵢ β)). Defined.
+  Let e_fold_ϕ : ∀ γ Hγ Hsγ Hlt, e γ (Sᵢ γ) Hγ Hsγ Hlt ≡ fold γ Hγ Hsγ ◎ ϕ γ Hγ.
+  Proof. eapply (approx_e_fold_ϕ (P := λ γ, γ < Sᵢ β)). Defined.
+  Let p_ψ_unfold : ∀ γ Hγ Hsγ Hlt, p γ (Sᵢ γ) Hγ Hsγ Hlt ≡ ψ γ Hγ ◎ unfold γ Hγ Hsγ.
+  Proof. eapply (approx_p_ψ_unfold (P := λ γ, γ < Sᵢ β)). Defined.
 
-  Fact succ_le_gt_eq γ : γ ⪯ᵢ succ β → β ≺ᵢ γ → γ = succ β.
+  Fact succ_le_gt_eq γ : γ ≤ Sᵢ β → β < γ → γ = Sᵢ β.
   Proof. intros [-> | Hlt]%index_le_eq_or_lt ?; [reflexivity | index_contra_solve]. Qed.
 
-  Definition β_refl : β ≺ᵢ succ β.
+  Definition β_refl : β < Sᵢ β.
   Proof. eauto with index. Qed.
-  Definition sX' : COFE SI := cofe _ ([G (X β β_refl)]_{succ β}).
-  Lemma sX'_id Hβ : projCOFE _ sX' = [G (X β Hβ)]_{succ β}.
+  Definition sX' : COFE SI := cofe _ ([G (X β β_refl)]_{Sᵢ β}).
+  Lemma sX'_id Hβ : projCOFE _ sX' = [G (X β Hβ)]_{Sᵢ β}.
   Proof. unfold sX'. set β_refl. pi_clear. reflexivity. Qed.
 
-  Let unfold' Hβ : sX' -n> [G (X β Hβ)]_{succ β} := unfold_transport (sX'_id Hβ).
-  Let fold' Hβ : [G (X β Hβ)]_{succ β} -n> sX' := fold_transport (sX'_id Hβ).
+  Let unfold' Hβ : sX' -n> [G (X β Hβ)]_{Sᵢ β} := unfold_transport (sX'_id Hβ).
+  Let fold' Hβ : [G (X β Hβ)]_{Sᵢ β} -n> sX' := fold_transport (sX'_id Hβ).
   Lemma unfold'_fold'_id Hβ : unfold' Hβ ◎ fold' Hβ ≡ cid.
   Proof. unfold unfold', fold', unfold_transport, fold_transport. intros x; cbn. by clear_transports. Qed.
   Lemma fold'_unfold'_id Hβ : fold' Hβ ◎ unfold' Hβ ≡ cid.
@@ -821,19 +823,19 @@ Section succ_case_X.
   Ltac open_folds :=
     unfold unfold, fold, unfold', fold', unfold_transport, fold_transport.
 
-  Definition sϕ' : sX' -n> [G sX']_{succ (succ β)} :=
-    trunc_map (succ β) (succ (succ β)) (map (ψ β β_refl, ϕ β β_refl)).
-  Definition sψ' : [G sX']_{succ (succ β)} -n> sX' :=
-    trunc_map (succ (succ β)) (succ β) (map (ϕ β β_refl, ψ β β_refl)).
+  Definition sϕ' : sX' -n> [G sX']_{Sᵢ (Sᵢ β)} :=
+    trunc_map (Sᵢ β) (Sᵢ (Sᵢ β)) (map (ψ β β_refl, ϕ β β_refl)).
+  Definition sψ' : [G sX']_{Sᵢ (Sᵢ β)} -n> sX' :=
+    trunc_map (Sᵢ (Sᵢ β)) (Sᵢ β) (map (ϕ β β_refl, ψ β β_refl)).
 
-  Lemma dist_later_succ (A : ofe) (x y : A) γ : dist_later (succ γ) x y ↔ x ≡{γ}≡ y.
+  Lemma dist_later_succ (A : ofe) (x y : A) γ : dist_later (Sᵢ γ) x y ↔ x ≡{γ}≡ y.
   Proof.
     split; intros Hd.
     - destruct Hd as [Hd]; eauto with index.
     - split. intros γ' Hγ'. eapply dist_le; first exact Hd. by apply index_succ_iff.
   Qed.
 
-  Lemma sϕ'_sψ'_id : sϕ' ◎ sψ' ≡{succ β}≡ cid.
+  Lemma sϕ'_sψ'_id : sϕ' ◎ sψ' ≡{Sᵢ β}≡ cid.
   Proof using ϕ_ψ_id Fcontr.
     unfold sϕ', sψ'. intros x; cbn -[trunc_map]. merge_truncs; last reflexivity. cbn.
     setoid_rewrite (map_compose_dist _ _ _ _ _ _). setoid_rewrite Fcontr; first last.
@@ -851,7 +853,7 @@ Section succ_case_X.
   Qed.
 
   Lemma sϕ'_succ_id Hle :
-    sϕ' ≡ trunc_map (succ β) (succ (succ β)) (map (ψ β Hle ◎ unfold' Hle, fold' Hle ◎ ϕ β Hle)) ◎ unfold' Hle.
+    sϕ' ≡ trunc_map (Sᵢ β) (Sᵢ (Sᵢ β)) (map (ψ β Hle ◎ unfold' Hle, fold' Hle ◎ ϕ β Hle)) ◎ unfold' Hle.
   Proof.
     unfold sϕ'. cbn. setoid_rewrite <- (map_compose _ _ _ _).  intros x; cbn.
     rewrite ofe_truncated_equiv. apply ofe_mor_ne. rewrite (proof_irrel Hle β_refl).
@@ -861,7 +863,7 @@ Section succ_case_X.
   Qed.
 
   Lemma sψ'_succ_id Hle :
-    sψ' ≡ fold' Hle ◎ trunc_map (succ (succ β)) (succ β) (map (fold' Hle ◎ ϕ β Hle, ψ β Hle ◎ unfold' Hle)).
+    sψ' ≡ fold' Hle ◎ trunc_map (Sᵢ (Sᵢ β)) (Sᵢ β) (map (fold' Hle ◎ ϕ β Hle, ψ β Hle ◎ unfold' Hle)).
   Proof.
     unfold sψ'. cbn. rewrite <- (map_compose _ _ _ _). intros x; cbn.
     rewrite (proof_irrel Hle β_refl).
@@ -871,7 +873,7 @@ Section succ_case_X.
     autorew.
   Qed.
 
-  Lemma se'_ca γ (Hγ : γ ≺ᵢ succ β) : { γ ≺ᵢ β } + { γ = β}.
+  Lemma se'_ca γ (Hγ : γ < Sᵢ β) : { γ < β } + { γ = β}.
   Proof.
     destruct (index_le_lt_dec β γ) as [? | ?].
     - right. apply index_succ_iff in Hγ. by apply index_le_ge_eq.
@@ -936,12 +938,12 @@ Section succ_case_X.
 
   Lemma Fep_sp' γ Hγ Hβ Hsγ Hlt :
     fold_transport (Xsucc_eq γ Hγ Hsγ)
-    ◎ trunc_map (succ β) (succ γ) (map (e γ β Hγ Hβ Hlt, p γ β Hγ Hβ Hlt))
+    ◎ trunc_map (Sᵢ β) (Sᵢ γ) (map (e γ β Hγ Hβ Hlt, p γ β Hγ Hβ Hlt))
     ◎ unfold' Hβ
-    ≡ sp' (succ γ) Hsγ.
+    ≡ sp' (Sᵢ γ) Hsγ.
   Proof using Fcontr.
     unfold sp', unfold'. destruct (se'_ca) as [Hi | Hi].
-    - destruct (index_dec_limit β) as [[β' Hβ'] | Hlim].
+    - destruct (SIdx.weak_case β) as [[β' Hβ'] | Hlim].
       + unfold Xsucc_eq in *.
         generalize (sX'_id Hβ) as Heq.
         revert Hγ Hβ Hsγ Hlt Hi.
@@ -956,10 +958,10 @@ Section succ_case_X.
         do 2 apply ofe_mor_ne.
         setoid_rewrite tFunctor_map_ne at 1; first last.
         { apply pair_ne.
-          { unshelve rewrite <- (e_funct γ β' (succ β')); [by eauto with si_solver |
+          { unshelve rewrite <- (e_funct γ β' (Sᵢ β')); [by eauto with si_solver |
               by eapply index_lt_succ_inj| by eauto with index | ].
             rewrite (e_fold_ϕ). rewrite ccompose_assoc. reflexivity.  }
-          { unshelve setoid_rewrite <- (p_funct γ β' (succ β')) at 1; [by eauto with si_solver |
+          { unshelve setoid_rewrite <- (p_funct γ β' (Sᵢ β')) at 1; [by eauto with si_solver |
               by eapply index_lt_succ_inj | by eauto with index | ]. rewrite (p_ψ_unfold).
             apply equiv_dist. symmetry. apply ccompose_assoc.
           }
@@ -972,8 +974,8 @@ Section succ_case_X.
         unfold fold_transport, unfold_transport. clear_transports.
         setoid_rewrite (dist_le _ _ _ _ (ofe_trunc_expand_truncate_id _)); last by eauto with si_solver.
         setoid_rewrite <- (map_compose_dist _ _ _ _ _ _). equalise_pi.
-      + assert (Hterm : zero ≺ᵢ β).
-        { destruct (index_le_lt_dec β zero) as [|]; [index_contra_solve | assumption]. }
+      + assert (Hterm : 0ᵢ < β).
+        { destruct (index_le_lt_dec β 0ᵢ) as [|]; [index_contra_solve | assumption]. }
         specialize (Fep_p_limit γ β Hlim Hγ Hsγ β_refl Hlt Hi) as Hf.
         cbn in Hf. setoid_rewrite <- Hf. intros x; cbn.
         set β_refl. repeat pi_clear.
@@ -1038,21 +1040,21 @@ Section succ_case_X.
   Qed.
   Next Obligation.
     intros ? ? ? Hlim.
-    (* well, succ β certainly isn't a limit *)
-    exfalso. eapply index_lt_irrefl, (Hlim β). apply index_succ_greater.
+    (* well, Sᵢ β certainly isn't a limit *)
+    exfalso. eapply index_lt_irrefl, (Hlim β). apply SIdx.lt_succ_diag_r.
   Qed.
 
 End succ_case_X.
 
-Lemma succ_extension_coherent β (A0 A1 : bounded_approx (λ γ, γ ≺ᵢ succ β)) :
-  ∀ H : approx_agree A0 A1, @extension_agree (succ β) A0 A1 (succ_extension β A0) (succ_extension β A1) H.
+Lemma succ_extension_coherent β (A0 A1 : bounded_approx (λ γ, γ < Sᵢ β)) :
+  ∀ H : approx_agree A0 A1, @extension_agree (Sᵢ β) A0 A1 (succ_extension β A0) (succ_extension β A1) H.
 Proof with (unfold fold_transport, unfold_transport; intros x; cbn; clear_transports; equalise_pi).
   intros H. destruct H as [F1 Flim F2 F3 F4 F5].
   assert (Heq : ext_Xγ (succ_extension β A0) = ext_Xγ (succ_extension β A1)).
-  { cbn. unfold sX'. rewrite F1. by rewrite (proof_irrel (β_refl β) (index_succ_greater β)). }
+  { cbn. unfold sX'. rewrite F1. by rewrite (proof_irrel (β_refl β) (SIdx.lt_succ_diag_r β)). }
   exists (proj_id Heq). all: intros; cbn.
   { unfold fold_transport. cbn in Heq. unfold sX' in Heq. setoid_rewrite (transport_id_bcompl (symmetry Heq) _ _ _ _).
-    apply bcompl_ne. intros. cbn. unfold unfold_transport. by clear_transports. }
+    apply bcompl_pos_ne. intros. cbn. unfold unfold_transport. by clear_transports. }
   { unfold se'. destruct (se'_ca β) as [H1 | H1].
     + rewrite F4. rewrite F2...
     + subst. rewrite F4... }
@@ -1075,19 +1077,19 @@ Qed.
 (* this is needed for the limit case construction *)
 Section inverse_limit.
   (* for every index γ satisfying P, we have an OFE X_γ *)
-  Context {P : index → Prop}.
+  Context {P : SI → Prop}.
   Context (X : ∀ β, P β → ofe).
 
-  Definition btowerO : ofe := discrete_funO (λ β: index, discrete_funO (λ (H : P β), X β H)).
+  Definition btowerO : ofe := discrete_funO (λ β: SI, discrete_funO (λ (H : P β), X β H)).
 
-  Program Definition proj_tower (β :index) (Hβ : P β) := λne (t : btowerO), t β Hβ.
+  Program Definition proj_tower (β :SI) (Hβ : P β) := λne (t : btowerO), t β Hβ.
   Next Obligation.
     intros β Hβ α' x y Heq. unfold btowerO in *. apply Heq.
   Qed.
 
-  Context (p : ∀ γ0 γ1 (Hγ0 : P γ0) (Hγ1 : P γ1), γ0 ≺ᵢ γ1 → X γ1 Hγ1 -n> X γ0 Hγ0).
+  Context (p : ∀ γ0 γ1 (Hγ0 : P γ0) (Hγ1 : P γ1), γ0 < γ1 → X γ1 Hγ1 -n> X γ0 Hγ0).
 
-  Definition inv_lim := sigO (λ f, ∀ γ0 γ1 (Hγ0γ1 : γ0 ≺ᵢ γ1) (Hγ0 : P γ0) (Hγ1 : P γ1),
+  Definition inv_lim := sigO (λ f, ∀ γ0 γ1 (Hγ0γ1 : γ0 < γ1) (Hγ0 : P γ0) (Hγ1 : P γ1),
     p _ _ Hγ0 Hγ1 Hγ0γ1  (proj_tower _ Hγ1 f) ≡ proj_tower _ Hγ0 f).
 
   Program Definition proj_lim γ Hγ := λne (x : inv_lim), proj_tower γ Hγ (proj1_sig x) .
@@ -1118,7 +1120,7 @@ Section inverse_limit.
       intros a Ha. by apply H.
   Qed.
 
-  Lemma inv_lim_equalises γ0 γ1 (Hγ0γ1 : γ0 ≺ᵢ γ1) (Hγ0 : P γ0 ) (Hγ1 : P γ1 ) x:
+  Lemma inv_lim_equalises γ0 γ1 (Hγ0γ1 : γ0 < γ1) (Hγ0 : P γ0 ) (Hγ1 : P γ1 ) x:
     p _ _ Hγ0 Hγ1 Hγ0γ1 (proj_lim _ Hγ1 x) ≡ proj_lim _ Hγ0 x.
   Proof. apply (proj2_sig x). Qed.
 End inverse_limit.
@@ -1140,9 +1142,9 @@ Section inv_lim_extensional.
   Defined.
 
   Context
-    {P : index → Prop} (X1 X2 : ∀ β, P β → ofe)
-    (p1 : ∀ γ γ' Hγ Hγ' (Hlt : γ ≺ᵢ γ'), X1 γ' Hγ' -n> X1 γ Hγ)
-    (p2 : ∀ γ γ' Hγ Hγ' (Hlt : γ ≺ᵢ γ'), X2 γ' Hγ' -n> X2 γ Hγ)
+    {P : SI → Prop} (X1 X2 : ∀ β, P β → ofe)
+    (p1 : ∀ γ γ' Hγ Hγ' (Hlt : γ < γ'), X1 γ' Hγ' -n> X1 γ Hγ)
+    (p2 : ∀ γ γ' Hγ Hγ' (Hlt : γ < γ'), X2 γ' Hγ' -n> X2 γ Hγ)
     (Heq : ∀ γ Hγ, X1 γ Hγ = X2 γ Hγ).
   (* Hmorph states that p1 and p2 essentially are the same, modulo the type equality Heq *)
   Context
@@ -1185,10 +1187,10 @@ Section inv_lim_extensional.
     set (e := y p1 Heq Hmorph). generalize e. clear e y.
     (* we need to prove that the two predicates we instantiate sigO with are the same *)
     assert ((λ f : btowerO X2,
-           ∀ (γ0 γ1 : index) (Hγ0γ1 : γ0 ≺ᵢ γ1) (Hγ0 : P γ0) (Hγ1 : P γ1),
+           ∀ (γ0 γ1 : SI) (Hγ0γ1 : γ0 < γ1) (Hγ0 : P γ0) (Hγ1 : P γ1),
              p1 γ0 γ1 Hγ0 Hγ1 Hγ0γ1 (f γ1 Hγ1) ≡ f γ0 Hγ0)
             = (λ f : btowerO X2,
-           ∀ (γ0 γ1 : index) (Hγ0γ1 : γ0 ≺ᵢ γ1) (Hγ0 : P γ0) (Hγ1 : P γ1),
+           ∀ (γ0 γ1 : SI) (Hγ0γ1 : γ0 < γ1) (Hγ0 : P γ0) (Hγ1 : P γ1),
              p2 γ0 γ1 Hγ0 Hγ1 Hγ0γ1 (f γ1 Hγ1) ≡ f γ0 Hγ0)).
     {
       apply functional_extensionality_dep; intros.
@@ -1221,23 +1223,23 @@ End inv_lim_extensional.
 Section limit_case.
   (* We assume an already merged approximation.
     Later on, when we combine the cases, we use the above merged_agree lemma + transitivity of approx_agree to show that the new approximation we define in the limit case agrees with the original, unmerged approximations*)
-  Context (β : limit_idx) (IH : @bounded_approx (λ γ, γ ≺ᵢ β)).
+  Context (β : limit_idx) (IH : @bounded_approx (λ γ, γ < β)).
 
-  Let X α (H: α ≺ᵢ β) := bounded_approx_X IH α H.
+  Let X α (H: α < β) := bounded_approx_X IH α H.
   Let e := bounded_approx_e IH.
   Let p := bounded_approx_p IH.
 
   (* we apply the functor F to every Xα and then truncate at α -- thus FX α is equal to X (α + 1) *)
-  Definition FX : ∀ α, α ≺ᵢ β → ofe := λ α Hα, [G (X α Hα)]_{succ α}.
+  Definition FX : ∀ α, α < β → ofe := λ α Hα, [G (X α Hα)]_{Sᵢ α}.
   Instance FX_cofe α Hα : Cofe (FX α Hα) := _.
 
-  Instance lX_truncated (α: index) Hlt : OfeTruncated (X α Hlt) α.
+  Instance lX_truncated (α: SI) Hlt : OfeTruncated (X α Hlt) α.
   Proof. eapply approx_X_truncated, IH. Qed.
-  Instance Xeq α Hlt Hslt : ofe_eq (X (succ α) Hslt) (FX α Hlt).
+  Instance Xeq α Hlt Hslt : ofe_eq (X (Sᵢ α) Hslt) (FX α Hlt).
   Proof. eapply approx_eq, IH. Defined.
 
-  Definition unfold α Hlt Hslt : X (succ α) Hslt -n> [G (X α Hlt)]_{succ α} := unfold_transport (Xeq α Hlt Hslt).
-  Definition fold α Hlt Hslt : [G (X α Hlt)]_{succ α} -n> X (succ α) Hslt := fold_transport (Xeq α Hlt Hslt).
+  Definition unfold α Hlt Hslt : X (Sᵢ α) Hslt -n> [G (X α Hlt)]_{Sᵢ α} := unfold_transport (Xeq α Hlt Hslt).
+  Definition fold α Hlt Hslt : [G (X α Hlt)]_{Sᵢ α} -n> X (Sᵢ α) Hslt := fold_transport (Xeq α Hlt Hslt).
   Ltac clear_fold := unfold fold, unfold, unfold_transport, fold_transport.
   Lemma unfold_fold_id α Hlt Hslt : unfold α Hlt Hslt ◎ fold α Hlt Hslt ≡ cid.
   Proof. clear_fold. intros x. by clear_transports. Qed.
@@ -1270,9 +1272,9 @@ Section limit_case.
   Lemma _p_e_id α₁  α₂ Hα₁ Hα₂ Hlt x : p α₁ α₂ Hα₁ Hα₂ Hlt (e α₁ α₂ Hα₁ Hα₂ Hlt x) ≡ x.
   Proof. by apply p_e_id. Qed.
 
-  Let ϕ : ∀ α (Hα : α ≺ᵢ β), X α Hα -n> FX α Hα.
+  Let ϕ : ∀ α (Hα : α < β), X α Hα -n> FX α Hα.
   Proof. eapply bounded_approx_ϕ. Defined.
-  Let ψ : ∀ α (Hα : α ≺ᵢ β), FX α Hα -n> X α Hα.
+  Let ψ : ∀ α (Hα : α < β), FX α Hα -n> X α Hα.
   Proof. eapply bounded_approx_ψ. Defined.
 
   Let ψ_ϕ_id α Hα : (ψ α Hα) ◎ (ϕ α Hα) ≡ cid.
@@ -1284,68 +1286,68 @@ Section limit_case.
   Lemma _Φ_Ψ_id α Hα x : ϕ α Hα (ψ α Hα x) ≡{α}≡ x.
   Proof. by apply ϕ_ψ_id. Qed.
 
-  Let p_ψ_unfold γ Hγ Hsγ (Hlt : γ ≺ᵢ succ γ) : p γ (succ γ) Hγ Hsγ Hlt ≡ ψ γ Hγ ◎ unfold γ Hγ Hsγ.
+  Let p_ψ_unfold γ Hγ Hsγ (Hlt : γ < Sᵢ γ) : p γ (Sᵢ γ) Hγ Hsγ Hlt ≡ ψ γ Hγ ◎ unfold γ Hγ Hsγ.
   Proof. by eapply approx_p_ψ_unfold. Defined.
-  Lemma _p_ψ_unfold γ Hγ Hsγ (Hlt : γ ≺ᵢ succ γ) x : p γ (succ γ) Hγ Hsγ Hlt x ≡ ψ γ Hγ (unfold γ Hγ Hsγ x).
+  Lemma _p_ψ_unfold γ Hγ Hsγ (Hlt : γ < Sᵢ γ) x : p γ (Sᵢ γ) Hγ Hsγ Hlt x ≡ ψ γ Hγ (unfold γ Hγ Hsγ x).
   Proof. by apply p_ψ_unfold. Qed.
 
-  Let e_fold_ϕ γ Hγ Hsγ (Hlt : γ ≺ᵢ succ γ) : e γ (succ γ) Hγ Hsγ Hlt ≡ fold γ Hγ Hsγ ◎ ϕ γ Hγ.
+  Let e_fold_ϕ γ Hγ Hsγ (Hlt : γ < Sᵢ γ) : e γ (Sᵢ γ) Hγ Hsγ Hlt ≡ fold γ Hγ Hsγ ◎ ϕ γ Hγ.
   Proof. by eapply approx_e_fold_ϕ. Defined.
-  Lemma _e_fold_ϕ γ Hγ Hsγ (Hlt : γ ≺ᵢ succ γ) x : e γ (succ γ) Hγ Hsγ Hlt x ≡ fold γ Hγ Hsγ (ϕ γ Hγ x).
+  Lemma _e_fold_ϕ γ Hγ Hsγ (Hlt : γ < Sᵢ γ) x : e γ (Sᵢ γ) Hγ Hsγ Hlt x ≡ fold γ Hγ Hsγ (ϕ γ Hγ x).
   Proof. by apply e_fold_ϕ. Qed.
 
-  Let ψ_p_fold γ Hγ Hsγ (Hlt : γ ≺ᵢ succ γ) : ψ γ Hγ ≡ p γ (succ γ) Hγ Hsγ Hlt ◎ fold γ Hγ Hsγ.
+  Let ψ_p_fold γ Hγ Hsγ (Hlt : γ < Sᵢ γ) : ψ γ Hγ ≡ p γ (Sᵢ γ) Hγ Hsγ Hlt ◎ fold γ Hγ Hsγ.
   Proof. intros x. setoid_rewrite (p_ψ_unfold _ _ _ _ _). cbn. by setoid_rewrite (unfold_fold_id _ _ _ _). Defined.
-  Lemma _ψ_p_fold γ Hγ Hsγ (Hlt : γ ≺ᵢ succ γ) x : ψ γ Hγ x ≡ p γ (succ γ) Hγ Hsγ Hlt (fold γ Hγ Hsγ x).
+  Lemma _ψ_p_fold γ Hγ Hsγ (Hlt : γ < Sᵢ γ) x : ψ γ Hγ x ≡ p γ (Sᵢ γ) Hγ Hsγ Hlt (fold γ Hγ Hsγ x).
   Proof. by apply ψ_p_fold. Qed.
 
-  Let ϕ_unfold_e γ Hγ Hsγ (Hlt : γ ≺ᵢ succ γ) : ϕ γ Hγ ≡ unfold γ Hγ Hsγ ◎ e γ (succ γ) Hγ Hsγ Hlt.
+  Let ϕ_unfold_e γ Hγ Hsγ (Hlt : γ < Sᵢ γ) : ϕ γ Hγ ≡ unfold γ Hγ Hsγ ◎ e γ (Sᵢ γ) Hγ Hsγ Hlt.
   Proof. intros x. cbn. setoid_rewrite (e_fold_ϕ _ _ _ _ x). by setoid_rewrite (unfold_fold_id _ _ _ _). Defined.
-  Lemma _ϕ_unfold_e γ Hγ Hsγ (Hlt : γ ≺ᵢ succ γ) x : ϕ γ Hγ x ≡ unfold γ Hγ Hsγ (e γ (succ γ) Hγ Hsγ Hlt x).
+  Lemma _ϕ_unfold_e γ Hγ Hsγ (Hlt : γ < Sᵢ γ) x : ϕ γ Hγ x ≡ unfold γ Hγ Hsγ (e γ (Sᵢ γ) Hγ Hsγ Hlt x).
   Proof. by apply ϕ_unfold_e. Qed.
 
   Let ψ_succ_id γ Hle Hsle :
-    ψ (succ γ) Hsle ≡
-    fold γ Hle Hsle ◎ trunc_map (succ (succ γ)) (succ γ) (map (fold γ Hle Hsle ◎ ϕ γ Hle, ψ γ Hle ◎ unfold γ Hle Hsle)).
+    ψ (Sᵢ γ) Hsle ≡
+    fold γ Hle Hsle ◎ trunc_map (Sᵢ (Sᵢ γ)) (Sᵢ γ) (map (fold γ Hle Hsle ◎ ϕ γ Hle, ψ γ Hle ◎ unfold γ Hle Hsle)).
   Proof. by eapply approx_ψ_succ_id. Defined.
   Lemma _ψ_succ_id γ Hle Hsle x :
-    ψ (succ γ) Hsle x ≡
-    fold γ Hle Hsle (trunc_map (succ (succ γ)) (succ γ) (map (fold γ Hle Hsle ◎ ϕ γ Hle, ψ γ Hle ◎ unfold γ Hle Hsle)) x).
+    ψ (Sᵢ γ) Hsle x ≡
+    fold γ Hle Hsle (trunc_map (Sᵢ (Sᵢ γ)) (Sᵢ γ) (map (fold γ Hle Hsle ◎ ϕ γ Hle, ψ γ Hle ◎ unfold γ Hle Hsle)) x).
   Proof. by apply ψ_succ_id. Qed.
 
   Let X_pi_id γ γ' Hγ Hγ' : γ = γ' → ofe_eq (X γ Hγ) (X γ' Hγ').
   Proof. intros ->. pi_clear. reflexivity. Defined.
 
   (** the maps F(e_{α₁, α₂}, p_{α₁, α₂}) lifted to the truncation -- essentially, this is equal to p_{1+α₁, 1 + α₂} *)
-  Program Definition Fep : ∀ α₁ α₂ Hα₁ Hα₂, α₁ ≺ᵢ α₂ → FX α₂ Hα₂ -n> FX α₁ Hα₁
+  Program Definition Fep : ∀ α₁ α₂ Hα₁ Hα₂, α₁ < α₂ → FX α₂ Hα₂ -n> FX α₁ Hα₁
     := λ α₁ α₂ Hα₁ Hα₂ Hlt, trunc_map _ _ (map (e α₁ α₂ Hα₁ Hα₂ Hlt, p α₁ α₂ Hα₁ Hα₂ Hlt)).
 
   (* we have the equality fold_G ◎ Fep ◎ unfold_G ≡ p (for suitable indices) *)
   Let Fep_lifts_p γ0 γ1 Hγ0 Hγ1 Hsγ0 Hsγ1 Hlt Hlts:
-    (fold γ0 Hγ0 Hsγ0) ◎ (Fep γ0 γ1 Hγ0 Hγ1 Hlt) ◎ (unfold γ1 Hγ1 Hsγ1) ≡ p (succ γ0) (succ γ1) Hsγ0 Hsγ1 Hlts.
+    (fold γ0 Hγ0 Hsγ0) ◎ (Fep γ0 γ1 Hγ0 Hγ1 Hlt) ◎ (unfold γ1 Hγ1 Hsγ1) ≡ p (Sᵢ γ0) (Sᵢ γ1) Hsγ0 Hsγ1 Hlts.
   Proof. eapply approx_Fep_p. Defined.
   Lemma _Fep_lifts_p γ0 γ1 Hγ0 Hγ1 Hsγ0 Hsγ1 Hlt Hlts x:
-    fold γ0 Hγ0 Hsγ0 (Fep γ0 γ1 Hγ0 Hγ1 Hlt (unfold γ1 Hγ1 Hsγ1 x)) ≡ p (succ γ0) (succ γ1) Hsγ0 Hsγ1 Hlts x.
+    fold γ0 Hγ0 Hsγ0 (Fep γ0 γ1 Hγ0 Hγ1 Hlt (unfold γ1 Hγ1 Hsγ1 x)) ≡ p (Sᵢ γ0) (Sᵢ γ1) Hsγ0 Hsγ1 Hlts x.
   Proof. by apply Fep_lifts_p. Qed.
 
   Lemma Fep_unfold γ0 γ1 Hγ0 Hγ1 Hsγ0 Hsγ1 Hlt Hlts :
-    (Fep γ0 γ1 Hγ0 Hγ1 Hlt) ◎ (unfold γ1 Hγ1 Hsγ1) ≡ (unfold γ0 Hγ0 Hsγ0) ◎  p (succ γ0) (succ γ1) Hsγ0 Hsγ1 Hlts.
+    (Fep γ0 γ1 Hγ0 Hγ1 Hlt) ◎ (unfold γ1 Hγ1 Hsγ1) ≡ (unfold γ0 Hγ0 Hsγ0) ◎  p (Sᵢ γ0) (Sᵢ γ1) Hsγ0 Hsγ1 Hlts.
   Proof.
     intros x. cbn. unshelve setoid_rewrite <- (Fep_lifts_p _ _ _ _ _ _ _ _ x); first last.
     { cbn -[Fep]. setoid_rewrite (unfold_fold_id _ _ _ _). cbn. reflexivity. }
   Qed.
   Lemma _Fep_unfold γ0 γ1 Hγ0 Hγ1 Hsγ0 Hsγ1 Hlt Hlts x :
-    Fep γ0 γ1 Hγ0 Hγ1 Hlt (unfold γ1 Hγ1 Hsγ1 x) ≡ unfold γ0 Hγ0 Hsγ0 (p (succ γ0) (succ γ1) Hsγ0 Hsγ1 Hlts x).
+    Fep γ0 γ1 Hγ0 Hγ1 Hlt (unfold γ1 Hγ1 Hsγ1 x) ≡ unfold γ0 Hγ0 Hsγ0 (p (Sᵢ γ0) (Sᵢ γ1) Hsγ0 Hsγ1 Hlts x).
   Proof. by apply Fep_unfold. Qed.
 
   Lemma fold_Fep γ0 γ1 Hγ0 Hγ1 Hsγ0 Hsγ1 Hlt Hlts :
-    (fold γ0 Hγ0 Hsγ0) ◎ (Fep γ0 γ1 Hγ0 Hγ1 Hlt) ≡ p (succ γ0) (succ γ1) Hsγ0 Hsγ1 Hlts ◎ (fold γ1 Hγ1 Hsγ1).
+    (fold γ0 Hγ0 Hsγ0) ◎ (Fep γ0 γ1 Hγ0 Hγ1 Hlt) ≡ p (Sᵢ γ0) (Sᵢ γ1) Hsγ0 Hsγ1 Hlts ◎ (fold γ1 Hγ1 Hsγ1).
   Proof.
     intros x. cbn -[Fep]. setoid_rewrite <- (Fep_lifts_p _ _ _ _ _ _ _ _ _).
     cbn -[Fep]. by setoid_rewrite (unfold_fold_id _ _ _ _).
   Qed.
   Lemma _fold_Fep γ0 γ1 Hγ0 Hγ1 Hsγ0 Hsγ1 Hlt Hlts x :
-    fold γ0 Hγ0 Hsγ0 (Fep γ0 γ1 Hγ0 Hγ1 Hlt x) ≡ p (succ γ0) (succ γ1) Hsγ0 Hsγ1 Hlts (fold γ1 Hγ1 Hsγ1 x).
+    fold γ0 Hγ0 Hsγ0 (Fep γ0 γ1 Hγ0 Hγ1 Hlt x) ≡ p (Sᵢ γ0) (Sᵢ γ1) Hsγ0 Hsγ1 Hlts (fold γ1 Hγ1 Hsγ1 x).
   Proof. by apply fold_Fep. Qed.
 
   Arguments Fep : simpl never.
@@ -1359,14 +1361,14 @@ Section limit_case.
   Proof. intros x. apply (inv_lim_equalises FX Fep). Qed.
 
   (** Definition of eβ *)
-  Program Definition eβ : ∀ γ (Hγ : γ ≺ᵢ β), (X γ Hγ) -n> Xβ
+  Program Definition eβ : ∀ γ (Hγ : γ < β), (X γ Hγ) -n> Xβ
     := λ γ Hγ, λne (x : X γ Hγ), exist _ (λ γ' Hγ',
-    match index_lt_eq_lt_dec (succ γ') γ with
+    match index_lt_eq_lt_dec (Sᵢ γ') γ with
       | inl (inl Hlt) =>
-          unfold γ' _ _ (p (succ γ') γ _ Hγ Hlt x) : [G (X γ' Hγ')]_{succ γ'}
+          unfold γ' _ _ (p (Sᵢ γ') γ _ Hγ Hlt x) : [G (X γ' Hγ')]_{Sᵢ γ'}
       | inl (inr Heq) =>
-          unfold _ _ _ (@transport_id (X γ Hγ) (X (succ γ') _) (X_pi_id _ _ _ _ (symmetry Heq)) x)
-      | inr Hgt => unfold γ' _ _ (e γ (succ γ') Hγ _ Hgt x) : [G (X γ' Hγ')]_{succ γ'}
+          unfold _ _ _ (@transport_id (X γ Hγ) (X (Sᵢ γ') _) (X_pi_id _ _ _ _ (symmetry Heq)) x)
+      | inr Hgt => unfold γ' _ _ (e γ (Sᵢ γ') Hγ _ Hgt x) : [G (X γ' Hγ')]_{Sᵢ γ'}
       end : FX γ' Hγ' ) _.
   Next Obligation. intros. by eapply limit_index_is_limit. Defined.
   Next Obligation. intros. rewrite Heq. apply Hγ. Defined.
@@ -1374,12 +1376,12 @@ Section limit_case.
   Next Obligation.
     (* equaliser property *)
     intros. intros γ0 γ1 Hγ0γ1 Hγ0 Hγ1. cbn -[Fep].
-    destruct (index_lt_eq_lt_dec (succ γ1) γ) as [[Hlt1 | Heq1] | Hgt1],
-        (index_lt_eq_lt_dec (succ γ0) γ) as [[Hlt0 | Heq0] | Hgt0].
+    destruct (index_lt_eq_lt_dec (Sᵢ γ1) γ) as [[Hlt1 | Heq1] | Hgt1],
+        (index_lt_eq_lt_dec (Sᵢ γ0) γ) as [[Hlt0 | Heq0] | Hgt0].
     2, 3, 5, 6: by (subst; index_contra_solve).
     - unshelve rewrite _Fep_unfold; first last. { by rewrite _p_functorial. } by eauto with index.
     - subst. cbn. rewrite _Fep_unfold. cbn. clear_transports. reflexivity.
-    - rewrite _Fep_unfold. cbn. f_equiv. rewrite <- (_p_functorial (succ γ0) γ (succ γ1)).
+    - rewrite _Fep_unfold. cbn. f_equiv. rewrite <- (_p_functorial (Sᵢ γ0) γ (Sᵢ γ1)).
       cbn. f_equiv. by erewrite (_p_e_id _ _ _ _ _ _).
       Unshelve. by eapply index_lt_succ_mono.
     - destruct Heq0. cbn -[Fep]. rewrite _Fep_unfold. cbn. f_equiv.
@@ -1391,11 +1393,11 @@ Section limit_case.
   Next Obligation.
     (* non-expansiveness *)
     intros γ Hγ α. cbn. intros x y Heq i Hi. cbn.
-    destruct (index_lt_eq_lt_dec (succ i) γ) as [[|] | ]; subst; by rewrite Heq.
+    destruct (index_lt_eq_lt_dec (Sᵢ i) γ) as [[|] | ]; subst; by rewrite Heq.
   Qed.
 
   (** Definition of pβ *)
-  Definition pβ : ∀ γ (Hγ : γ ≺ᵢ β), Xβ -n> X γ Hγ :=
+  Definition pβ : ∀ γ (Hγ : γ < β), Xβ -n> X γ Hγ :=
     λ γ Hγ, ψ γ Hγ ◎ (proj_Xβ γ Hγ).
 
   (** Showing that these definitions satisfy the inverse/functoriality/etc stuff *)
@@ -1405,14 +1407,14 @@ Section limit_case.
   Proof.
     intros x. apply inv_lim_dist_iff. intros δ Hδ.
     destruct x as [x Hx]. cbn.
-    destruct (index_lt_eq_lt_dec (succ δ) γ) as [[Hlt | Heq] | Hgt].
+    destruct (index_lt_eq_lt_dec (Sᵢ δ) γ) as [[Hlt | Heq] | Hgt].
     - unshelve setoid_rewrite (ψ_p_fold _ _ _ _ _); [by eauto with index | by eauto with index | ].
       cbn. setoid_rewrite (p_functorial _ _ _ _ _ _ _ _ _ _).
       setoid_rewrite <- (Fep_unfold _ _ _ _ _ _ _ _ _).
       cbn. setoid_rewrite (unfold_fold_id _ _ _ _).
       cbn. setoid_rewrite (Hx _ _ _ _ _).
       reflexivity.
-      Unshelve. { by eauto with si_solver. } transitivity (succ δ); eauto with si_solver.
+      Unshelve. { by eauto with si_solver. } transitivity (Sᵢ δ); eauto with si_solver.
     - destruct Heq. cbn. setoid_rewrite (ψ_p_fold _ _ _ _ _).
       setoid_rewrite <- (Fep_lifts_p  _ _ _ _ _ _ _ _ _).
       cbn. clear_transports. setoid_rewrite (unfold_fold_id _ _ _ _).
@@ -1421,15 +1423,15 @@ Section limit_case.
       Unshelve. all: eauto with index.
     - setoid_rewrite (ψ_p_fold _ _ _ _ _).
       destruct (index_lt_eq_lt_dec γ δ) as [[Hγlt | Hγeq] | Hγgt].
-      + setoid_rewrite <- (e_functorial γ (succ γ) (succ δ) _ _ _ _ _ _ _ ).
-        cbn. setoid_rewrite (e_p_id γ (succ γ) _ _ _ _). 2: auto with si_solver.
+      + setoid_rewrite <- (e_functorial γ (Sᵢ γ) (Sᵢ δ) _ _ _ _ _ _ _ ).
+        cbn. setoid_rewrite (e_p_id γ (Sᵢ γ) _ _ _ _). 2: auto with si_solver.
         cbn. setoid_rewrite <- (Hx _ _ _ _ _) at 1.
         setoid_rewrite (fold_Fep _ _ _ _ _ _ _ _ _). cbn.
-        setoid_rewrite (dist_lt _ _ _ _ (e_p_id (succ γ) (succ δ) _ _ _ _)). 2: { apply index_succ_greater. }
+        setoid_rewrite (dist_lt _ _ _ _ (e_p_id (Sᵢ γ) (Sᵢ δ) _ _ _ _)). 2: { apply SIdx.lt_succ_diag_r. }
         setoid_rewrite (unfold_fold_id _ _ _ _). reflexivity.
         Unshelve. all: eauto with index.
       + subst.
-        rewrite (proof_irrel Hgt (index_succ_greater δ)).
+        rewrite (proof_irrel Hgt (SIdx.lt_succ_diag_r δ)).
         rewrite (proof_irrel (eβ_obligation_3 δ Hδ) (limit_index_is_limit β δ Hγ)).
         setoid_rewrite (e_p_id _ _ _ _ _ _).
         cbn. rewrite (proof_irrel Hδ Hγ). by setoid_rewrite (unfold_fold_id _ _ _ _).
@@ -1439,7 +1441,7 @@ Section limit_case.
   Lemma pβ_eβ_id γ Hγ: pβ γ Hγ ◎ eβ γ Hγ ≡ cid.
   Proof.
     intros x.
-    cbn. destruct (index_lt_eq_lt_dec (succ γ) γ) as [[H1 | H1] | H1].
+    cbn. destruct (index_lt_eq_lt_dec (Sᵢ γ) γ) as [[H1 | H1] | H1].
     1-2: index_contra_solve.
     setoid_rewrite <- (p_ψ_unfold _ _ _ _ _). apply p_e_id.
   Qed.
@@ -1447,17 +1449,17 @@ Section limit_case.
   Lemma eβ_functorial γ0 γ1 Hγ0 Hγ1 Hlt: eβ γ0 Hγ0 ≡ eβ γ1 Hγ1 ◎ e γ0 γ1 Hγ0 Hγ1 Hlt .
   Proof.
     intros x. apply inv_lim_eq_iff. intros γ Hγ. cbn.
-    destruct (index_lt_eq_lt_dec (succ γ) γ0) as [[H1 | H1] | H1],
-        (index_lt_eq_lt_dec (succ γ) γ1) as [[H2 | H2] | H2].
+    destruct (index_lt_eq_lt_dec (Sᵢ γ) γ0) as [[H1 | H1] | H1],
+        (index_lt_eq_lt_dec (Sᵢ γ) γ1) as [[H2 | H2] | H2].
     all: try index_contra_solve.
-    - setoid_rewrite <- (p_functorial (succ γ) γ0 γ1 _ _ _ _ _ _ _).
+    - setoid_rewrite <- (p_functorial (Sᵢ γ) γ0 γ1 _ _ _ _ _ _ _).
       cbn. setoid_rewrite (p_e_id _ _ _ _ _ _). reflexivity.
     - subst. cbn.
       rewrite (proof_irrel (eβ_obligation_1 _ _) Hγ0).
       rewrite (proof_irrel H2 Hlt).
       setoid_rewrite (p_e_id _ _ _ _ _ _).
       clear_transports. reflexivity.
-    - setoid_rewrite <- (e_functorial γ0 (succ γ) γ1 _ _ _ _ _ _ _).
+    - setoid_rewrite <- (e_functorial γ0 (Sᵢ γ) γ1 _ _ _ _ _ _ _).
       cbn. setoid_rewrite (p_e_id _ _ _ _ _ _). cbn. reflexivity.
     - subst. cbn. equalise_pi_head. rewrite (proof_irrel H1 Hlt). clear_transports. reflexivity.
     - setoid_rewrite (e_functorial _ _ _ _ _ _ _ _ _ _). reflexivity.
@@ -1466,12 +1468,12 @@ Section limit_case.
   Lemma pβ_functorial γ0 γ1 Hγ0 Hγ1 Hlt: pβ γ0 Hγ0 ≡ p γ0 γ1 Hγ0 Hγ1 Hlt ◎ pβ γ1 Hγ1.
   Proof.
     intros x. cbn.
-    setoid_rewrite (ψ_p_fold _ _ _ _ _). cbn. setoid_rewrite (p_functorial γ0 γ1 (succ γ1) _ _ _ _ _ _ _).
+    setoid_rewrite (ψ_p_fold _ _ _ _ _). cbn. setoid_rewrite (p_functorial γ0 γ1 (Sᵢ γ1) _ _ _ _ _ _ _).
     setoid_rewrite <- (inv_lim_equalises _ _ _ _ _ _ _ x) at 1.
     setoid_rewrite (fold_Fep _ _ _ _ _ _ _ _ _). cbn. setoid_rewrite (p_functorial _ _ _ _ _ _ _ _ _ _).
     reflexivity.
     Unshelve. all: eauto with index.
-    etrans; last by apply index_succ_greater. done.
+    etrans; last by apply SIdx.lt_succ_diag_r. done.
   Qed.
 
   (** We now define ϕ, ψ. These are not the final definitions yet, see below. *)
@@ -1500,8 +1502,8 @@ Section limit_case.
 
   (** definition of ϕ*)
   Program Definition ϕβ : Xβ -n> [G Xβ]_{β} :=
-    λne x, bcompl _ (@mkbchain _ ([G Xβ]_{β}) β (λ γ Hγ,
-      trunc_map (succ γ) β  (map (pβ γ Hγ, eβ γ Hγ)) (proj_lim _ _ γ _ x))_).
+    λne x, bcompl_pos _ (@Build_bchain _ ([G Xβ]_{β}) β (λ γ Hγ,
+      trunc_map (Sᵢ γ) β  (map (pβ γ Hγ, eβ γ Hγ)) (proj_lim _ _ γ _ x))_).
   Next Obligation.
     intros _. apply limit_index_not_zero.
   Defined.
@@ -1543,7 +1545,7 @@ Section limit_case.
   Next Obligation.
     intros α x y Heq.
     destruct (index_lt_eq_lt_dec α β) as [[Hα | -> ]| Hβ].
-    - rewrite !conv_bcompl. cbn -[proj_lim].
+    - rewrite !conv_bcompl_pos. cbn -[proj_lim].
       apply ofe_mor_ne.
       by rewrite Heq.
       Unshelve. auto.
@@ -1551,9 +1553,9 @@ Section limit_case.
       apply cofe_unique_bcompl; [apply _ |  apply limit_index_is_limit | ].
       intros γ Hγ. cbn -[proj_lim].
       do 3 apply ofe_mor_ne.
-      eapply dist_le in Heq. 2: eapply index_le_lt_iff; left; apply Hγ.
+      eapply dist_le in Heq. 2: eapply SIdx.le_lteq; left; apply Hγ.
       apply (proj1 (inv_lim_dist_iff _ _ _ _ _) Heq).
-    - eapply ofe_truncated_dist; first by apply _. rewrite index_min_r. 2: eapply index_le_lt_iff; by left.
+    - eapply ofe_truncated_dist; first by apply _. rewrite index_min_r. 2: eapply SIdx.le_lteq; by left.
       apply cofe_unique_bcompl; [apply _ | apply limit_index_is_limit |]. intros γ Hγ. cbn.
       do 3 apply ofe_mor_ne.
       apply (dist_lt _ _ _ _ (proj1 (inv_lim_dist_iff _ _ _ _ _) Heq γ Hγ)). by etransitivity.
@@ -1595,7 +1597,7 @@ Section limit_case.
       2: setoid_rewrite <- Heq; reflexivity.
       cbn.
       setoid_rewrite (dist_lt _ _ _ _ (ofe_trunc_expand_truncate_id _)).
-      2: apply index_succ_greater. cbn.
+      2: apply SIdx.lt_succ_diag_r. cbn.
 
       rewrite ofe_mor_ne.
       2: {
@@ -1620,7 +1622,7 @@ Section limit_case.
       destruct x as [x Hx], y as [y Hy].
       cbn. specialize (Heq γ Hγ).
       cbn in Heq. rewrite ofe_truncated_dist. rewrite index_min_r.
-      2: { transitivity (β : index); eauto with si_solver. }
+      2: { transitivity (β : SI); eauto with si_solver. }
       eapply dist_lt; [apply Heq | by apply limit_index_is_limit, Hγ].
     - intros Heq γ Hγ. eapply dist_le; first apply (Heq γ). auto.
   Qed.
@@ -1645,7 +1647,7 @@ Section limit_case.
       setoid_rewrite (map_compose _ _ _ _ _). apply pβ_eβ_id'. }
       reflexivity.
     }
-    2: rewrite bcompl_bchain_const. all: eauto with index.
+    2: rewrite bcompl_pos_bchain_const. all: eauto with index.
   Qed.
 
   (** Verifying property (10) *)
@@ -1656,7 +1658,7 @@ Section limit_case.
     2: {
       intros γ' Hγ'. cbn.
       setoid_rewrite (dist_lt _ _ _ _ (ofe_trunc_expand_truncate_id _)).
-      2: apply index_succ_greater.
+      2: apply SIdx.lt_succ_diag_r.
       cbn.
 
       rewrite ofe_mor_ne. 2: {
@@ -1667,24 +1669,24 @@ Section limit_case.
         reflexivity.
       }
       setoid_rewrite (ofe_trunc_truncate_expand_id _) at 1. cbn.
-      change x with ((λ (γ : index) (Hγ : γ ≺ᵢ β), x) γ' Hγ') at 1.
+      change x with ((λ (γ : SI) (Hγ : γ < β), x) γ' Hγ') at 1.
       reflexivity.
     }
-    rewrite bcompl_bchain_const; auto.
+    rewrite bcompl_pos_bchain_const; auto.
   Qed.
 
-  Lemma Fep_p_limit γ0 Hlt Hslt: (fold γ0 Hlt Hslt) ◎ (trunc_map β (succ γ0) (map (eβ γ0 Hlt, pβ γ0 Hlt))) ≡ pβ (succ γ0) Hslt ◎ ψβ.
+  Lemma Fep_p_limit γ0 Hlt Hslt: (fold γ0 Hlt Hslt) ◎ (trunc_map β (Sᵢ γ0) (map (eβ γ0 Hlt, pβ γ0 Hlt))) ≡ pβ (Sᵢ γ0) Hslt ◎ ψβ.
   Proof using ψ_succ_id Fcontr Funique.
     (* multiply with ϕ from the right *)
-    enough (fold γ0 Hlt Hslt ◎ trunc_map β (succ γ0) (map (eβ γ0 Hlt, pβ γ0 Hlt)) ◎ ϕβ ≡ pβ (succ γ0) Hslt) as H.
+    enough (fold γ0 Hlt Hslt ◎ trunc_map β (Sᵢ γ0) (map (eβ γ0 Hlt, pβ γ0 Hlt)) ◎ ϕβ ≡ pβ (Sᵢ γ0) Hslt) as H.
     {
       rewrite <- H. setoid_rewrite ccompose_assoc at 2.
       rewrite ofe_truncated_equiv.
-      setoid_rewrite (dist_later_lt _ _ _ ϕβ_ψβ_id (succ γ0) Hslt). rewrite ccompose_cid_r. reflexivity.
+      setoid_rewrite (dist_later_lt _ _ _ ϕβ_ψβ_id (Sᵢ γ0) Hslt). rewrite ccompose_cid_r. reflexivity.
     }
     setoid_rewrite ccompose_assoc.
     rewrite ofe_truncated_equiv.
-    assert ((trunc_map β (succ γ0) (map (eβ γ0 Hlt, pβ γ0 Hlt)) ◎ ϕβ) ≡{succ γ0}≡ proj_Xβ γ0 Hlt) as ->.
+    assert ((trunc_map β (Sᵢ γ0) (map (eβ γ0 Hlt, pβ γ0 Hlt)) ◎ ϕβ) ≡{Sᵢ γ0}≡ proj_Xβ γ0 Hlt) as ->.
     { setoid_rewrite <- ccompose_cid_r at 7. rewrite <- ψβ_ϕβ_id.
       intros x. reflexivity.
     }
@@ -1700,8 +1702,8 @@ Section limit_case.
     Our fix: just apply the successor case once; as the functor is contractive, this will give us strong enough inverses. *)
   Definition Xβ' : COFE SI := cofe _ [G Xβ]_{β}.
 
-  Definition ϕβ' : Xβ' -n> [G Xβ']_{succ β} := trunc_map β (succ β) (map (ψβ, ϕβ)).
-  Definition ψβ' : [G Xβ']_{succ β} -n> Xβ' := trunc_map (succ β) β (map (ϕβ, ψβ)).
+  Definition ϕβ' : Xβ' -n> [G Xβ']_{Sᵢ β} := trunc_map β (Sᵢ β) (map (ψβ, ϕβ)).
+  Definition ψβ' : [G Xβ']_{Sᵢ β} -n> Xβ' := trunc_map (Sᵢ β) β (map (ϕβ, ψβ)).
 
   Lemma ϕβ'_ψβ'_id: ϕβ' ◎ ψβ' ≡{β}≡ cid.
   Proof using Fcontr.
@@ -1726,7 +1728,7 @@ Section limit_case.
         setoid_rewrite (ofe_trunc_expand_truncate_id _).
         setoid_rewrite (map_compose_dist _ _ _ _ _ _). setoid_rewrite Fcontr.
         2: { instantiate (1 := (cid, cid)).
-          split. intros α' Hα'. eapply dist_le. 2: eapply index_le_lt_iff; left; apply Hα'.
+          split. intros α' Hα'. eapply dist_le. 2: eapply SIdx.le_lteq; left; apply Hα'.
           split; intros y; cbn -[ψβ ϕβ]; by setoid_rewrite (ψβ_ϕβ_id _).
         }
         rewrite tFunctor_map_id. reflexivity.
@@ -1737,9 +1739,9 @@ Section limit_case.
     by setoid_rewrite (ofe_trunc_truncate_expand_id _).
   Qed.
 
-  Definition eβ' : ∀ γ (Hγ : γ ≺ᵢ β), X γ Hγ -n> Xβ'
+  Definition eβ' : ∀ γ (Hγ : γ < β), X γ Hγ -n> Xβ'
     := λ γ Hγ, ϕβ ◎ eβ γ Hγ.
-  Definition pβ' : ∀ γ (Hγ : γ ≺ᵢ β), Xβ' -n> X γ Hγ
+  Definition pβ' : ∀ γ (Hγ : γ < β), Xβ' -n> X γ Hγ
     := λ γ Hγ, pβ γ Hγ ◎ ψβ.
 
   Lemma eβ'_pβ'_id γ Hγ : eβ' γ Hγ ◎ pβ' γ Hγ ≡{γ}≡ cid.
@@ -1764,7 +1766,7 @@ Section limit_case.
     symmetry. unfold pβ'. rewrite pβ_functorial. rewrite ccompose_assoc. reflexivity.
   Qed.
 
-  Lemma Fep_p_limit0 γ0 Hlt Hslt: (fold γ0 Hlt Hslt) ◎ (trunc_map (succ β) (succ γ0) (map (eβ' γ0 Hlt, pβ' γ0 Hlt))) ≡ pβ' (succ γ0) Hslt ◎ ψβ'.
+  Lemma Fep_p_limit0 γ0 Hlt Hslt: (fold γ0 Hlt Hslt) ◎ (trunc_map (Sᵢ β) (Sᵢ γ0) (map (eβ' γ0 Hlt, pβ' γ0 Hlt))) ≡ pβ' (Sᵢ γ0) Hslt ◎ ψβ'.
   Proof using ψ_succ_id Fcontr Funique.
     unfold eβ', pβ', ψβ'.
     rewrite <- Fep_p_limit.
@@ -1787,7 +1789,7 @@ Section limit_case.
   Solve Obligations with
     (intros;
     try  match goal with
-    | H : limit_index β = succ _ |- _ =>
+    | H : limit_index β = Sᵢ _ |- _ =>
         exfalso; eapply index_limit_not_succ; [ | apply H]; refine (limit_index_is_limit _)
     end).
   Next Obligation. apply pβ'_eβ'_id. Qed.
@@ -1800,7 +1802,7 @@ Section limit_case.
 End limit_case.
 
 Section limit_coherent.
-  Context (β : limit_idx) (A0 A1 : bounded_approx (λ γ, γ ≺ᵢ β)) (H : approx_agree A0 A1).
+  Context (β : limit_idx) (A0 A1 : bounded_approx (λ γ, γ < β)) (H : approx_agree A0 A1).
 
   Lemma FX_eq γ Hγ: FX β A0 γ Hγ = FX β A1 γ Hγ.
   Proof using H. unfold FX. by rewrite (agree_eq H _ _ _). Qed.
@@ -1848,7 +1850,7 @@ Section limit_coherent.
   Proof with (cbn; unfold unfold, unfold_transport, fold_transport; clear_transports; equalise_pi).
     intros x. rewrite inv_lim_dist_iff. intros γ' Hγ'.
     setoid_rewrite (proj_Xβ_eq_fold _ _ _). cbn.
-    destruct (index_lt_eq_lt_dec (succ γ')) as [[H1 | H1] | H1].
+    destruct (index_lt_eq_lt_dec (Sᵢ γ')) as [[H1 | H1] | H1].
     - setoid_rewrite (agree_p_nat H _ _ _ _ _ _ _ _)...
     - subst...
     - setoid_rewrite (agree_e_nat H _ _ _ _ _ _ _ _)...
@@ -1876,7 +1878,7 @@ Section limit_coherent.
   Proof.
     intros x; cbn.
     setoid_rewrite (transport_id_bcompl (symmetry FXβ_eq) _ _ _ _).
-    apply bcompl_ne. intros; cbn. unfold unfold_transport.
+    apply bcompl_pos_ne. intros; cbn. unfold unfold_transport.
     eq_pβ_eβ.
     setoid_rewrite (proj_Xβ_eq_unfold _ _ _).
     cbn. unfold unfold_transport. equalise_pi.
@@ -1906,7 +1908,7 @@ Section limit_coherent.
     exists (proj_id FXβ_eq).
     - intros. cbn in *.
       setoid_rewrite (transport_id_bcompl (symmetry FXβ_eq) _ _ _ _).
-      apply bcompl_ne. intros; cbn. unfold unfold_transport. by clear_transports.
+      apply bcompl_pos_ne. intros; cbn. unfold unfold_transport. by clear_transports.
     - intros. cbn. rewrite ofe_truncated_equiv. unfold eβ'.
       setoid_rewrite eβ_coherent. setoid_rewrite ϕβ_coherent...
     - intros. cbn. rewrite ofe_truncated_equiv. unfold pβ'.
@@ -1956,7 +1958,7 @@ Section final_limit.
   Proof. intros β. eapply approx_ϕ_ψ_id, IH. Defined.
   Let ψ_ϕ_id : ∀ β, ψ β ◎ ϕ β ≡ cid.
   Proof. intros β. eapply approx_ψ_ϕ_id, IH. Defined.
-  Let X_eq γ : ofe_eq (X (succ γ)) ([G (X γ)]_{succ γ}).
+  Let X_eq γ : ofe_eq (X (Sᵢ γ)) ([G (X γ)]_{Sᵢ γ}).
   Proof. apply IH. Defined.
 
   Let fold β := fold_transport (X_eq β).
@@ -1966,8 +1968,8 @@ Section final_limit.
   Let unfold_fold_id : ∀ β, unfold β ◎ fold β ≡ cid.
   Proof. intros β x; cbn. unfold fold, unfold, unfold_transport, fold_transport. by clear_transports. Defined.
 
-  Let e γ0 γ1 (Hlt : γ0 ≺ᵢ γ1) := bounded_approx_e IH γ0 γ1 I I Hlt.
-  Let p γ0 γ1 (Hlt : γ0 ≺ᵢ γ1) := bounded_approx_p IH γ0 γ1 I I Hlt.
+  Let e γ0 γ1 (Hlt : γ0 < γ1) := bounded_approx_e IH γ0 γ1 I I Hlt.
+  Let p γ0 γ1 (Hlt : γ0 < γ1) := bounded_approx_p IH γ0 γ1 I I Hlt.
   Let e_p_id : ∀ γ0 γ1 Hlt, e γ0 γ1 Hlt ◎ p γ0 γ1 Hlt ≡{γ0}≡ cid.
   Proof. intros; eapply approx_e_p_id, IH. Defined.
   Let p_e_id : ∀ γ0 γ1 Hlt, p γ0 γ1 Hlt ◎ e γ0 γ1 Hlt ≡ cid.
@@ -1977,21 +1979,21 @@ Section final_limit.
   Let p_funct : ∀ γ0 γ1 γ2 H1 H2 H3, p γ0 γ1 H1 ◎ p γ1 γ2 H2 ≡ p γ0 γ2 H3.
   Proof. intros; eapply approx_p_funct, IH. Defined.
 
-  Let p_ψ_unfold γ Hlt : p γ (succ γ) Hlt ≡ ψ γ ◎ unfold γ.
+  Let p_ψ_unfold γ Hlt : p γ (Sᵢ γ) Hlt ≡ ψ γ ◎ unfold γ.
   Proof. eapply approx_p_ψ_unfold. Defined.
-  Let e_fold_ϕ γ Hlt : e γ (succ γ) Hlt ≡ fold γ ◎ ϕ γ.
+  Let e_fold_ϕ γ Hlt : e γ (Sᵢ γ) Hlt ≡ fold γ ◎ ϕ γ.
   Proof. eapply approx_e_fold_ϕ. Defined.
 
-  Let ψ_p_fold γ (Hlt : γ ≺ᵢ succ γ): ψ γ ≡ p γ (succ γ) Hlt ◎ fold γ.
+  Let ψ_p_fold γ (Hlt : γ < Sᵢ γ): ψ γ ≡ p γ (Sᵢ γ) Hlt ◎ fold γ.
   Proof.
     intros x. setoid_rewrite (p_ψ_unfold _ _ _). cbn. by setoid_rewrite (unfold_fold_id _ x).
   Defined.
-  Let ϕ_unfold_e γ (Hlt : γ ≺ᵢ succ γ): ϕ γ ≡ unfold γ ◎ e γ (succ γ) Hlt.
+  Let ϕ_unfold_e γ (Hlt : γ < Sᵢ γ): ϕ γ ≡ unfold γ ◎ e γ (Sᵢ γ) Hlt.
   Proof. intros x. cbn. setoid_rewrite (e_fold_ϕ _ _ x). by setoid_rewrite (unfold_fold_id _ _). Defined.
 
   (* definition of the final limit *)
-  Definition FX_lim : ∀ γ, COFE SI := λ γ, cofe _ ([G (X γ)]_{succ γ}).
-  Definition Fep_lim : ∀ γ0 γ1, γ0 ≺ᵢ γ1 → FX_lim γ1 -n> FX_lim γ0
+  Definition FX_lim : ∀ γ, COFE SI := λ γ, cofe _ ([G (X γ)]_{Sᵢ γ}).
+  Definition Fep_lim : ∀ γ0 γ1, γ0 < γ1 → FX_lim γ1 -n> FX_lim γ0
     := λ γ0 γ1 Hlt, trunc_map _ _ (map (e γ0 γ1 Hlt, p γ0 γ1 Hlt)).
 
   Definition Xlim := inv_lim (P := λ _, True) (λ β _, FX_lim β) (λ γ0 γ1 _ _ Hlt, Fep_lim γ0 γ1 Hlt).
@@ -2015,11 +2017,11 @@ Section final_limit.
     split; intros; [ | destruct Hγ]; auto.
   Qed.
 
-  Let Fep_lim_lifts_p : ∀ γ0 γ1 (Hlt : γ0 ≺ᵢ γ1) (Hlts : succ γ0 ≺ᵢ succ γ1), fold γ0 ◎ Fep_lim γ0 γ1 Hlt ◎ unfold γ1 ≡ p (succ γ0) (succ γ1) Hlts.
+  Let Fep_lim_lifts_p : ∀ γ0 γ1 (Hlt : γ0 < γ1) (Hlts : Sᵢ γ0 < Sᵢ γ1), fold γ0 ◎ Fep_lim γ0 γ1 Hlt ◎ unfold γ1 ≡ p (Sᵢ γ0) (Sᵢ γ1) Hlts.
   Proof. intros; eapply approx_Fep_p. Defined.
 
-  Lemma Fep_lim_unfold γ0 γ1 (Hlt : γ0 ≺ᵢ γ1) (Hlts : succ γ0 ≺ᵢ succ γ1) :
-    (Fep_lim γ0 γ1 Hlt) ◎ (unfold γ1) ≡ (unfold γ0) ◎  p (succ γ0) (succ γ1) Hlts.
+  Lemma Fep_lim_unfold γ0 γ1 (Hlt : γ0 < γ1) (Hlts : Sᵢ γ0 < Sᵢ γ1) :
+    (Fep_lim γ0 γ1 Hlt) ◎ (unfold γ1) ≡ (unfold γ0) ◎  p (Sᵢ γ0) (Sᵢ γ1) Hlts.
   Proof using Fep_lim_lifts_p unfold_fold_id.
     intros x. cbn.
     setoid_rewrite <- (Fep_lim_lifts_p _ _ _ _ x).
@@ -2029,8 +2031,8 @@ Section final_limit.
     cbn. reflexivity.
   Qed.
 
-  Lemma fold_Fep_lim γ0 γ1 (Hlt : γ0 ≺ᵢ γ1) (Hlts : succ γ0 ≺ᵢ succ γ1) :
-    (fold γ0) ◎ (Fep_lim γ0 γ1 Hlt) ≡ p (succ γ0) (succ γ1) Hlts ◎ (fold γ1).
+  Lemma fold_Fep_lim γ0 γ1 (Hlt : γ0 < γ1) (Hlts : Sᵢ γ0 < Sᵢ γ1) :
+    (fold γ0) ◎ (Fep_lim γ0 γ1 Hlt) ≡ p (Sᵢ γ0) (Sᵢ γ1) Hlts ◎ (fold γ1).
   Proof.
     intros x. cbn -[Fep_lim].
     setoid_rewrite <- (Fep_lim_lifts_p  _ _ _ _ _).
@@ -2039,10 +2041,10 @@ Section final_limit.
 
   Program Definition e_lim : ∀ γ, X γ -n> Xlim
     := λ γ, λne (x : X γ), exist _ (λ γ' _,
-    match index_lt_eq_lt_dec (succ γ') γ with
-      | inl (inl Hlt) => unfold γ' (p (succ γ') γ Hlt x)
+    match index_lt_eq_lt_dec (Sᵢ γ') γ with
+      | inl (inl Hlt) => unfold γ' (p (Sᵢ γ') γ Hlt x)
       | inl (inr Heq) => _
-      | inr Hgt => unfold γ' (e γ (succ γ') Hgt x)
+      | inr Hgt => unfold γ' (e γ (Sᵢ γ') Hgt x)
       end : FX_lim γ') _.
   Next Obligation.
     intros γ x γ' _ _ <-. unfold FX_lim. refine (unfold _ x).
@@ -2051,8 +2053,8 @@ Section final_limit.
     (* equaliser property *)
     intros. intros γ0 γ1 Hγ0γ1 [] [].
     unfold proj_tower. cbn -[Fep].
-    destruct (index_lt_eq_lt_dec (succ γ1) γ) as [[Hlt1 | Heq1] | Hgt1],
-        (index_lt_eq_lt_dec (succ γ0) γ) as [[Hlt0 | Heq0] | Hgt0].
+    destruct (index_lt_eq_lt_dec (Sᵢ γ1) γ) as [[Hlt1 | Heq1] | Hgt1],
+        (index_lt_eq_lt_dec (Sᵢ γ0) γ) as [[Hlt0 | Heq0] | Hgt0].
     all: try index_contra_solve.
     - setoid_rewrite (Fep_lim_unfold _ _ _ _ _).
       cbn. by setoid_rewrite (p_funct _ _ _ _ _ _ _).
@@ -2061,7 +2063,7 @@ Section final_limit.
       setoid_rewrite (Fep_lim_unfold _ _ _ _ _). cbn. reflexivity.
     - setoid_rewrite (Fep_lim_unfold _ _ _ _ _).
       cbn. f_equiv.
-      setoid_rewrite <- (p_funct (succ γ0) γ (succ γ1) _ _ _ _).
+      setoid_rewrite <- (p_funct (Sᵢ γ0) γ (Sᵢ γ1) _ _ _ _).
       cbn. f_equiv.
       + done.
       + by setoid_rewrite (p_e_id _ _ _ _ ).
@@ -2071,14 +2073,14 @@ Section final_limit.
       by setoid_rewrite (p_e_id _ _ _ _ ).
     - setoid_rewrite (Fep_lim_unfold _ _ _ _ _).
       cbn. f_equiv.
-      setoid_rewrite <- (e_funct γ (succ γ0) (succ γ1) _ _ _ _).
+      setoid_rewrite <- (e_funct γ (Sᵢ γ0) (Sᵢ γ1) _ _ _ _).
       setoid_rewrite (p_e_id _ _ _ _). cbn. reflexivity.
       Unshelve. by apply index_lt_succ_mono.
   Qed.
   Next Obligation.
     (* non-expansiveness *)
     intros γ α. cbn. intros x y Heq i Hi. cbn.
-    destruct (index_lt_eq_lt_dec (succ i) γ) as [[Hlti | Heqi] | Hgti].
+    destruct (index_lt_eq_lt_dec (Sᵢ i) γ) as [[Hlti | Heqi] | Hgti].
     - by rewrite Heq.
     - destruct Heqi. cbn. by rewrite Heq.
     - by rewrite Heq.
@@ -2091,14 +2093,14 @@ Section final_limit.
   Proof.
     intros x. apply inv_lim_dist_iff. intros δ Hδ.
     destruct x as [x Hx]. cbn.
-    destruct (index_lt_eq_lt_dec (succ δ) γ) as [[Hlt | Heq] | Hgt].
+    destruct (index_lt_eq_lt_dec (Sᵢ δ) γ) as [[Hlt | Heq] | Hgt].
     - setoid_rewrite (ψ_p_fold _ _ _).
       cbn. setoid_rewrite (p_funct _ _ _ _ _ _ _).
       setoid_rewrite <- (Fep_lim_unfold _ _ _ _ _).
       cbn -[Fep_lim]. setoid_rewrite (unfold_fold_id _ _).
       cbn -[Fep_lim]. setoid_rewrite (Hx _ _ _ _ _).
       cbn. reflexivity.
-      Unshelve. all: eauto 3 with si_solver. transitivity (succ δ); by eauto with si_solver.
+      Unshelve. all: eauto 3 with si_solver. transitivity (Sᵢ δ); by eauto with si_solver.
     - destruct Heq. cbn. setoid_rewrite (ψ_p_fold _ _ _).
       setoid_rewrite <- (Fep_lim_lifts_p  _ _ _ _ _).
       setoid_rewrite (unfold_fold_id  _ _).
@@ -2107,14 +2109,14 @@ Section final_limit.
       Unshelve. all: eauto with index.
     - setoid_rewrite (ψ_p_fold _ _ _).
       destruct (index_lt_eq_lt_dec γ δ) as [[Hγlt | Hγeq] | Hγgt].
-      + setoid_rewrite <- (e_funct γ (succ γ) (succ δ) _ _ _ _ ).
-        cbn. setoid_rewrite (e_p_id γ (succ γ) _ _). 2: auto with si_solver.
+      + setoid_rewrite <- (e_funct γ (Sᵢ γ) (Sᵢ δ) _ _ _ _ ).
+        cbn. setoid_rewrite (e_p_id γ (Sᵢ γ) _ _). 2: auto with si_solver.
         cbn. setoid_rewrite <- (Hx _ _ _ _ _) at 1.
         setoid_rewrite (fold_Fep_lim _ _ _ _ _). cbn.
-        setoid_rewrite (dist_lt _ _ _ _ (e_p_id (succ γ) (succ δ) _ _)). 2: auto with si_solver.
+        setoid_rewrite (dist_lt _ _ _ _ (e_p_id (Sᵢ γ) (Sᵢ δ) _ _)). 2: auto with si_solver.
         setoid_rewrite (unfold_fold_id _ _). cbn. reflexivity.
         Unshelve. all: eauto with index.
-      + subst. rewrite (proof_irrel Hgt (index_succ_greater δ)).
+      + subst. rewrite (proof_irrel Hgt (SIdx.lt_succ_diag_r δ)).
         setoid_rewrite (e_p_id _ _ _ _).
         cbn. destruct Hδ. by setoid_rewrite (unfold_fold_id _ _).
       + index_contra_solve.
@@ -2123,7 +2125,7 @@ Section final_limit.
   Lemma p_lim_e_lim_id γ: p_lim γ ◎ e_lim γ ≡ cid.
   Proof.
     intros x.
-    cbn. destruct (index_lt_eq_lt_dec (succ γ) γ) as [[H1 | H1] | H1].
+    cbn. destruct (index_lt_eq_lt_dec (Sᵢ γ) γ) as [[H1 | H1] | H1].
     1-2: index_contra_solve.
     setoid_rewrite <- (p_ψ_unfold _ _ _). apply p_e_id.
   Qed.
@@ -2131,13 +2133,13 @@ Section final_limit.
   Lemma e_lim_funct γ0 γ1 Hlt: e_lim γ0 ≡ e_lim γ1 ◎ e γ0 γ1 Hlt .
   Proof.
     intros x. apply inv_lim_eq_iff. intros γ Hγ. cbn.
-    destruct (index_lt_eq_lt_dec (succ γ) γ0) as [[H1 | H1] | H1],
-        (index_lt_eq_lt_dec (succ γ) γ1) as [[H2 | H2] | H2].
+    destruct (index_lt_eq_lt_dec (Sᵢ γ) γ0) as [[H1 | H1] | H1],
+        (index_lt_eq_lt_dec (Sᵢ γ) γ1) as [[H2 | H2] | H2].
     all: try index_contra_solve.
-    - setoid_rewrite <- (p_funct (succ γ) γ0 γ1 _ _ _ _).
+    - setoid_rewrite <- (p_funct (Sᵢ γ) γ0 γ1 _ _ _ _).
       cbn. setoid_rewrite (p_e_id _ _ _ _). cbn. reflexivity.
     - subst. cbn. rewrite (proof_irrel H2 Hlt). by setoid_rewrite (p_e_id _ _ _ _).
-    - setoid_rewrite <- (e_funct γ0 (succ γ) γ1 _ _ _ _).
+    - setoid_rewrite <- (e_funct γ0 (Sᵢ γ) γ1 _ _ _ _).
       setoid_rewrite (p_e_id _ _ _ _). cbn. reflexivity.
     - subst. cbn. rewrite (proof_irrel H1 Hlt). reflexivity.
     - setoid_rewrite (e_funct _ _ _ _ _ _ _). reflexivity.
@@ -2146,7 +2148,7 @@ Section final_limit.
   Lemma p_lim_funct γ0 γ1 Hlt: p_lim γ0 ≡ p γ0 γ1 Hlt ◎ p_lim γ1.
   Proof.
     intros x. cbn.
-    setoid_rewrite (ψ_p_fold _ _ _). cbn. setoid_rewrite (p_funct γ0 γ1 (succ γ1) _ _ _ _).
+    setoid_rewrite (ψ_p_fold _ _ _). cbn. setoid_rewrite (p_funct γ0 γ1 (Sᵢ γ1) _ _ _ _).
     setoid_rewrite <- (inv_lim_equalises _ _ _ _ _ _ _ x) at 1.
     setoid_rewrite (fold_Fep_lim _ _ _ _ _). cbn. setoid_rewrite (p_funct _ _ _ _ _ _ _).
     Unshelve. all: eauto 3 with si_solver.
@@ -2154,7 +2156,7 @@ Section final_limit.
 
   (** definition of ψ *)
   Program Definition ψ_lim : G Xlim -n> Xlim :=
-    λne x, exist _ (λ γ' _, ofe_trunc_truncate (succ γ') (map (e_lim γ', p_lim γ') x)) _.
+    λne x, exist _ (λ γ' _, ofe_trunc_truncate (Sᵢ γ') (map (e_lim γ', p_lim γ') x)) _.
   Next Obligation.
     intros x γ0 γ1 Hγ0γ1 [] [].
     unfold Fep_lim. cbn.
@@ -2175,7 +2177,7 @@ Section final_limit.
 
   (** definition of ϕ*)
   Program Definition ϕ_lim : Xlim -n> G Xlim :=
-    λne x, compl (@mkchain _ (G Xlim) (λ γ, map (p_lim γ, e_lim γ) (ofe_trunc_expand _ (proj_lim _ _ γ I x))) _).
+    λne x, compl (@Build_chain _ (G Xlim) (λ γ, map (p_lim γ, e_lim γ) (ofe_trunc_expand _ (proj_lim _ _ γ I x))) _).
   Next Obligation.
     intros x γ' γ Hle%index_le_eq_or_lt. cbn.
     destruct Hle as [-> | Hlt]. { reflexivity. }
@@ -2185,7 +2187,7 @@ Section final_limit.
     Unshelve. 2: exact γ. 2, 3: eauto.
     unfold Fep. cbn.
     setoid_rewrite (dist_lt _ _ _ _ (ofe_trunc_expand_truncate_id _)).
-    2: apply index_succ_greater.
+    2: apply SIdx.lt_succ_diag_r.
     cbn.
 
     map_compose_tac.
@@ -2231,9 +2233,9 @@ Section final_limit.
     2: {
       setoid_rewrite (map_compose_dist _ _ _ _ _ _). setoid_rewrite tFunctor_map_ne.
       2: { apply pair_ne.
-        - unshelve setoid_rewrite (proj1 (equiv_dist _ _) (e_lim_funct γ (succ γ) _)); first by auto with si_solver.
+        - unshelve setoid_rewrite (proj1 (equiv_dist _ _) (e_lim_funct γ (Sᵢ γ) _)); first by auto with si_solver.
           rewrite -ccompose_assoc (p_lim_e_lim_id _) ccompose_cid_l. reflexivity.
-        - unshelve setoid_rewrite (proj1 (equiv_dist _ _) (p_lim_funct γ (succ γ) _)); first by auto with si_solver.
+        - unshelve setoid_rewrite (proj1 (equiv_dist _ _) (p_lim_funct γ (Sᵢ γ) _)); first by auto with si_solver.
           rewrite ccompose_assoc (p_lim_e_lim_id _) ccompose_cid_r. reflexivity.
       }
       reflexivity.
@@ -2257,21 +2259,21 @@ End final_limit.
 
 (** * Mergin an extension to an approximation *)
 Section merge_extension.
-  Context (β: index).
-  Context (A : bounded_approx (λ γ, γ ≺ᵢ β)).
+  Context (β: SI).
+  Context (A : bounded_approx (λ γ, γ < β)).
   Context (E : extension A).
 
-  Context (succ_or_limit : {β' | β = succ β'} + {index_is_limit β}).
+  Context (succ_or_limit : {β' | β = Sᵢ β'} + {index_is_limit β}).
 
   (** we want to define A' : bounded_approx (λ γ, γ ⪯ β) s.t. A' satisfies all sorts of agreement properties. *)
 
-  Let X : ∀ γ, γ ≺ᵢ β → COFE SI := bounded_approx_X A.
+  Let X : ∀ γ, γ < β → COFE SI := bounded_approx_X A.
   Let e : ∀ γ0 γ1 Hγ0 Hγ1 Hlt, X γ0 Hγ0 -n> X γ1 Hγ1 := bounded_approx_e A.
   Let p : ∀ γ0 γ1 Hγ0 Hγ1 Hlt, X γ1 Hγ1 -n> X γ0 Hγ0 := bounded_approx_p A.
-  Let ϕ : ∀ γ Hγ, X γ Hγ -n> [G (X γ Hγ)]_{succ γ} := bounded_approx_ϕ A.
-  Let ψ : ∀ γ Hγ, [G (X γ Hγ)]_{succ γ} -n> X γ Hγ := bounded_approx_ψ A.
+  Let ϕ : ∀ γ Hγ, X γ Hγ -n> [G (X γ Hγ)]_{Sᵢ γ} := bounded_approx_ϕ A.
+  Let ψ : ∀ γ Hγ, [G (X γ Hγ)]_{Sᵢ γ} -n> X γ Hγ := bounded_approx_ψ A.
 
-  Let X_eq γ Hγ Hsγ: projCOFE _ (X (succ γ) Hsγ) = [G (X γ Hγ)]_{succ γ}. apply A. Defined.
+  Let X_eq γ Hγ Hsγ: projCOFE _ (X (Sᵢ γ) Hsγ) = [G (X γ Hγ)]_{Sᵢ γ}. apply A. Defined.
   Instance X_truncated γ Hγ : OfeTruncated (X γ Hγ) γ.
   Proof. apply A. Qed.
 
@@ -2293,33 +2295,33 @@ Section merge_extension.
   Let unfold γ Hγ Hsγ := unfold_transport (X_eq γ Hγ Hsγ).
 
   Let Fep_p γ0 γ1 Hγ0 Hγ1 Hsγ0 Hsγ1 Hlt Hlts :
-    fold γ0 Hγ0 Hsγ0 ◎ trunc_map (succ γ1) (succ γ0) (map (e γ0 γ1 Hγ0 Hγ1 Hlt, p γ0 γ1 Hγ0 Hγ1 Hlt)) ◎ unfold γ1 Hγ1 Hsγ1
-    ≡ p (succ γ0) (succ γ1) Hsγ0 Hsγ1 Hlts.
+    fold γ0 Hγ0 Hsγ0 ◎ trunc_map (Sᵢ γ1) (Sᵢ γ0) (map (e γ0 γ1 Hγ0 Hγ1 Hlt, p γ0 γ1 Hγ0 Hγ1 Hlt)) ◎ unfold γ1 Hγ1 Hsγ1
+    ≡ p (Sᵢ γ0) (Sᵢ γ1) Hsγ0 Hsγ1 Hlts.
   Proof. apply approx_Fep_p. Defined.
   Let Fep_p_limit γ0 γ1 (Hlim : index_is_limit γ1) Hγ0 Hsγ0 Hγ1 Hlt Hslt :
-    fold γ0 Hγ0 Hsγ0 ◎ trunc_map (succ γ1) (succ γ0) (map (e γ0 γ1 Hγ0 Hγ1 Hlt, p γ0 γ1 Hγ0 Hγ1 Hlt))
-    ≡ p (succ γ0) γ1 Hsγ0 Hγ1 Hslt ◎ ψ γ1 Hγ1.
+    fold γ0 Hγ0 Hsγ0 ◎ trunc_map (Sᵢ γ1) (Sᵢ γ0) (map (e γ0 γ1 Hγ0 Hγ1 Hlt, p γ0 γ1 Hγ0 Hγ1 Hlt))
+    ≡ p (Sᵢ γ0) γ1 Hsγ0 Hγ1 Hslt ◎ ψ γ1 Hγ1.
   Proof. by apply approx_Fep_p_limit. Defined.
 
-  Let p_ψ_unfold γ Hγ Hsγ Hlt : p γ (succ γ) Hγ Hsγ Hlt ≡ ψ γ Hγ ◎ unfold γ Hγ Hsγ.
+  Let p_ψ_unfold γ Hγ Hsγ Hlt : p γ (Sᵢ γ) Hγ Hsγ Hlt ≡ ψ γ Hγ ◎ unfold γ Hγ Hsγ.
   Proof. apply approx_p_ψ_unfold. Defined.
-  Let e_fold_ϕ γ Hγ Hsγ Hlt : e γ (succ γ) Hγ Hsγ Hlt ≡ fold γ Hγ Hsγ ◎ ϕ γ Hγ.
+  Let e_fold_ϕ γ Hγ Hsγ Hlt : e γ (Sᵢ γ) Hγ Hsγ Hlt ≡ fold γ Hγ Hsγ ◎ ϕ γ Hγ.
   Proof. apply approx_e_fold_ϕ. Defined.
 
-  Let ϕ_succ_id γ Hle Hsle: ϕ (succ γ) Hsle
-    ≡ trunc_map (succ γ) (succ (succ γ)) (map (ψ γ Hle ◎ unfold γ Hle Hsle, fold γ Hle Hsle ◎ ϕ γ Hle))
+  Let ϕ_succ_id γ Hle Hsle: ϕ (Sᵢ γ) Hsle
+    ≡ trunc_map (Sᵢ γ) (Sᵢ (Sᵢ γ)) (map (ψ γ Hle ◎ unfold γ Hle Hsle, fold γ Hle Hsle ◎ ϕ γ Hle))
       ◎ unfold γ Hle Hsle.
   Proof. eapply approx_ϕ_succ_id. Defined.
-  Let ψ_succ_id γ Hle Hsle: ψ (succ γ) Hsle
-    ≡ fold γ Hle Hsle ◎ trunc_map (succ (succ γ)) (succ γ) (map (fold γ Hle Hsle ◎ ϕ γ Hle, ψ γ Hle ◎ unfold γ Hle Hsle)).
+  Let ψ_succ_id γ Hle Hsle: ψ (Sᵢ γ) Hsle
+    ≡ fold γ Hle Hsle ◎ trunc_map (Sᵢ (Sᵢ γ)) (Sᵢ γ) (map (fold γ Hle Hsle ◎ ϕ γ Hle, ψ γ Hle ◎ unfold γ Hle Hsle)).
   Proof. eapply approx_ψ_succ_id. Defined.
 
 
   Let Xβ : COFE SI := ext_Xγ E.
   Let eβ : ∀ γ0 Hγ0, X γ0 Hγ0 -n> Xβ := ext_eγ E.
   Let pβ : ∀ γ0 Hγ0, Xβ -n> X γ0 Hγ0 := ext_pγ E.
-  Let ϕβ : Xβ -n> [G Xβ]_{succ β} := ext_ϕγ E.
-  Let ψβ : [G Xβ]_{succ β} -n> Xβ := ext_ψγ E.
+  Let ϕβ : Xβ -n> [G Xβ]_{Sᵢ β} := ext_ϕγ E.
+  Let ψβ : [G Xβ]_{Sᵢ β} -n> Xβ := ext_ψγ E.
 
   Let pβ_eβ_id γ0 Hγ0 : pβ γ0 Hγ0 ◎ eβ γ0 Hγ0 ≡ cid.
   Proof. apply E. Defined.
@@ -2339,7 +2341,7 @@ Section merge_extension.
   Proof. apply E. Defined.
 
   (* if β is a successor ordinal....: *)
-  Let Xβ_eq γ' (Hlt : γ' ≺ᵢ β) (Heq : β = succ γ'): projCOFE _ Xβ = [G (X γ' Hlt)]_{succ γ'}.
+  Let Xβ_eq γ' (Hlt : γ' < β) (Heq : β = Sᵢ γ'): projCOFE _ Xβ = [G (X γ' Hlt)]_{Sᵢ γ'}.
   Proof. by apply E. Defined.
 
   Let foldβ γ' Hlt Heq := fold_transport (Xβ_eq γ' Hlt Heq).
@@ -2347,45 +2349,45 @@ Section merge_extension.
 
   Let Fep_pβ γ0 γ1 Hγ0 Hγ1 Hsγ0 Hsγ1 Hlt:
       fold γ0 Hγ0 Hsγ0
-      ◎ trunc_map (succ γ1) (succ γ0) (map (e γ0 γ1 Hγ0 Hγ1 Hlt, p γ0 γ1 Hγ0 Hγ1 Hlt))
+      ◎ trunc_map (Sᵢ γ1) (Sᵢ γ0) (map (e γ0 γ1 Hγ0 Hγ1 Hlt, p γ0 γ1 Hγ0 Hγ1 Hlt))
       ◎ unfoldβ γ1 Hγ1 Hsγ1
-      ≡ pβ (succ γ0) Hsγ0.
+      ≡ pβ (Sᵢ γ0) Hsγ0.
   Proof. apply ext_Fep_p. Defined.
   Let p_ψ_unfoldβ γ' Hlt Heq :
       pβ γ' Hlt ≡ ψ γ' Hlt ◎ unfoldβ γ' Hlt Heq.
   Proof. apply ext_p_ψ_unfold. Defined.
   Let e_fold_ϕβ γ' Hlt Heq : eβ γ' Hlt ≡ foldβ γ' Hlt Heq ◎ ϕ γ' Hlt.
   Proof. apply ext_e_fold_ϕ. Defined.
-  Let ϕβ_succ_id γ' Hlt Heq: ϕβ ≡ trunc_map (succ γ') (succ β) (map (ψ γ' Hlt ◎ unfoldβ γ' Hlt Heq,
+  Let ϕβ_succ_id γ' Hlt Heq: ϕβ ≡ trunc_map (Sᵢ γ') (Sᵢ β) (map (ψ γ' Hlt ◎ unfoldβ γ' Hlt Heq,
                                            foldβ γ' Hlt Heq ◎ ϕ γ' Hlt)) ◎ unfoldβ γ' Hlt Heq.
   Proof. apply ext_ϕ_succ_id. Defined.
   Let ψβ_succ_id γ' Hlt Heq : ψβ
       ≡ foldβ γ' Hlt Heq
-        ◎ trunc_map (succ β) (succ γ') (map (foldβ γ' Hlt Heq ◎ ϕ γ' Hlt,
+        ◎ trunc_map (Sᵢ β) (Sᵢ γ') (map (foldβ γ' Hlt Heq ◎ ϕ γ' Hlt,
                                              ψ γ' Hlt ◎ unfoldβ γ' Hlt Heq)).
   Proof. apply ext_ψ_succ_id. Defined.
 
   (* if β is a limit ordinal *)
   Let Fep_pβ_limit γ0 Hγ0 Hsγ0 (Hlim : index_is_limit β) :
       fold γ0 Hγ0 Hsγ0
-        ◎ trunc_map (succ β) (succ γ0) (map (eβ γ0 Hγ0, pβ γ0 Hγ0))
-      ≡ pβ (succ γ0) Hsγ0 ◎ ψβ.
+        ◎ trunc_map (Sᵢ β) (Sᵢ γ0) (map (eβ γ0 Hγ0, pβ γ0 Hγ0))
+      ≡ pβ (Sᵢ γ0) Hsγ0 ◎ ψβ.
   Proof. by apply ext_Fep_p_limit. Defined.
 
   (** now we can define the new stuff *)
-  Lemma le_lt_eq_dec γ (Hγ : γ ⪯ᵢ β) : {γ ≺ᵢ β} + {γ= β}.
+  Lemma le_lt_eq_dec γ (Hγ : γ ≤ β) : {γ < β} + {γ= β}.
   Proof.
     destruct (index_le_lt_dec β γ) as [H1 | H1].
     - right. by apply index_le_ge_eq.
     - by left.
   Qed.
 
-  Definition X' γ (Hγ : γ ⪯ᵢ β) : COFE SI := match le_lt_eq_dec γ Hγ with
+  Definition X' γ (Hγ : γ ≤ β) : COFE SI := match le_lt_eq_dec γ Hγ with
                                             | left Hlt => X γ Hlt
                                             | right Heq => Xβ
                                             end.
 
-  Lemma X'_id_lt γ Hγ (Hlt : γ ≺ᵢ β): ofe_eq (X' γ Hγ) (X γ Hlt).
+  Lemma X'_id_lt γ Hγ (Hlt : γ < β): ofe_eq (X' γ Hγ) (X γ Hlt).
   Proof.
     unfold X'. destruct le_lt_eq_dec as [H1 | H1]; first by pi_clear. index_contra_solve.
   Qed.
@@ -2406,19 +2408,19 @@ Section merge_extension.
   Instance X'_truncated γ Hγ : OfeTruncated (X' γ Hγ) γ.
   Proof. unfold X'. destruct le_lt_eq_dec; subst; apply _. Qed.
 
-  Let FX γ Hγ : COFE SI := cofe _ [G (X γ Hγ)]_{succ γ}.
+  Let FX γ Hγ : COFE SI := cofe _ [G (X γ Hγ)]_{Sᵢ γ}.
 
   Unset Program Cases.
   (** definitions of ϕ, ψ *)
-  Program Definition ϕ' γ (Hγ : γ ⪯ᵢ β) : X' γ Hγ -n> [G (X' γ Hγ)]_{succ γ} :=
+  Program Definition ϕ' γ (Hγ : γ ≤ β) : X' γ Hγ -n> [G (X' γ Hγ)]_{Sᵢ γ} :=
     match le_lt_eq_dec γ Hγ with
     | left Hlt =>
-        @transport_id (FX γ Hlt) ([G (X' γ Hγ)]_{succ γ}) (ofe_eq_symm (ofe_eq_funct _ (X'_id_lt γ _ _)))
+        @transport_id (FX γ Hlt) ([G (X' γ Hγ)]_{Sᵢ γ}) (ofe_eq_symm (ofe_eq_funct _ (X'_id_lt γ _ _)))
         ◎ ϕ γ Hlt
         ◎ @transport_id (X' γ Hγ) (X γ Hlt) (X'_id_lt γ _ _)
     | right Heq =>
-        @transport_id ([G (X' β _)]_{succ β}) ([G (X' γ _)]_{succ γ}) (ofe_eq_funct _ (X'_pi_id _ _ _ _ _))
-        ◎ @transport_id ([G Xβ]_{succ β}) ([G (X' β _)]_{succ β}) (ofe_eq_symm (ofe_eq_funct _ (X'_id_β _)))
+        @transport_id ([G (X' β _)]_{Sᵢ β}) ([G (X' γ _)]_{Sᵢ γ}) (ofe_eq_funct _ (X'_pi_id _ _ _ _ _))
+        ◎ @transport_id ([G Xβ]_{Sᵢ β}) ([G (X' β _)]_{Sᵢ β}) (ofe_eq_symm (ofe_eq_funct _ (X'_id_β _)))
         ◎ ϕβ
         ◎ @transport_id (X' β _) Xβ (X'_id_β _)
         ◎ @transport_id (X' γ Hγ) (X' β _) (X'_pi_id _ _ _ _ _)
@@ -2426,18 +2428,18 @@ Section merge_extension.
   Solve Obligations with eauto with si_solver.
   Next Obligation. intros; by subst. Defined.
 
-  Program Definition ψ' γ (Hγ : γ ⪯ᵢ β) : [G (X' γ Hγ)]_{succ γ} -n> X' γ Hγ :=
+  Program Definition ψ' γ (Hγ : γ ≤ β) : [G (X' γ Hγ)]_{Sᵢ γ} -n> X' γ Hγ :=
     match le_lt_eq_dec γ Hγ with
     | left Hlt =>
         @transport_id (X γ Hlt) (X' γ Hγ) (ofe_eq_symm (X'_id_lt γ _ _))
         ◎ ψ γ Hlt
-        ◎ @transport_id ([G (X' γ Hγ)]_{succ γ}) (FX γ Hlt) (ofe_eq_funct _ (X'_id_lt γ _ _))
+        ◎ @transport_id ([G (X' γ Hγ)]_{Sᵢ γ}) (FX γ Hlt) (ofe_eq_funct _ (X'_id_lt γ _ _))
     | right Heq =>
         @transport_id (X' β _) (X' γ Hγ) (ofe_eq_symm (X'_pi_id _ _ _ _ _))
         ◎ @transport_id Xβ (X' β _) (ofe_eq_symm (X'_id_β _))
         ◎ ψβ
-        ◎ @transport_id ([G (X' β _)]_{succ β}) ([G Xβ]_{succ β}) (ofe_eq_funct _ (X'_id_β _))
-        ◎ @transport_id ([G (X' γ Hγ)]_{succ γ}) ([G (X' β _)]_{succ β}) (ofe_eq_symm (ofe_eq_funct _ (X'_pi_id _ _ _ _ _)))
+        ◎ @transport_id ([G (X' β _)]_{Sᵢ β}) ([G Xβ]_{Sᵢ β}) (ofe_eq_funct _ (X'_id_β _))
+        ◎ @transport_id ([G (X' γ Hγ)]_{Sᵢ γ}) ([G (X' β _)]_{Sᵢ β}) (ofe_eq_symm (ofe_eq_funct _ (X'_pi_id _ _ _ _ _)))
     end.
   Solve Obligations with eauto with si_solver.
   Next Obligation. intros; by subst. Defined.
@@ -2457,14 +2459,14 @@ Section merge_extension.
       subst. setoid_rewrite (ψβ_ϕβ_id _). by clear_transports.
   Qed.
 
-  Lemma X'_succ_id γ Hγ Hsγ : ofe_eq (X' (succ γ) Hsγ) ([G (X' γ Hγ)]_{succ γ}).
+  Lemma X'_succ_id γ Hγ Hsγ : ofe_eq (X' (Sᵢ γ) Hsγ) ([G (X' γ Hγ)]_{Sᵢ γ}).
   Proof using succ_or_limit Fcofe.
     destruct succ_or_limit as [[β' H] | H].
     - unfold X'. destruct (le_lt_eq_dec) as [H1 | H1]; destruct (le_lt_eq_dec) as [H2 | H2].
       all: try by (exfalso; subst; index_contra_solve).
       + by apply X_eq.
       + by apply Xβ_eq.
-    - rewrite !X'_id_lt. { apply H. apply index_succ_le_lt, Hsγ. } { apply index_succ_le_lt, Hsγ. }
+    - rewrite !X'_id_lt. { apply H. apply SIdx.le_succ_l, Hsγ. } { apply SIdx.le_succ_l, Hsγ. }
       intros. apply X_eq.
   Qed.
   Hint Resolve X'_succ_id : ofe_eq.
@@ -2478,7 +2480,7 @@ Section merge_extension.
 
   Ltac open_folds := unfold unfold, fold, fold', unfold', foldβ, unfoldβ, fold_transport, unfold_transport.
 
-  Lemma e'_ca γ0 γ1 (Hγ0 : γ0 ⪯ᵢ β) (Hγ1 : γ1 ⪯ᵢ β) (Hlt : γ0 ≺ᵢ γ1) : {γ0 ≺ᵢ β ∧ γ1 ≺ᵢ β} + {γ0 ≺ᵢ β ∧ γ1 = β}.
+  Lemma e'_ca γ0 γ1 (Hγ0 : γ0 ≤ β) (Hγ1 : γ1 ≤ β) (Hlt : γ0 < γ1) : {γ0 < β ∧ γ1 < β} + {γ0 < β ∧ γ1 = β}.
   Proof.
     destruct (index_le_lt_dec β γ1) as [H1 | H1].
     - right. assert (γ1 = β) as ->. { apply index_le_ge_eq; assumption. }
@@ -2486,7 +2488,7 @@ Section merge_extension.
     - left. split; last assumption. etransitivity; eassumption.
   Qed.
 
-  Program Definition e' γ0 γ1 Hγ0 Hγ1 (Hlt : γ0 ≺ᵢ γ1) : X' γ0 Hγ0 -n> X' γ1 Hγ1 :=
+  Program Definition e' γ0 γ1 Hγ0 Hγ1 (Hlt : γ0 < γ1) : X' γ0 Hγ0 -n> X' γ1 Hγ1 :=
     match e'_ca γ0 γ1 Hγ0 Hγ1 Hlt with
     | left (conj H0 H1) =>
         @transport_id (X γ1 H1) (X' γ1 Hγ1) (ofe_eq_symm (X'_id_lt _ _ _))
@@ -2500,7 +2502,7 @@ Section merge_extension.
     end.
   Solve Obligations with eauto with si_solver.
 
-  Program Definition p' γ0 γ1 Hγ0 Hγ1 (Hlt : γ0 ≺ᵢ γ1) : X' γ1 Hγ1 -n> X' γ0 Hγ0  :=
+  Program Definition p' γ0 γ1 Hγ0 Hγ1 (Hlt : γ0 < γ1) : X' γ1 Hγ1 -n> X' γ0 Hγ0  :=
     match e'_ca γ0 γ1 Hγ0 Hγ1 Hlt with
     | left (conj H0 H1) =>
         @transport_id (X γ0 H0) (X' γ0 Hγ0) (ofe_eq_symm (X'_id_lt _ _ _))
@@ -2554,19 +2556,19 @@ Section merge_extension.
       setoid_rewrite (eβ_funct _ _ _ _ _ _). reflexivity.
   Qed.
 
-  Lemma fold'_eq γ (Hγ : γ ≺ᵢ β) (Hγ' : γ ⪯ᵢ β) (Hsγ : succ γ ≺ᵢ β) (Hsγ' : succ γ⪯ᵢ β): fold' γ Hγ' Hsγ'
-    ≡ @transport_id (X (succ γ) Hsγ) (X' (succ γ) Hsγ') (ofe_eq_symm (X'_id_lt (succ γ) Hsγ' Hsγ))
+  Lemma fold'_eq γ (Hγ : γ < β) (Hγ' : γ ≤ β) (Hsγ : Sᵢ γ < β) (Hsγ' : Sᵢ γ≤ β): fold' γ Hγ' Hsγ'
+    ≡ @transport_id (X (Sᵢ γ) Hsγ) (X' (Sᵢ γ) Hsγ') (ofe_eq_symm (X'_id_lt (Sᵢ γ) Hsγ' Hsγ))
       ◎ fold γ Hγ Hsγ
-      ◎ @transport_id ([G (X' γ Hγ')]_{succ γ}) ([G (X γ Hγ)]_{succ γ}) (ofe_eq_funct eq_refl (X'_id_lt γ Hγ' Hγ)).
+      ◎ @transport_id ([G (X' γ Hγ')]_{Sᵢ γ}) ([G (X γ Hγ)]_{Sᵢ γ}) (ofe_eq_funct eq_refl (X'_id_lt γ Hγ' Hγ)).
   Proof.
     rewrite ofe_truncated_equiv. unfold fold', fold, fold_transport. intros x; cbn.
     clear_transports. equalise_pi.
   Qed.
 
   Lemma unfold'_eq γ Hγ Hγ' Hsγ Hsγ' : unfold' γ Hγ' Hsγ'
-    ≡ @transport_id  ([G (X γ Hγ)]_{succ γ}) ([G (X' γ Hγ')]_{succ γ}) (ofe_eq_symm (ofe_eq_funct eq_refl (X'_id_lt γ Hγ' Hγ)))
+    ≡ @transport_id  ([G (X γ Hγ)]_{Sᵢ γ}) ([G (X' γ Hγ')]_{Sᵢ γ}) (ofe_eq_symm (ofe_eq_funct eq_refl (X'_id_lt γ Hγ' Hγ)))
       ◎ unfold γ Hγ Hsγ
-      ◎ @transport_id (X' (succ γ) Hsγ') (X (succ γ) Hsγ) (X'_id_lt (succ γ) Hsγ' Hsγ).
+      ◎ @transport_id (X' (Sᵢ γ) Hsγ') (X (Sᵢ γ) Hsγ) (X'_id_lt (Sᵢ γ) Hsγ' Hsγ).
   Proof.
     rewrite ofe_truncated_equiv. unfold unfold', unfold, unfold_transport. intros x; cbn.
     clear_transports. equalise_pi.
@@ -2574,15 +2576,15 @@ Section merge_extension.
 
   (* I don't know what this says intuitively, but it can be reused for the two following lemmas... *)
   Lemma pull_transports γ0 γ1 Hγ0 Hsγ0 H1 Hγ1 H0 Hlt I I1 I2 I3 I4 I5 I6:
-    @transport_id ([G (X' γ0 Hγ0)]_{succ γ0}) (X' (succ γ0) Hsγ0) I
-    ◎ trunc_map (succ γ1) (succ γ0)
+    @transport_id ([G (X' γ0 Hγ0)]_{Sᵢ γ0}) (X' (Sᵢ γ0) Hsγ0) I
+    ◎ trunc_map (Sᵢ γ1) (Sᵢ γ0)
      (map
         (@transport_id (X γ1 H1) (X' γ1 Hγ1) I1 ◎ e γ0 γ1 H0 H1 Hlt ◎ @transport_id (X' γ0 Hγ0) (X γ0 H0) I2,
          @transport_id (X γ0 H0) (X' γ0 Hγ0) I3 ◎ p γ0 γ1 H0 H1 Hlt ◎ @transport_id (X' γ1 Hγ1) (X γ1 H1) I4))
-  ≡ @transport_id ([G (X γ0 H0)]_{succ γ0}) (X' (succ γ0) Hsγ0) I5
-      ◎ trunc_map (succ γ1) (succ γ0)
+  ≡ @transport_id ([G (X γ0 H0)]_{Sᵢ γ0}) (X' (Sᵢ γ0) Hsγ0) I5
+      ◎ trunc_map (Sᵢ γ1) (Sᵢ γ0)
          (map (e γ0 γ1 H0 H1 Hlt, p γ0 γ1 H0 H1 Hlt))
-      ◎ @transport_id ([G (X' γ1 Hγ1)]_{succ γ1}) ([G (X γ1 H1)]_{succ γ1}) I6.
+      ◎ @transport_id ([G (X' γ1 Hγ1)]_{Sᵢ γ1}) ([G (X γ1 H1)]_{Sᵢ γ1}) I6.
   Proof using succ_or_limit Fcontr Fcofe.
     intros x; cbn. clear_transports.
     rewrite ofe_truncated_equiv.
@@ -2596,16 +2598,16 @@ Section merge_extension.
     cbn. equalise_pi.
   Qed.
 
-  Lemma Fep_p' γ0 γ1 (Hγ0 : γ0 ⪯ᵢ β) (Hγ1 : γ1 ⪯ᵢ β) (Hsγ0 : succ γ0 ⪯ᵢ β) (Hsγ1 : succ γ1 ⪯ᵢ β) (Hlt : γ0 ≺ᵢ γ1) (Hlts : succ γ0 ≺ᵢ succ γ1):
+  Lemma Fep_p' γ0 γ1 (Hγ0 : γ0 ≤ β) (Hγ1 : γ1 ≤ β) (Hsγ0 : Sᵢ γ0 ≤ β) (Hsγ1 : Sᵢ γ1 ≤ β) (Hlt : γ0 < γ1) (Hlts : Sᵢ γ0 < Sᵢ γ1):
     fold' γ0 Hγ0 Hsγ0
-    ◎ trunc_map (succ γ1) (succ γ0)
+    ◎ trunc_map (Sᵢ γ1) (Sᵢ γ0)
         (map (e' γ0 γ1 Hγ0 Hγ1 Hlt, p' γ0 γ1 Hγ0 Hγ1 Hlt))
-    ◎ unfold' γ1 Hγ1 Hsγ1 ≡ p' (succ γ0) (succ γ1) Hsγ0 Hsγ1 Hlts.
+    ◎ unfold' γ1 Hγ1 Hsγ1 ≡ p' (Sᵢ γ0) (Sᵢ γ1) Hsγ0 Hsγ1 Hlts.
   Proof using Fcontr.
     destruct succ_or_limit as [[β' H] | Hlim].
     { (* successor case *)
       open_folds. unfold p', e'.
-      destruct (e'_ca γ0 γ1) as [[H1 H2] | [H1 H2]], (e'_ca (succ γ0) (succ γ1)) as [[H3 H4] | [H3 H4]].
+      destruct (e'_ca γ0 γ1) as [[H1 H2] | [H1 H2]], (e'_ca (Sᵢ γ0) (Sᵢ γ1)) as [[H3 H4] | [H3 H4]].
       1: rewrite <- Fep_p.
       2: rewrite <- Fep_pβ.
       3-4: index_contra_solve.
@@ -2617,8 +2619,8 @@ Section merge_extension.
     }
     {
       (* limit case *)
-      assert (γ0 ≺ᵢ β) as T1. { apply index_succ_le_lt, Hsγ0. }
-      assert (succ γ0 ≺ᵢ β) as T2. { apply Hlim. apply index_succ_le_lt, Hsγ0. }
+      assert (γ0 < β) as T1. { apply SIdx.le_succ_l, Hsγ0. }
+      assert (Sᵢ γ0 < β) as T2. { apply Hlim. apply SIdx.le_succ_l, Hsγ0. }
       unshelve setoid_rewrite (fold'_eq _ _ _ _ _). 1-2:assumption.
       unfold fold', unfold', e', p', fold_transport, unfold_transport.
       destruct e'_ca as [[H0 H1] | [H0 H1]]; destruct (e'_ca) as [[H3 H4] | [H3 H4]].
@@ -2642,15 +2644,15 @@ Section merge_extension.
     }
   Qed.
 
-  Lemma Fep_p_limit' γ0 γ1 (Hlim : index_is_limit γ1) (Hγ0 : γ0 ⪯ᵢ β) (Hsγ0 : succ γ0 ⪯ᵢ β) (Hγ1 : γ1 ⪯ᵢ β) (Hlt : γ0 ≺ᵢ γ1) (Hslt : succ γ0 ≺ᵢ γ1):
+  Lemma Fep_p_limit' γ0 γ1 (Hlim : index_is_limit γ1) (Hγ0 : γ0 ≤ β) (Hsγ0 : Sᵢ γ0 ≤ β) (Hγ1 : γ1 ≤ β) (Hlt : γ0 < γ1) (Hslt : Sᵢ γ0 < γ1):
     fold' γ0 Hγ0 Hsγ0
-    ◎ trunc_map (succ γ1) (succ γ0)
+    ◎ trunc_map (Sᵢ γ1) (Sᵢ γ0)
         (map (e' γ0 γ1 Hγ0 Hγ1 Hlt, p' γ0 γ1 Hγ0 Hγ1 Hlt))
-    ≡ p' (succ γ0) γ1 Hsγ0 Hγ1 Hslt ◎ ψ' γ1 Hγ1.
+    ≡ p' (Sᵢ γ0) γ1 Hsγ0 Hγ1 Hslt ◎ ψ' γ1 Hγ1.
   Proof using Fcontr.
     unfold fold', e', p', ψ', fold_transport.
     destruct (e'_ca γ0 γ1) as [[H0 H1] | [H0 H1]],
-      (e'_ca (succ γ0) γ1) as [[H3 H4] | [H3 H4]],
+      (e'_ca (Sᵢ γ0) γ1) as [[H3 H4] | [H3 H4]],
       (le_lt_eq_dec γ1 Hγ1) as [H5 | H5].
     all: try index_contra_solve.
     - erewrite pull_transports. intros x; cbn -[trunc_map]. clear_transports.
@@ -2678,8 +2680,8 @@ Section merge_extension.
   Qed.
 
   Ltac equal_maps := open_folds; intros x; cbn; clear_transports; equalise_pi.
-  Lemma p_succ_id' γ (Hγ : γ ⪯ᵢ β) (Hsγ : succ γ ⪯ᵢ β) (Hlt : γ ≺ᵢ succ γ):
-    p' γ (succ γ) Hγ Hsγ Hlt ≡ ψ' γ Hγ ◎ unfold' γ Hγ Hsγ.
+  Lemma p_succ_id' γ (Hγ : γ ≤ β) (Hsγ : Sᵢ γ ≤ β) (Hlt : γ < Sᵢ γ):
+    p' γ (Sᵢ γ) Hγ Hsγ Hlt ≡ ψ' γ Hγ ◎ unfold' γ Hγ Hsγ.
   Proof.
     unfold p', ψ', unfold'. destruct (e'_ca) as [[H1 H2] | [H1 H2]], (le_lt_eq_dec) as [H3 | H3].
     all: try index_contra_solve.
@@ -2688,8 +2690,8 @@ Section merge_extension.
       Unshelve. auto.
   Qed.
 
-  Lemma e_succ_id' γ (Hγ : γ ⪯ᵢ β) (Hsγ : succ γ ⪯ᵢ β) (Hlt : γ ≺ᵢ succ γ):
-    e' γ (succ γ) Hγ Hsγ Hlt ≡ fold' γ Hγ Hsγ ◎ ϕ' γ Hγ.
+  Lemma e_succ_id' γ (Hγ : γ ≤ β) (Hsγ : Sᵢ γ ≤ β) (Hlt : γ < Sᵢ γ):
+    e' γ (Sᵢ γ) Hγ Hsγ Hlt ≡ fold' γ Hγ Hsγ ◎ ϕ' γ Hγ.
   Proof.
     unfold e', ϕ', fold'. destruct (e'_ca) as [[H1 H2] | [H1 H2]], (le_lt_eq_dec) as [H3 | H3].
     all: try index_contra_solve.
@@ -2698,14 +2700,14 @@ Section merge_extension.
       Unshelve. auto.
   Qed.
 
-  Lemma ϕ_succ_id' γ (Hle : γ ⪯ᵢ β) (Hsle : succ γ ⪯ᵢ β):
-    ϕ' (succ γ) Hsle
-    ≡ trunc_map (succ γ) (succ (succ γ))
+  Lemma ϕ_succ_id' γ (Hle : γ ≤ β) (Hsle : Sᵢ γ ≤ β):
+    ϕ' (Sᵢ γ) Hsle
+    ≡ trunc_map (Sᵢ γ) (Sᵢ (Sᵢ γ))
         (map (ψ' γ Hle ◎ unfold' γ Hle Hsle, fold' γ Hle Hsle ◎ ϕ' γ Hle))
       ◎ unfold' γ Hle Hsle.
   Proof using Fcontr.
     unfold ϕ', ψ'. open_folds.
-    destruct (le_lt_eq_dec (succ γ)) as [H1 | H1], (le_lt_eq_dec γ) as [H2 | H2].
+    destruct (le_lt_eq_dec (Sᵢ γ)) as [H1 | H1], (le_lt_eq_dec γ) as [H2 | H2].
     all: try index_contra_solve.
     - unshelve rewrite ϕ_succ_id; first assumption.
       intros x; cbn. open_folds. clear_transports.
@@ -2752,13 +2754,13 @@ Section merge_extension.
       Unshelve. all: reflexivity.
   Qed.
 
-  Lemma ψ_succ_id' γ (Hle : γ ⪯ᵢ β) (Hsle : succ γ ⪯ᵢ β):
-    ψ' (succ γ) Hsle
+  Lemma ψ_succ_id' γ (Hle : γ ≤ β) (Hsle : Sᵢ γ ≤ β):
+    ψ' (Sᵢ γ) Hsle
     ≡ fold' γ Hle Hsle
-      ◎ trunc_map (succ (succ γ)) (succ γ) (map (fold' γ Hle Hsle ◎ ϕ' γ Hle, ψ' γ Hle ◎ unfold' γ Hle Hsle)).
+      ◎ trunc_map (Sᵢ (Sᵢ γ)) (Sᵢ γ) (map (fold' γ Hle Hsle ◎ ϕ' γ Hle, ψ' γ Hle ◎ unfold' γ Hle Hsle)).
   Proof using Fcontr.
     unfold ϕ', ψ'. open_folds.
-    destruct (le_lt_eq_dec (succ γ)) as [H1 | H1], (le_lt_eq_dec γ) as [H2 | H2].
+    destruct (le_lt_eq_dec (Sᵢ γ)) as [H1 | H1], (le_lt_eq_dec γ) as [H2 | H2].
     all: try solve [index_contra_solve].
     - unshelve rewrite ψ_succ_id; first assumption.
       intros x; cbn. open_folds. clear_transports.
@@ -2806,7 +2808,7 @@ Section merge_extension.
       Unshelve. all: reflexivity.
   Qed.
 
-  Program Definition extended_approx : @bounded_approx (λ γ, γ ⪯ᵢ β) :=
+  Program Definition extended_approx : @bounded_approx (λ γ, γ ≤ β) :=
     {|
       bounded_approx_X := X';
       bounded_approx_e := e';
@@ -2833,13 +2835,13 @@ Section merge_extension.
 
   Lemma extended_approx_agree : approx_agree A extended_approx.
   Proof.
-    assert (Heq : ∀ (γ : index) (H0 : γ ≺ᵢ β) (H1 : γ ⪯ᵢ β), bounded_approx_X A γ H0 = bounded_approx_X extended_approx γ H1).
+    assert (Heq : ∀ (γ : SI) (H0 : γ < β) (H1 : γ ≤ β), bounded_approx_X A γ H0 = bounded_approx_X extended_approx γ H1).
     { intros. cbn. unfold X'. destruct le_lt_eq_dec as [H2 | H2]; first by pi_clear.
       subst; index_contra_solve.
     }
     exists (λ γ H0 H1, proj_id (Heq γ H0 H1)).
     { intros. unfold fold_transport. setoid_rewrite (transport_id_bcompl _ _ _ _). 2: symmetry; apply Heq.
-      apply bcompl_ne. intros. cbn. unfold unfold_transport. clear_transports. equalise_pi.
+      apply bcompl_pos_ne. intros. cbn. unfold unfold_transport. clear_transports. equalise_pi.
     }
     1-2: intros; cbn; unfold e', p'; (destruct e'_ca as [[H1 H2] | [H1 H2]]; [ | subst; index_contra_solve ]).
     3-4: intros; cbn; unfold ϕ', ψ'; (destruct le_lt_eq_dec as [H1 | H1]; [ |  subst; index_contra_solve ]).
@@ -2849,21 +2851,21 @@ Section merge_extension.
 End merge_extension.
 
 Lemma cofe_eq_bcompl_nat (A B : COFE SI) (Heq : A = B) (Heq' : projCOFE _ A = projCOFE _ B):
- ∀ α (Hα : zero ≺ᵢ α) (ch : bchain A α), bcompl Hα ch ≡{α}≡ fold_transport Heq' (bcompl Hα (bchain_map (unfold_transport Heq') ch)).
+ ∀ α (Hα : 0ᵢ < α) (ch : bchain A α), bcompl_pos Hα ch ≡{α}≡ fold_transport Heq' (bcompl_pos Hα (bchain_map (unfold_transport Heq') ch)).
 Proof.
   intros. subst. unfold fold_transport, unfold_transport. clear_transports.
-  apply bcompl_ne. intros. cbn. by clear_transports.
+  apply bcompl_pos_ne. intros. cbn. by clear_transports.
 Qed.
 
 (** we need to show that merging extensions preserves agreement *)
-Lemma extension_coherent β (A0 A1 : bounded_approx (λ γ, γ ≺ᵢ β))
+Lemma extension_coherent β (A0 A1 : bounded_approx (λ γ, γ < β))
   (E0 : extension A0) (E1 : extension A1) succ_or_limit :
   ∀ H : approx_agree A0 A1,
   @extension_agree β A0 A1 E0 E1 H
   → approx_agree (extended_approx β A0 E0 succ_or_limit) (extended_approx β A1 E1 succ_or_limit).
 Proof with (unfold fold_transport, unfold_transport; intros x; cbn; clear_transports; equalise_pi).
   intros H Hag.
-  unshelve refine ( let X_eq : ∀ (γ : index) (H0 H1 : γ ⪯ᵢ β), projCOFE _ (X' β A0 E0 γ H0) = projCOFE _ (X' β A1 E1 γ H1) := _  in _).
+  unshelve refine ( let X_eq : ∀ (γ : SI) (H0 H1 : γ ≤ β), projCOFE _ (X' β A0 E0 γ H0) = projCOFE _ (X' β A1 E1 γ H1) := _  in _).
   { intros. unfold X'. pi_clear. destruct le_lt_eq_dec as [H2 | H2]; [apply H | apply Hag]. }
   exists X_eq.
   - intros.
@@ -2898,8 +2900,8 @@ Qed.
 (** * Proving that we can merge approximations in limit cases *)
 
 Section merge.
-  Context (P : index → Prop).
-  Context (IH : ∀ α, P α → bounded_approx (λ γ, γ ⪯ᵢ α)).
+  Context (P : SI → Prop).
+  Context (IH : ∀ α, P α → bounded_approx (λ γ, γ ≤ α)).
   Context (IH_agree : ∀ α0 α1 Hα0 Hα1, approx_agree (IH α0 Hα0) (IH α1 Hα1)).
 
   (* we want to get merged_IH : bounded_approx P such that
@@ -2911,15 +2913,15 @@ Section merge.
   Instance mX_truncated γ Hγ: OfeTruncated (mX γ Hγ) γ.
   Proof. unfold mX. eapply approx_X_truncated. apply IH. Qed.
 
-  Program Definition me γ0 γ1 (Hγ0 : P γ0) (Hγ1 : P γ1) (Hlt : γ0 ≺ᵢ γ1) : mX γ0 Hγ0 -n> mX γ1 Hγ1 :=
+  Program Definition me γ0 γ1 (Hγ0 : P γ0) (Hγ1 : P γ1) (Hlt : γ0 < γ1) : mX γ0 Hγ0 -n> mX γ1 Hγ1 :=
     bounded_approx_e (IH γ1 Hγ1) γ0 γ1 _ _ Hlt
     ◎ unfold_transport (agree_eq (IH_agree _ _ _ _) γ0  _ _).
-  Next Obligation. intros; cbn. eapply index_le_lt_iff. by left. Defined.
+  Next Obligation. intros; cbn. eapply SIdx.le_lteq. by left. Defined.
 
-  Program Definition mp γ0 γ1 (Hγ0 : P γ0) (Hγ1 : P γ1) (Hlt : γ0 ≺ᵢ γ1) : mX γ1 Hγ1 -n> mX γ0 Hγ0 :=
+  Program Definition mp γ0 γ1 (Hγ0 : P γ0) (Hγ1 : P γ1) (Hlt : γ0 < γ1) : mX γ1 Hγ1 -n> mX γ0 Hγ0 :=
     fold_transport (agree_eq (IH_agree _ _ _ _) γ0  _ _)
     ◎ bounded_approx_p (IH γ1 Hγ1) γ0 γ1 _ _ Hlt.
-  Next Obligation. intros; cbn. eapply index_le_lt_iff. by left. Defined.
+  Next Obligation. intros; cbn. eapply SIdx.le_lteq. by left. Defined.
 
   Lemma me_mp_id γ0 γ1 Hγ0 Hγ1 Hlt : me γ0 γ1 Hγ0 Hγ1 Hlt ◎ mp γ0 γ1 Hγ0 Hγ1 Hlt ≡{γ0}≡ cid.
   Proof.
@@ -2955,9 +2957,9 @@ Section merge.
     Unshelve. apply IH_agree.
   Qed.
 
-  Program Definition mϕ γ (Hγ : P γ) : mX γ Hγ -n> [G (mX γ Hγ)]_{succ γ} :=
+  Program Definition mϕ γ (Hγ : P γ) : mX γ Hγ -n> [G (mX γ Hγ)]_{Sᵢ γ} :=
     bounded_approx_ϕ (IH γ Hγ) γ _.
-  Program Definition mψ γ (Hγ : P γ) : [G (mX γ Hγ)]_{succ γ} -n> mX γ Hγ :=
+  Program Definition mψ γ (Hγ : P γ) : [G (mX γ Hγ)]_{Sᵢ γ} -n> mX γ Hγ :=
     bounded_approx_ψ (IH γ Hγ) γ _.
 
   Lemma mϕ_mψ_id γ Hγ : mϕ γ Hγ ◎ mψ γ Hγ ≡{γ}≡ cid.
@@ -2965,7 +2967,7 @@ Section merge.
   Lemma mψ_mϕ_id γ Hγ : mψ γ Hγ ◎ mϕ γ Hγ ≡ cid.
   Proof. apply IH. Qed.
 
-  Instance msucc_eq α Hα Hsα : ofe_eq (mX (succ α) Hsα) ([G (mX α Hα)]_{succ α}).
+  Instance msucc_eq α Hα Hsα : ofe_eq (mX (Sᵢ α) Hsα) ([G (mX α Hα)]_{Sᵢ α}).
   Proof using IH_agree.
     unfold mX. symmetry. erewrite agree_eq. { symmetry; eapply approx_eq. apply IH. }
     apply IH_agree.
@@ -2973,18 +2975,18 @@ Section merge.
   Qed.
 
 
-  Lemma Fmemp_mp γ0 γ1 (Hγ0 : P γ0) (Hγ1 : P γ1) (Hsγ0 : P (succ γ0)) (Hsγ1 : P (succ γ1)) (Hlt : γ0 ≺ᵢ γ1) (Hlts : succ γ0 ≺ᵢ succ γ1):
+  Lemma Fmemp_mp γ0 γ1 (Hγ0 : P γ0) (Hγ1 : P γ1) (Hsγ0 : P (Sᵢ γ0)) (Hsγ1 : P (Sᵢ γ1)) (Hlt : γ0 < γ1) (Hlts : Sᵢ γ0 < Sᵢ γ1):
     fold_transport (msucc_eq γ0 Hγ0 Hsγ0)
-    ◎ trunc_map (succ γ1) (succ γ0)
+    ◎ trunc_map (Sᵢ γ1) (Sᵢ γ0)
         (map (me γ0 γ1 Hγ0 Hγ1 Hlt, mp γ0 γ1 Hγ0 Hγ1 Hlt))
-    ◎ unfold_transport (msucc_eq γ1 Hγ1 Hsγ1) ≡ mp (succ γ0) (succ γ1) Hsγ0 Hsγ1 Hlts.
+    ◎ unfold_transport (msucc_eq γ1 Hγ1 Hsγ1) ≡ mp (Sᵢ γ0) (Sᵢ γ1) Hsγ0 Hsγ1 Hlts.
   Proof using Fcontr Fcofe.
     unfold me, mp. intros x; cbn. rewrite ofe_truncated_equiv.
     setoid_rewrite tFunctor_map_ne at 1.
     2: { apply pair_ne.
-      { rewrite (agree_e_nat (IH_agree γ1 (succ γ1) Hγ1 Hsγ1)).
+      { rewrite (agree_e_nat (IH_agree γ1 (Sᵢ γ1) Hγ1 Hsγ1)).
         rewrite !ccompose_assoc. rewrite (transport_id_compose _ _ _). reflexivity. }
-      { rewrite (agree_p_nat (IH_agree γ1 (succ γ1) Hγ1 Hsγ1)).
+      { rewrite (agree_p_nat (IH_agree γ1 (Sᵢ γ1) Hγ1 Hsγ1)).
         rewrite <- !ccompose_assoc. rewrite (transport_id_compose _ _ _). reflexivity. }
     }
     setoid_rewrite <- (map_compose_dist _ _ _ _ _ _).
@@ -2992,7 +2994,7 @@ Section merge.
     cbn.
     transport_id_truncate_rl.
 
-    setoid_rewrite <- (approx_Fep_p (bounded_approx_props (IH (succ γ1) Hsγ1)) _ _ _ _ _ _ _ _ _).
+    setoid_rewrite <- (approx_Fep_p (bounded_approx_props (IH (Sᵢ γ1) Hsγ1)) _ _ _ _ _ _ _ _ _).
     cbn. unfold fold_transport, unfold_transport. clear_transports. equalise_pi_head.
     do 3 apply ofe_mor_ne.
     cbn.
@@ -3002,11 +3004,11 @@ Section merge.
     apply ofe_eq_funct; first reflexivity. apply IH_agree.
   Qed.
 
-  Lemma Fmemp_mp_lim γ0 γ1 (Hlim : index_is_limit γ1) (Hγ0 : P γ0) (Hsγ0 : P (succ γ0)) (Hγ1 : P γ1) (Hlt : γ0 ≺ᵢ γ1) (Hslt : succ γ0 ≺ᵢ γ1):
+  Lemma Fmemp_mp_lim γ0 γ1 (Hlim : index_is_limit γ1) (Hγ0 : P γ0) (Hsγ0 : P (Sᵢ γ0)) (Hγ1 : P γ1) (Hlt : γ0 < γ1) (Hslt : Sᵢ γ0 < γ1):
     fold_transport (msucc_eq γ0 Hγ0 Hsγ0)
-    ◎ trunc_map (succ γ1) (succ γ0)
+    ◎ trunc_map (Sᵢ γ1) (Sᵢ γ0)
         (map (me γ0 γ1 Hγ0 Hγ1 Hlt, mp γ0 γ1 Hγ0 Hγ1 Hlt))
-    ≡ mp (succ γ0) γ1 Hsγ0 Hγ1 Hslt ◎ mψ γ1 Hγ1.
+    ≡ mp (Sᵢ γ0) γ1 Hsγ0 Hγ1 Hslt ◎ mψ γ1 Hγ1.
   Proof using Fcontr.
     unfold me, mp, mϕ. intros x; cbn. rewrite ofe_truncated_equiv.
     setoid_rewrite <- (approx_Fep_p_limit (bounded_approx_props (IH γ1 Hγ1)) _ _ _ _ _ _ _ _ _); last assumption.
@@ -3018,38 +3020,38 @@ Section merge.
     Unshelve. reflexivity.
   Qed.
 
-  Lemma mp_succ_id γ (Hγ : P γ) (Hsγ : P (succ γ)) (Hlt : γ ≺ᵢ succ γ):
-    mp γ (succ γ) Hγ Hsγ Hlt ≡ mψ γ Hγ ◎ unfold_transport (msucc_eq γ Hγ Hsγ).
+  Lemma mp_succ_id γ (Hγ : P γ) (Hsγ : P (Sᵢ γ)) (Hlt : γ < Sᵢ γ):
+    mp γ (Sᵢ γ) Hγ Hsγ Hlt ≡ mψ γ Hγ ◎ unfold_transport (msucc_eq γ Hγ Hsγ).
   Proof.
     unfold mp, mψ.
-    rewrite (agree_ψ_nat (IH_agree γ (succ γ) Hγ Hsγ) _ _ _).
-    rewrite (approx_p_ψ_unfold (bounded_approx_props (IH (succ γ) Hsγ)) _ _ _ _).
+    rewrite (agree_ψ_nat (IH_agree γ (Sᵢ γ) Hγ Hsγ) _ _ _).
+    rewrite (approx_p_ψ_unfold (bounded_approx_props (IH (Sᵢ γ) Hsγ)) _ _ _ _).
     intros x; cbn. unfold fold_transport, unfold_transport. clear_transports. equalise_pi.
   Qed.
 
-  Lemma me_succ_id γ (Hγ : P γ) (Hsγ : P (succ γ)) (Hlt : γ ≺ᵢ succ γ):
-    me γ (succ γ) Hγ Hsγ Hlt ≡ fold_transport (msucc_eq γ Hγ Hsγ) ◎ mϕ γ Hγ.
+  Lemma me_succ_id γ (Hγ : P γ) (Hsγ : P (Sᵢ γ)) (Hlt : γ < Sᵢ γ):
+    me γ (Sᵢ γ) Hγ Hsγ Hlt ≡ fold_transport (msucc_eq γ Hγ Hsγ) ◎ mϕ γ Hγ.
   Proof.
     unfold me, mϕ.
-    rewrite (agree_ϕ_nat (IH_agree γ (succ γ) Hγ Hsγ) _ _ _).
-    rewrite (approx_e_fold_ϕ (bounded_approx_props (IH (succ γ) Hsγ)) _ _ _ _).
+    rewrite (agree_ϕ_nat (IH_agree γ (Sᵢ γ) Hγ Hsγ) _ _ _).
+    rewrite (approx_e_fold_ϕ (bounded_approx_props (IH (Sᵢ γ) Hsγ)) _ _ _ _).
     intros x; cbn. unfold fold_transport, unfold_transport. clear_transports. equalise_pi.
   Qed.
 
-  Lemma mϕ_succ_id γ (Hle : P γ) (Hsle : P (succ γ)):
-    mϕ (succ γ) Hsle
-    ≡ trunc_map (succ γ) (succ (succ γ))
+  Lemma mϕ_succ_id γ (Hle : P γ) (Hsle : P (Sᵢ γ)):
+    mϕ (Sᵢ γ) Hsle
+    ≡ trunc_map (Sᵢ γ) (Sᵢ (Sᵢ γ))
         (map (mψ γ Hle ◎ unfold_transport (msucc_eq γ Hle Hsle), fold_transport (msucc_eq γ Hle Hsle) ◎ mϕ γ Hle))
       ◎ unfold_transport (msucc_eq γ Hle Hsle).
   Proof using Fcontr.
     unfold mϕ, mψ. rewrite ofe_truncated_equiv. intros x; cbn.
-    setoid_rewrite (approx_ϕ_succ_id (bounded_approx_props (IH (succ γ) Hsle)) _ _ _ _).
+    setoid_rewrite (approx_ϕ_succ_id (bounded_approx_props (IH (Sᵢ γ) Hsle)) _ _ _ _).
     cbn. apply ofe_mor_ne.
     setoid_rewrite tFunctor_map_ne at 2.
     2: { apply pair_ne.
-      { rewrite (agree_ψ_nat (IH_agree γ (succ γ) Hle Hsle) _ _ _ ). unfold fold_transport, unfold_transport.
+      { rewrite (agree_ψ_nat (IH_agree γ (Sᵢ γ) Hle Hsle) _ _ _ ). unfold fold_transport, unfold_transport.
         rewrite !ccompose_assoc. rewrite transport_id_compose. reflexivity. }
-      { rewrite (agree_ϕ_nat (IH_agree γ (succ γ) Hle Hsle) _ _ _ ). unfold fold_transport, unfold_transport.
+      { rewrite (agree_ϕ_nat (IH_agree γ (Sᵢ γ) Hle Hsle) _ _ _ ). unfold fold_transport, unfold_transport.
         rewrite <- !ccompose_assoc. rewrite transport_id_compose. reflexivity. }
     }
     cbn.
@@ -3059,19 +3061,19 @@ Section merge.
     Unshelve. all: eauto with si_solver.
   Qed.
 
-  Lemma mψ_succ_id γ (Hle : P γ) (Hsle : P (succ γ)):
-    mψ (succ γ) Hsle
+  Lemma mψ_succ_id γ (Hle : P γ) (Hsle : P (Sᵢ γ)):
+    mψ (Sᵢ γ) Hsle
     ≡ fold_transport (msucc_eq γ Hle Hsle)
-      ◎ trunc_map (succ (succ γ)) (succ γ)
+      ◎ trunc_map (Sᵢ (Sᵢ γ)) (Sᵢ γ)
           (map (fold_transport (msucc_eq γ Hle Hsle) ◎ mϕ γ Hle, mψ γ Hle ◎ unfold_transport (msucc_eq γ Hle Hsle))).
   Proof using Fcontr.
     unfold mψ, mϕ. rewrite ofe_truncated_equiv. intros x; cbn.
-    setoid_rewrite (approx_ψ_succ_id (bounded_approx_props (IH (succ γ) Hsle)) _ _ _ _).
+    setoid_rewrite (approx_ψ_succ_id (bounded_approx_props (IH (Sᵢ γ) Hsle)) _ _ _ _).
     cbn. setoid_rewrite tFunctor_map_ne at 2.
     2: { apply pair_ne.
-      { rewrite (agree_ϕ_nat (IH_agree γ (succ γ) Hle Hsle) _ _ _ ). unfold fold_transport, unfold_transport.
+      { rewrite (agree_ϕ_nat (IH_agree γ (Sᵢ γ) Hle Hsle) _ _ _ ). unfold fold_transport, unfold_transport.
         rewrite <- !ccompose_assoc. rewrite transport_id_compose. rewrite ccompose_assoc. reflexivity. }
-      { rewrite (agree_ψ_nat (IH_agree γ (succ γ) Hle Hsle) _ _ _ ). unfold fold_transport, unfold_transport.
+      { rewrite (agree_ψ_nat (IH_agree γ (Sᵢ γ) Hle Hsle) _ _ _ ). unfold fold_transport, unfold_transport.
         rewrite !ccompose_assoc. rewrite transport_id_compose. rewrite <- ccompose_assoc. reflexivity. }
     }
     cbn. do 2 setoid_rewrite <- (map_compose_dist _ _ _ _ _ _). cbn.
@@ -3107,11 +3109,11 @@ Section merge.
 
   Lemma merged_agree γ Hγ: approx_agree (IH γ Hγ) merged_approx.
   Proof with (unfold fold_transport, unfold_transport; intros x; cbn; clear_transports; equalise_pi).
-    assert (X_eq : ∀ (γ0 : index) (H0 : γ0 ⪯ᵢ γ) (H1 : P γ0), projCOFE _ (bounded_approx_X (IH γ Hγ) γ0 H0) = projCOFE _ (mX γ0 H1)).
+    assert (X_eq : ∀ (γ0 : SI) (H0 : γ0 ≤ γ) (H1 : P γ0), projCOFE _ (bounded_approx_X (IH γ Hγ) γ0 H0) = projCOFE _ (mX γ0 H1)).
     { intros. unfold mX. apply agree_eq, IH_agree.  }
     exists X_eq; intros; cbn.
     - rewrite (agree_bcompl_nat (IH_agree γ γ0 Hγ H1) _ _ _ _ _ _).
-      unfold fold_transport, unfold_transport. clear_transports. equalise_pi_head. apply ofe_mor_ne. apply bcompl_ne.
+      unfold fold_transport, unfold_transport. clear_transports. equalise_pi_head. apply ofe_mor_ne. apply bcompl_pos_ne.
       intros. cbn. equalise_pi.
     - unfold me. rewrite (agree_e_nat (IH_agree γ γ1 Hγ Hγ1') _ _ _ _ _ _ _)...
     - unfold mp. rewrite (agree_p_nat (IH_agree γ γ1 Hγ Hγ1') _ _ _ _ _ _ _)...
@@ -3121,18 +3123,18 @@ Section merge.
 End merge.
 
 (* we have to show that merging two coherent & agreeing chains of approximations results in two agreeing approximations *)
-Lemma merge_coherent_agree (P : index → Prop) (IH1 IH2 : ∀ α, P α → bounded_approx (λ γ, γ ⪯ᵢ α))
+Lemma merge_coherent_agree (P : SI → Prop) (IH1 IH2 : ∀ α, P α → bounded_approx (λ γ, γ ≤ α))
   (H1 : ∀ α0 α1 Hα0 Hα1, approx_agree (IH1 α0 Hα0) (IH1 α1 Hα1))
   (H2 : ∀ α0 α1 Hα0 Hα1, approx_agree (IH2 α0 Hα0) (IH2 α1 Hα1)):
   (∀ α Hα, approx_agree (IH1 α Hα) (IH2 α Hα))
   → approx_agree (merged_approx P IH1 H1) (merged_approx P IH2 H2).
 Proof with (unfold fold_transport, unfold_transport; intros x; cbn; clear_transports; equalise_pi).
   intros IH_agree.
-  assert (X_eq : ∀ (γ : index) (H0 H3 : P γ), projCOFE _ (mX P IH1 γ H0) = projCOFE _ (mX P IH2 γ H3)).
+  assert (X_eq : ∀ (γ : SI) (H0 H3 : P γ), projCOFE _ (mX P IH1 γ H0) = projCOFE _ (mX P IH2 γ H3)).
   { intros. unfold mX. pi_clear. apply IH_agree. }
   exists X_eq; intros; cbn.
   - repeat pi_clear. rewrite (agree_bcompl_nat (IH_agree γ H3) _ _ _ _ _ _ ).
-    unfold fold_transport, unfold_transport. clear_transports. equalise_pi_head. apply ofe_mor_ne. apply bcompl_ne.
+    unfold fold_transport, unfold_transport. clear_transports. equalise_pi_head. apply ofe_mor_ne. apply bcompl_pos_ne.
     intros; cbn. equalise_pi.
   - unfold me. repeat pi_clear. rewrite (agree_e_nat (IH_agree γ1 Hγ1') _ _ _ _ _ _)...
   - unfold mp. repeat pi_clear. rewrite (agree_p_nat (IH_agree γ1 Hγ1') _ _ _ _ _ _)...
