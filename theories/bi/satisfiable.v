@@ -9,7 +9,7 @@ Import derived_laws.bi.
 Import derived_laws_later.bi.
 
 Section satisfiable.
-  Context `{SI: indexT} {PROP: bi}.
+  Context {SI : sidx} {PROP: bi}.
 
   Class Satisfiable (sat: PROP → Prop) := {
     sat_mono P Q: (P ⊢ Q) → sat P →  sat Q;
