@@ -10,9 +10,15 @@ dev-repo: "git+https://gitlab.mpi-sws.org/iris/iris.git"
 synopsis: "This is the Coq development of the Iris Project"
 
 depends: [
-  "coq" { (>= "8.16.0" & < "8.17") }
-  "coq-stdpp" { (= "dev.2022-12-05.0.0231fed2") | (= "dev") }
-  "coq-iris" {= "dev"}
+  "rocq-core" { (>= "9.0" & < "9.4~") | (= "dev") }
+  "rocq-stdpp" { (= "dev.2026-09-17.0.d510b616") | (= "dev") }
+  # Iris main at commit 8e4909593a3a84f850d224a344cbd3a380672088 plus the four
+  # commits of Iris branch robbert/transfinite that change the BI laws for
+  # Transfinite step-indexing ("Change laws of BI to support Transfinite and make
+  # siProp Transfinite", "Change definition of Timeless", "Rename
+  # later_false_impl", "Add smart constructor bi_later_mixin_sidx_finite").
+  # No released rocq-iris version contains these yet.
+  "rocq-iris" { (= "dev") }
 ]
 
 build: [make "-j%{jobs}%"]

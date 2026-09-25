@@ -13,29 +13,25 @@ For using Transfinite Iris and inspecting the development interactively, it need
 
 This version is known to compile with:
 
- - Coq 8.10.2
- - Iris-stdpp 1.3.0 ([std++](https://gitlab.mpi-sws.org/iris/stdpp))
+ - Rocq 9.0.1
+ - std++ `dev.2026-09-17.0.d510b616` ([std++](https://gitlab.mpi-sws.org/iris/stdpp))
+ - Iris master at commit `8e4909593a3a84f850d224a344cbd3a380672088`, plus the
+   four commits of the Iris branch `robbert/transfinite` that change the BI laws
+   to support Transfinite step-indexing (`later_exist_false`/`later_sep_1` only
+   for finite step-indices, the new laws `later_false_impl_exist` and
+   `later_false_impl_sep`, and `Timeless P := <only0> P ⊢ P`).
 
-We assume that you have opam (2.0 or newer; tested with 2.0.7) available for the following instructions.
+The development no longer depends on the parametric-index fork of Iris: it uses
+upstream Iris's step-index interface `sidx` (`iris.algebra.stepindex`) and its
+`bi`/`Sbi` interfaces, and instantiates them with the Transfinite `uPred` model
+for any step-index type (in particular, the ordinals `ordI`).
 
 ### Installation
 
-1. Setup a new opam switch and switch to it:
-  ```
-  opam update
-  opam switch create iris-transfinite 4.07.1+flambda
-  eval $(opam env)
-  ```
-
-2. Add the Coq opam repository: 
-```
-  opam repo add coq-released https://coq.inria.fr/opam/released
-```
-3. Run `make build-dep` to install the right versions of the dependencies, 
-   in particular Coq 8.10.2 and coq-stdpp 1.3.0.
-
-4. Run `make -jN` to build the full development, where `N` is the number of threads
-   to use for the build process.
+Install the dependencies above (e.g., with opam, see the `opam` file; for a local
+checkout of Iris/std++, add the corresponding `-Q` paths to `_CoqProject`), then
+run `make -jN` to build the full development, where `N` is the number of threads
+to use for the build process.
 
 ## Directory Structure
 
