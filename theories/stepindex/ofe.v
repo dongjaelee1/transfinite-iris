@@ -1,4 +1,5 @@
-From iris.prelude Require Export options prelude.
+From iris.prelude Require Export prelude.
+From iris.prelude Require Import options.
 From iris.algebra Require Export ofe cmra.
 From transfinite.stepindex Require Export utils.
 
