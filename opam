@@ -1,24 +1,25 @@
 opam-version: "2.0"
-name: "coq-iris-transfinite"
-maintainer: "Ralf Jung <jung@mpi-sws.org>"
+name: "rocq-iris-transfinite"
+maintainer: "Dongjae Lee <dongjael@mit.edu>"
 authors: "The Iris Team"
 license: "BSD"
-homepage: "https://iris-project.org/"
-bug-reports: "https://gitlab.mpi-sws.org/iris/iris/issues"
-dev-repo: "git+https://gitlab.mpi-sws.org/iris/iris.git"
+homepage: "https://github.com/dongjaelee1/transfinite-iris"
+bug-reports: "https://github.com/dongjaelee1/transfinite-iris/issues"
+dev-repo: "git+https://github.com/dongjaelee1/transfinite-iris.git"
 
-synopsis: "This is the Coq development of the Iris Project"
+synopsis: "Transfinite Iris on upstream Iris: ordinal step-indexed uPred/iProp, base-logic libraries and program logic"
 
 depends: [
   "rocq-core" { (>= "9.0" & < "9.4~") | (= "dev") }
   "rocq-stdpp" { (= "dev.2026-09-17.0.d510b616") | (= "dev") }
-  # Iris main at commit 8e4909593a3a84f850d224a344cbd3a380672088 plus the four
-  # commits of Iris branch robbert/transfinite that change the BI laws for
-  # Transfinite step-indexing ("Change laws of BI to support Transfinite and make
-  # siProp Transfinite", "Change definition of Timeless", "Rename
-  # later_false_impl", "Add smart constructor bi_later_mixin_sidx_finite").
-  # No released rocq-iris version contains these yet.
-  "rocq-iris" { (= "dev") }
+  # The same upstream Iris commit xv6iris builds with (opam/xv6rocq.export: rocq-iris
+  # dev.2026-09-24.0.8e490959), plus the four commits of Iris branch robbert/transfinite that
+  # change the BI laws for transfinite step-indexing ("Change laws of BI to support Transfinite
+  # and make siProp Transfinite", "Change definition of Timeless", "Rename later_false_impl",
+  # "Add smart constructor bi_later_mixin_sidx_finite") and one local fix (monPred_lc_mixin).
+  # No released rocq-iris contains these yet; until robbert/transfinite is merged upstream the
+  # package is the patched branch, versioned <upstream version>+transfinite.<commit>.
+  "rocq-iris" { (= "dev.2026-09-24.0.8e490959+transfinite.ad972179") | (= "dev") }
 ]
 
 build: [make "-j%{jobs}%"]

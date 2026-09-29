@@ -55,4 +55,7 @@ theories/base_logic/lib/fancy_updates_from_vs.v
 theories/base_logic/lib/later_credits.v
 theories/base_logic/lib/mono_Z.v
 theories/base_logic/lib/token.v
-
+theories/program_logic/language.v
+theories/program_logic/weakestpre.v
+theories/program_logic/lifting.v
+theories/program_logic/adequacy.v

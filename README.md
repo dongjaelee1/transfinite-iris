@@ -31,9 +31,22 @@ for any step-index type (in particular, the ordinals `ordI`).
 Install the dependencies above (e.g., with opam, see the `opam` file; for a local
 checkout of Iris/std++, add the corresponding `-Q` paths to `_CoqProject`), then
 run `make -jN` to build the full development, where `N` is the number of threads
-to use for the build process.
+to use for the build process, and `make install` to install it as the Rocq library
+`transfinite` (this is what the opam package `rocq-iris-transfinite` does).
+
+Until the Iris branch `robbert/transfinite` is merged upstream, the `rocq-iris` this
+development needs is the patched one: upstream Iris at the commit above with those four
+commits (and one local fix) on top, pinned as
+`rocq-iris.dev.2026-09-24.0.8e490959+transfinite.<commit>`. The Makefile is a plain
+`coq_makefile` wrapper; the same `_CoqProject` serves an installed Iris and a local one.
 
 ## Directory Structure
+
+* The folder [program_logic](theories/program_logic) is upstream Iris's program logic
+  (`language`, `weakestpre`, `lifting`, `adequacy`) over the transfinite base logic,
+  generic in the step index `SI : sidx` (the only proof change is the well-founded
+  induction in `wp_ne`, which is over `SI` instead of `nat`); `wp_strong_adequacy` holds
+  at every index, in particular at the ordinals `ordI`.
 
 * The folder [ordinals](theories/algebra/ordinals) contains a formalisation of 
   von Neumann ordinals and basic ordinal arithmetic. 
