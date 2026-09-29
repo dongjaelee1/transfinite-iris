@@ -243,7 +243,7 @@ Next Obligation.
 Qed.
 Notation "F1 * F2" := (prodTF F1%TF F2%TF) : tFunctor_scope.
 
-Global Instance prodTF_contractive {SI : sidx} {F1 F2 : ofe}:
+Global Instance prodTF_contractive {SI : sidx} (F1 F2 : tFunctor) :
   tFunctorContractive F1 → tFunctorContractive F2 →
   tFunctorContractive (prodTF F1 F2).
 Proof.
