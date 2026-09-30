@@ -17,9 +17,15 @@ depends: [
   # change the BI laws for transfinite step-indexing ("Change laws of BI to support Transfinite
   # and make siProp Transfinite", "Change definition of Timeless", "Rename later_false_impl",
   # "Add smart constructor bi_later_mixin_sidx_finite") and one local fix (monPred_lc_mixin).
-  # No released rocq-iris contains these yet; until robbert/transfinite is merged upstream the
-  # package is the patched branch, versioned <upstream version>+transfinite.<commit>.
+  # No released rocq-iris contains these yet; until robbert/transfinite (Iris MR !1256) is merged
+  # upstream the package is the patched branch dongjae/transfinite-base of
+  # https://gitlab.mpi-sws.org/dongjae/iris, versioned <upstream version>+transfinite.<commit>
+  # and pinned below by commit (the version names the commit, so the pin must not float).
   "rocq-iris" { (= "dev.2026-09-24.0.8e490959+transfinite.ad972179") | (= "dev") }
+]
+pin-depends: [
+  ["rocq-iris.dev.2026-09-24.0.8e490959+transfinite.ad972179"
+   "git+https://gitlab.mpi-sws.org/dongjae/iris.git#ad972179779ed8afe530a70e4ef90f18bed28508"]
 ]
 
 build: [make "-j%{jobs}%"]

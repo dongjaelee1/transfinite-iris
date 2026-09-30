@@ -16,7 +16,8 @@ This version is known to compile with:
  - Rocq 9.0.1
  - std++ `dev.2026-09-17.0.d510b616` ([std++](https://gitlab.mpi-sws.org/iris/stdpp))
  - Iris master at commit `8e4909593a3a84f850d224a344cbd3a380672088`, plus the
-   four commits of the Iris branch `robbert/transfinite` that change the BI laws
+   four commits of the Iris branch `robbert/transfinite` (merge request
+   [!1256](https://gitlab.mpi-sws.org/iris/iris/-/merge_requests/1256)) that change the BI laws
    to support Transfinite step-indexing (`later_exist_false`/`later_sep_1` only
    for finite step-indices, the new laws `later_false_impl_exist` and
    `later_false_impl_sep`, and `Timeless P := <only0> P ⊢ P`).
@@ -36,9 +37,20 @@ to use for the build process, and `make install` to install it as the Rocq libra
 
 Until the Iris branch `robbert/transfinite` is merged upstream, the `rocq-iris` this
 development needs is the patched one: upstream Iris at the commit above with those four
-commits (and one local fix) on top, pinned as
-`rocq-iris.dev.2026-09-24.0.8e490959+transfinite.<commit>`. The Makefile is a plain
-`coq_makefile` wrapper; the same `_CoqProject` serves an installed Iris and a local one.
+commits and one local fix on top (adapting master's generic later credits to the new
+`Timeless`). It is published as the branch
+[`dongjae/transfinite-base`](https://gitlab.mpi-sws.org/dongjae/iris/-/tree/dongjae/transfinite-base)
+of the fork https://gitlab.mpi-sws.org/dongjae/iris, and the `opam` file's `pin-depends` pins
+it by commit as `rocq-iris.dev.2026-09-24.0.8e490959+transfinite.ad972179`. So pinning this
+repository installs both (std++'s dev version comes from the Iris dev repository):
+
+```
+opam repo add iris-dev https://gitlab.mpi-sws.org/iris/opam.git
+opam pin add rocq-iris-transfinite git+https://github.com/dongjaelee1/transfinite-iris.git
+```
+
+The Makefile is a plain `coq_makefile` wrapper; the same `_CoqProject` serves an installed
+Iris and a local one.
 
 ## Directory Structure
 
