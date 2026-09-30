@@ -85,4 +85,15 @@ Section later_timeless.
     rewrite /IntoExist=> HP ? ?. rewrite (bi.timeless_except_0 P) HP bi.except_0_exist.
     apply bi.exist_mono=> a. by rewrite bi.except_0_into_later.
   Qed.
+
+  (** Splitting off a PERSISTENT part under a later, at every index: in an affine BI
+  [▷ (Q1 ∗ Q2) ⊢ ▷ (Q1 ∧ Q2) ⊢ ▷ Q1 ∧ ▷ Q2 ⊢ ▷ Q1 ∗ ▷ Q2] when [Q1] or [Q2] is persistent
+  ([sep_and], [later_and], [persistent_and_sep_1]). The other part may be anything, so an
+  invariant [T ∗ □ X] or [P ∗ ⌜φ⌝] still gives up its persistent facts when opened. *)
+  Global Instance into_sep_later_persistent `{!BiAffine PROP} P Q1 Q2 :
+    IntoSep P Q1 Q2 → TCOr (Persistent Q1) (Persistent Q2) → IntoSep (▷ P) (▷ Q1) (▷ Q2).
+  Proof.
+    rewrite /IntoSep=> HP HQ. rewrite HP bi.sep_and bi.later_and.
+    destruct HQ; by rewrite bi.persistent_and_sep_1.
+  Qed.
 End later_timeless.
