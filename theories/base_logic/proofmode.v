@@ -57,3 +57,32 @@ Section class_instances.
     IntoOr P Q1 Q2 → IntoOr (PROP:=uPredI M) (▷^n P) (▷^n Q1) (▷^n Q2).
   Proof. rewrite /IntoOr=>->. by rewrite uPred.laterN_or. Qed.
 End class_instances.
+
+(** Destructing [∗] and [∃] under a later, for TIMELESS bodies, at every step index.
+Upstream's [into_sep_later] and [into_exist_later] require [SIdxFinite] (they use
+[later_sep_1] / [later_exist_false], which fail at limit ordinals). For a timeless [P] the
+same splits hold at any index, through the except-0 modality:
+[▷ P ⊢ ◇ P] ([timeless_except_0]), [◇ (Q1 ∗ Q2) ⊢ ◇ Q1 ∗ ◇ Q2] ([except_0_sep]),
+[◇ ∃ a, Φ a ⊢ ∃ a, ◇ Φ a] for inhabited [A] ([except_0_exist]) and [◇ Q ⊢ ▷ Q]
+([except_0_into_later]). So an invariant with a timeless body can still be opened with
+[iInv … as (x) "(H1 & >H2)"]; a body with a non-timeless part (an arbitrary client
+predicate, a stored WP) still cannot, and needs a real change. *)
+Section later_timeless.
+  Context {SI : sidx} {PROP : bi}.
+  Implicit Types P Q : PROP.
+
+  Global Instance into_sep_later_timeless P Q1 Q2 :
+    IntoSep P Q1 Q2 → Timeless P → IntoSep (▷ P) (▷ Q1) (▷ Q2).
+  Proof.
+    rewrite /IntoSep=> HP ?. rewrite (bi.timeless_except_0 P) HP bi.except_0_sep.
+    by rewrite !bi.except_0_into_later.
+  Qed.
+
+  Global Instance into_exist_later_timeless {A} P (Φ : A → PROP) name :
+    IntoExist P Φ name → Inhabited A → Timeless P →
+    IntoExist (▷ P) (λ a, ▷ (Φ a))%I name.
+  Proof.
+    rewrite /IntoExist=> HP ? ?. rewrite (bi.timeless_except_0 P) HP bi.except_0_exist.
+    apply bi.exist_mono=> a. by rewrite bi.except_0_into_later.
+  Qed.
+End later_timeless.
