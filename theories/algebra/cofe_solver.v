@@ -1687,7 +1687,12 @@ Section limit_case.
     setoid_rewrite ccompose_assoc.
     rewrite ofe_truncated_equiv.
     assert ((trunc_map β (Sᵢ γ0) (map (eβ γ0 Hlt, pβ γ0 Hlt)) ◎ ϕβ) ≡{Sᵢ γ0}≡ proj_Xβ γ0 Hlt) as ->.
-    { setoid_rewrite <- ccompose_cid_r at 7. rewrite <- ψβ_ϕβ_id.
+    { (* [proj_Xβ γ0 Hlt ≡ proj_Xβ γ0 Hlt ◎ cid ≡ proj_Xβ γ0 Hlt ◎ (ψβ ◎ ϕβ)], and
+         [proj_Xβ γ0 Hlt ◎ ψβ] is definitionally the truncated map. Name the
+         occurrence explicitly: [setoid_rewrite <- ccompose_cid_r at 7] depends on how
+         the Rocq version at hand numbers occurrences, and on another toolchain it
+         inserted [cid] on the left-hand side instead. *)
+      rewrite <- (ccompose_cid_r (proj_Xβ γ0 Hlt)), <- ψβ_ϕβ_id.
       intros x. reflexivity.
     }
     unfold pβ.
