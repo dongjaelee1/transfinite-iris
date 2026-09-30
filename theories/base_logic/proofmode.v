@@ -67,12 +67,16 @@ same splits hold at any index, through the except-0 modality:
 ([except_0_into_later]). So an invariant with a timeless body can still be opened with
 [iInv … as (x) "(H1 & >H2)"]; a body with a non-timeless part (an arbitrary client
 predicate, a stored WP) still cannot, and needs a real change. *)
+(* PRIORITY 100: these are FALLBACKS. At a finite index Iris's own [into_sep_later] /
+[into_exist_later] (gated on [SIdxFinite]) apply and must win -- otherwise a finite-index proof
+that never needed timelessness would start depending on [Timeless] instances (seen 2026-09-30:
+CtxBox at natSI then needed its section's Timeless assumptions in [Proof using]). *)
 Section later_timeless.
   Context {SI : sidx} {PROP : bi}.
   Implicit Types P Q : PROP.
 
   Global Instance into_sep_later_timeless P Q1 Q2 :
-    IntoSep P Q1 Q2 → Timeless P → IntoSep (▷ P) (▷ Q1) (▷ Q2).
+    IntoSep P Q1 Q2 → Timeless P → IntoSep (▷ P) (▷ Q1) (▷ Q2) | 100.
   Proof.
     rewrite /IntoSep=> HP ?. rewrite (bi.timeless_except_0 P) HP bi.except_0_sep.
     by rewrite !bi.except_0_into_later.
@@ -80,7 +84,7 @@ Section later_timeless.
 
   Global Instance into_exist_later_timeless {A} P (Φ : A → PROP) name :
     IntoExist P Φ name → Inhabited A → Timeless P →
-    IntoExist (▷ P) (λ a, ▷ (Φ a))%I name.
+    IntoExist (▷ P) (λ a, ▷ (Φ a))%I name | 100.
   Proof.
     rewrite /IntoExist=> HP ? ?. rewrite (bi.timeless_except_0 P) HP bi.except_0_exist.
     apply bi.exist_mono=> a. by rewrite bi.except_0_into_later.
@@ -91,7 +95,7 @@ Section later_timeless.
   ([sep_and], [later_and], [persistent_and_sep_1]). The other part may be anything, so an
   invariant [T ∗ □ X] or [P ∗ ⌜φ⌝] still gives up its persistent facts when opened. *)
   Global Instance into_sep_later_persistent `{!BiAffine PROP} P Q1 Q2 :
-    IntoSep P Q1 Q2 → TCOr (Persistent Q1) (Persistent Q2) → IntoSep (▷ P) (▷ Q1) (▷ Q2).
+    IntoSep P Q1 Q2 → TCOr (Persistent Q1) (Persistent Q2) → IntoSep (▷ P) (▷ Q1) (▷ Q2) | 100.
   Proof.
     rewrite /IntoSep=> HP HQ. rewrite HP bi.sep_and bi.later_and.
     destruct HQ; by rewrite bi.persistent_and_sep_1.
