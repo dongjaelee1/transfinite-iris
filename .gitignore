@@ -31,3 +31,6 @@ _opam
 
 .DS_Store
 */.DS_Store
+
+# rocq-warm daemon sockets and logs
+.rocq-warm/
