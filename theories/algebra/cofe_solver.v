@@ -67,14 +67,23 @@ Notation map := (tFunctor_map F).
     a [setoid_rewrite] instead does not work (the rewriter rejects the instantiated lemma
     in these goals), and rebuilding the side with [transitivity] re-elaborates the
     coercions' implicit arguments and breaks later rewrites. *)
-Ltac map_head_with k :=
+Ltac map_head_n k n :=
   lazymatch goal with
-  | |- ofe_mor_car _ _ (tFunctor_map _ ?fg) _ ≡{_}≡ _ => k fg
-  | |- ofe_mor_car _ _ _ _ ≡{_}≡ _ => apply ofe_mor_ne; map_head_with k
+  | |- ofe_mor_car _ _ (tFunctor_map _ ?fg) _ ≡{_}≡ _ =>
+    lazymatch n with
+    | 0 => k fg
+    | S ?m => apply ofe_mor_ne; map_head_n k m
+    end
+  | |- ofe_mor_car _ _ _ _ ≡{_}≡ _ => apply ofe_mor_ne; map_head_n k n
   end.
+Ltac map_head_with k := map_head_n k 0.
 Ltac map_ne_l :=
   etrans; [ map_head_with ltac:(fun fg => eapply (tFunctor_map_ne F _ fg)) | ].
 Ltac map_ne_r := symmetry; map_ne_l; [ | symmetry ].
+(** The same for the [map] directly below the head-path [map] (replaces a
+    [setoid_rewrite tFunctor_map_ne at 2] that targeted [map _ (map fg _)]). *)
+Ltac map_ne_l_inner :=
+  etrans; [ map_head_n ltac:(fun fg => eapply (tFunctor_map_ne F _ fg)) 1 | ].
 Ltac map_contr_l :=
   etrans; [ map_head_with ltac:(fun fg => eapply (tFunctor_map_contractive (F := F) _ fg)) | ].
 Ltac map_contr_r := symmetry; map_contr_l; [ | symmetry ].
@@ -103,6 +112,16 @@ Lemma map_compose_dist {A1 A2 A3 B1 B2 B3 : ofe}
   (f : A2 -n> A1) (g : A3 -n> A2) (f' : B1 -n> B2) (g' : B2 -n> B3) α:
   map (g, g') ◎ map (f, f') ≡{α}≡ map (f ◎ g, g' ◎ f').
 Proof. apply equiv_dist, map_compose. Qed.
+
+(** [map_compose_l]/[map_compose_r]: [map (f ◎ g, g' ◎ f') x] on the head path of the
+    left/right-hand side becomes [map (g, g') (map (f, f') x)]
+    (= [setoid_rewrite <- map_compose_dist at n]); [map_compose_fwd_l] is the converse on
+    the left-hand side (= [setoid_rewrite map_compose_dist at n]). No side goal. *)
+Ltac map_compose_l :=
+  etrans; [ map_head_with ltac:(fun _ => symmetry; eapply (map_compose_dist _ _ _ _ _ _)) | ].
+Ltac map_compose_r := symmetry; map_compose_l; symmetry.
+Ltac map_compose_fwd_l :=
+  etrans; [ map_head_with ltac:(fun _ => eapply (map_compose_dist _ _ _ _ _ _)) | ].
 
 (* Sometimes, setoid_rewrite with the above lemmas will fail for unknown reasons.
   In these cases, we use rewrite.
@@ -2621,7 +2640,7 @@ Section merge_extension.
   Proof using succ_or_limit Fcontr Fcofe.
     intros x; cbn. clear_transports.
     rewrite ofe_truncated_equiv.
-    map_ne_l; [ setoid_rewrite (ccompose_assoc) at 2; reflexivity | ].
+    map_ne_l; [ apply pair_ne; [ | rewrite ccompose_assoc ]; reflexivity | ].
     setoid_rewrite <- (map_compose_dist _ _ _ _ _ _). cbn.
     unshelve transport_id_truncate_rl; first by eauto with ofe_eq.
     cbn. clear_transports. equalise_pi_head. do 2 f_equiv.
@@ -2663,9 +2682,9 @@ Section merge_extension.
         equalise_pi_head. f_equiv.
         setoid_rewrite <- (Fep_p _ _ _ _ _ _ _ _ _ ). cbn -[trunc_map].
         f_equiv. unfold unfold, unfold_transport. clear_transports.
-        setoid_rewrite (transport_id_truncate _ _ _ _ _ _ _) at 1. cbn. f_equiv.
+        setoid_rewrite (transport_id_truncate _ _ _ _ _ _ _). cbn. f_equiv.
         rewrite equiv_dist => α.
-        setoid_rewrite tFunctor_map_ne at 2. 2: { setoid_rewrite (ccompose_assoc _ _ _) at 1. reflexivity. }
+        map_ne_l_inner. 1: { apply pair_ne; [ rewrite ccompose_assoc | ]; reflexivity. }
         setoid_rewrite <- (map_compose _ _ _ _ _).
         setoid_rewrite (map_compose _ _ _ _ _).
         rewrite (proof_irrel H0 T1).
@@ -2703,7 +2722,7 @@ Section merge_extension.
            setoid_rewrite (ccompose_assoc _ _ _). reflexivity.
       }
       setoid_rewrite <- (map_compose_dist _ _ _ _ _ _). cbn.
-      setoid_rewrite <- (transport_id_truncate_symm _ _ _ _ _  _ _ ) at 1.
+      setoid_rewrite <- (transport_id_truncate_symm _ _ _ _ _  _ _ ).
       cbn. clear_transports. equalise_pi_head. do 2 apply ofe_mor_ne.
       setoid_rewrite <- (map_compose_dist _ _ _ _ _ _). cbn.
       equalise_pi_head. apply ofe_mor_ne.
@@ -2748,12 +2767,12 @@ Section merge_extension.
       cbn. rewrite ofe_truncated_equiv. apply ofe_mor_ne.
       setoid_rewrite (map_compose_dist _ _ _ _ _ _).
       cbn.
-      setoid_rewrite tFunctor_map_ne at 2. 2: {
+      map_ne_r. 1: {
         apply pair_ne.
         { rewrite ccompose_assoc. rewrite (transport_id_compose _ _ _). rewrite ccompose_assoc. reflexivity. }
         { rewrite <- !ccompose_assoc. rewrite transport_id_compose. reflexivity. }
       }
-      setoid_rewrite <- (map_compose_dist _ _ _ _ _ _) at 2. cbn.
+      map_compose_r. cbn.
       setoid_rewrite (transport_id_expand _ _ _ _ _ _ _).
       cbn. clear_transports.
       map_ne_l.
@@ -2770,13 +2789,13 @@ Section merge_extension.
       { eapply ofe_eq_symm. eapply ofe_eq_trans; last by eapply X'_id_β. eauto with ofe_eq. }
       { by rewrite H1. }
       cbn. apply ofe_mor_ne.
-      setoid_rewrite tFunctor_map_ne at 3.
-      2: { apply pair_ne.
+      map_ne_r.
+      1: { apply pair_ne.
         { rewrite ccompose_assoc. rewrite transport_id_compose. rewrite ccompose_assoc. reflexivity. }
         { rewrite <- !ccompose_assoc. rewrite transport_id_compose. reflexivity. }
       }
-      setoid_rewrite <- (map_compose_dist _ _ _ _ _ _) at 2. cbn.
-      setoid_rewrite (map_compose_dist _ _ _ _ _ _) at 1. cbn.
+      map_compose_r. cbn.
+      map_compose_fwd_l. cbn.
       map_ne_l.
       1: { apply pair_ne.
         { rewrite ccompose_assoc. rewrite transport_id_compose. reflexivity. }
@@ -2798,8 +2817,8 @@ Section merge_extension.
     - unshelve rewrite ψ_succ_id; first assumption.
       intros x; cbn. open_folds. clear_transports.
       rewrite ofe_truncated_equiv.
-      setoid_rewrite <- (map_compose_dist _ _ _ _ _ _) at 1. cbn.
-      setoid_rewrite tFunctor_map_ne at 3. 2: {
+      map_compose_l. cbn.
+      map_ne_r. 1: {
         apply pair_ne.
         { rewrite <- !ccompose_assoc. rewrite (transport_id_compose _ _ _). rewrite ccompose_assoc. reflexivity. }
         { rewrite !ccompose_assoc. rewrite (transport_id_compose _ _ _). rewrite <- ccompose_assoc. reflexivity. }
@@ -2818,8 +2837,8 @@ Section merge_extension.
       intros x; cbn. open_folds. clear_transports.
       rewrite ofe_truncated_equiv.
 
-      setoid_rewrite <- (map_compose_dist _ _ _ _ _ _) at 1. cbn.
-      setoid_rewrite tFunctor_map_ne at 3. 2: {
+      map_compose_l. cbn.
+      map_ne_r. 1: {
         apply pair_ne.
         { rewrite <- !ccompose_assoc. rewrite (transport_id_compose _ _ _). rewrite ccompose_assoc. reflexivity. }
         { rewrite !ccompose_assoc. rewrite (transport_id_compose _ _ _). rewrite <- ccompose_assoc. reflexivity. }
@@ -2958,13 +2977,13 @@ Section merge.
 
   Lemma me_mp_id γ0 γ1 Hγ0 Hγ1 Hlt : me γ0 γ1 Hγ0 Hγ1 Hlt ◎ mp γ0 γ1 Hγ0 Hγ1 Hlt ≡{γ0}≡ cid.
   Proof.
-    unfold me, mp. setoid_rewrite ccompose_assoc. setoid_rewrite <- ccompose_assoc at 2.
+    unfold me, mp. setoid_rewrite ccompose_assoc. setoid_rewrite <- (ccompose_assoc _ (fold_transport _) _).
     unfold unfold_transport, fold_transport. intros x; cbn. clear_transports. apply IH.
   Qed.
 
   Lemma mp_me_id γ0 γ1 Hγ0 Hγ1 Hlt : mp γ0 γ1 Hγ0 Hγ1 Hlt ◎ me γ0 γ1 Hγ0 Hγ1 Hlt ≡ cid.
   Proof.
-    unfold me, mp. setoid_rewrite ccompose_assoc. setoid_rewrite <- ccompose_assoc at 2.
+    unfold me, mp. setoid_rewrite ccompose_assoc. setoid_rewrite <- (ccompose_assoc _ (bounded_approx_e _ _ _ _ _ _) _).
     setoid_rewrite (approx_p_e_id (bounded_approx_props (IH _ _)) _ _ _ _ _).
     setoid_rewrite ccompose_cid_l. intros x; cbn. unfold fold_transport, unfold_transport. by clear_transports.
   Qed.
@@ -2972,9 +2991,9 @@ Section merge.
   Lemma me_funct γ0 γ1 γ2 Hγ0 Hγ1 Hγ2 Hlt1 Hlt2 Hlt3 : me γ1 γ2 Hγ1 Hγ2 Hlt2 ◎ me γ0 γ1 Hγ0 Hγ1 Hlt1 ≡ me γ0 γ2 Hγ0 Hγ2 Hlt3.
   Proof.
     unfold me. symmetry. intros x. cbn.
-    setoid_rewrite <- (approx_e_funct (bounded_approx_props (IH _ _)) γ0 γ1 γ2 _ _ _ _ _ _ _) at 1.
+    setoid_rewrite <- (approx_e_funct (bounded_approx_props (IH _ _)) γ0 γ1 γ2 _ _ _ _ _ _ _).
     cbn. f_equiv.
-    setoid_rewrite (agree_e_nat _ _ _ _ _ _ _ _ _) at 1. cbn.
+    setoid_rewrite (agree_e_nat (A0 := IH γ2 Hγ2) _ _ _ _ _ _ _ _ _). cbn.
     unfold fold_transport, unfold_transport. compose_transports. equalise_pi.
     Unshelve. all: apply IH_agree.
   Qed.
@@ -2983,8 +3002,8 @@ Section merge.
   Proof.
     unfold mp. symmetry. intros x. cbn.
     unfold fold_transport, unfold_transport.
-    setoid_rewrite <- (approx_p_funct (bounded_approx_props (IH _ _)) γ0 γ1 γ2 _ _ _ _ _ _ _) at 1. cbn.
-    setoid_rewrite (agree_p_nat _ _ _ _ _ _ _ _ _) at 1. cbn.
+    setoid_rewrite <- (approx_p_funct (bounded_approx_props (IH _ _)) γ0 γ1 γ2 _ _ _ _ _ _ _). cbn.
+    setoid_rewrite (agree_p_nat (A0 := IH γ2 Hγ2) _ γ0 γ1 _ _ _ _ _ _). cbn.
     unfold fold_transport.
     compose_transports. equalise_pi.
     Unshelve. apply IH_agree.
@@ -3080,8 +3099,8 @@ Section merge.
     unfold mϕ, mψ. rewrite ofe_truncated_equiv. intros x; cbn.
     setoid_rewrite (approx_ϕ_succ_id (bounded_approx_props (IH (Sᵢ γ) Hsle)) _ _ _ _).
     cbn. apply ofe_mor_ne.
-    setoid_rewrite tFunctor_map_ne at 2.
-    2: { apply pair_ne.
+    map_ne_r.
+    1: { apply pair_ne.
       { rewrite (agree_ψ_nat (IH_agree γ (Sᵢ γ) Hle Hsle) _ _ _ ). unfold fold_transport, unfold_transport.
         rewrite !ccompose_assoc. rewrite transport_id_compose. reflexivity. }
       { rewrite (agree_ϕ_nat (IH_agree γ (Sᵢ γ) Hle Hsle) _ _ _ ). unfold fold_transport, unfold_transport.
@@ -3102,8 +3121,8 @@ Section merge.
   Proof using Fcontr.
     unfold mψ, mϕ. rewrite ofe_truncated_equiv. intros x; cbn.
     setoid_rewrite (approx_ψ_succ_id (bounded_approx_props (IH (Sᵢ γ) Hsle)) _ _ _ _).
-    cbn. setoid_rewrite tFunctor_map_ne at 2.
-    2: { apply pair_ne.
+    cbn. map_ne_r.
+    1: { apply pair_ne.
       { rewrite (agree_ϕ_nat (IH_agree γ (Sᵢ γ) Hle Hsle) _ _ _ ). unfold fold_transport, unfold_transport.
         rewrite <- !ccompose_assoc. rewrite transport_id_compose. rewrite ccompose_assoc. reflexivity. }
       { rewrite (agree_ψ_nat (IH_agree γ (Sᵢ γ) Hle Hsle) _ _ _ ). unfold fold_transport, unfold_transport.

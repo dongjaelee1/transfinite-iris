@@ -895,10 +895,12 @@ Section primitive.
   Proof.
     unseal; siProp_primitive.unseal; split=> -n x ? /= HP.
     destruct (index_lt_dec_minimum n) as [|[n']]; eauto.
-    right. intros. eapply uPred_mono.
+    right. intros m x' ? ? ? Hmin. eapply uPred_mono.
     - eapply HP; eauto.
     - eauto using cmra_included_includedN.
-    - erewrite index_zero_is_unique at 1; eauto using SIdx.le_0_l.
+    - (* [m] is the least index, i.e. [0ᵢ]: say which index, instead of
+         [erewrite index_zero_is_unique at 1] *)
+      rewrite (index_zero_is_unique m Hmin). apply SIdx.le_0_l.
   Qed.
 
   Lemma later_persistently_1 P : ▷ □ P ⊢ □ ▷ P.

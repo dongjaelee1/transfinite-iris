@@ -190,10 +190,10 @@ Section truncatable.
   Lemma trunc_map_compose (f : A -n> B) (g : B -n> C) α β γ :
     trunc_map α β (g ◎ f) ≡{γ}≡ trunc_map γ β g ◎ trunc_map α γ f.
   Proof.
-    cbn. setoid_rewrite ccompose_assoc at 2. setoid_rewrite (proj1 (equiv_dist _ _) (ccompose_assoc _ _ _)) at 3.
-    setoid_rewrite <- (proj1 (equiv_dist _ _) (ccompose_assoc _ _ _)) at 3.
-    setoid_rewrite (dist_mono' _ _ _ _ (ofe_trunc_expand_truncate_id)); [ | auto with si_solver].
-    by intros x.
+    (* pointwise, instead of reassociating with occurrence numbers: [expand γ ◎ truncate γ]
+       is the identity at [γ] *)
+    intros x; cbn. do 2 apply ofe_mor_ne. symmetry.
+    apply (ofe_trunc_expand_truncate_id (α := γ)).
   Qed.
 End truncatable.
 
